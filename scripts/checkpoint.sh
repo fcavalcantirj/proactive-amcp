@@ -2,7 +2,7 @@
 # checkpoint.sh - Create AMCP checkpoint and pin to IPFS
 # Usage: ./checkpoint.sh [--notify]
 
-set -e
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 AMCP_CLI="${AMCP_CLI:-$HOME/bin/amcp}"
@@ -24,6 +24,12 @@ AGENT_NAME="${AGENT_NAME:-ClaudiusThePirateEmperor}"
 
 # Pinata config - read from ~/.amcp/config.json (AMCP's own config, not openclaw.json)
 PINATA_JWT="${PINATA_JWT:-$(python3 -c "import json; d=json.load(open('$HOME/.amcp/config.json')); print(d.get('pinata',{}).get('jwt',''))" 2>/dev/null || echo '')}"
+
+# Cleanup secrets on exit (normal or error) to prevent plaintext secrets on disk
+cleanup() {
+  rm -f "$SECRETS_FILE"
+}
+trap cleanup EXIT
 
 mkdir -p "$CHECKPOINT_DIR"
 
@@ -143,6 +149,7 @@ echo "Identity: $IDENTITY_PATH"
 # Extract secrets
 echo "Extracting secrets..."
 extract_secrets > "$SECRETS_FILE"
+chmod 600 "$SECRETS_FILE"
 SECRET_COUNT=$(python3 -c "import json; print(len(json.load(open('$SECRETS_FILE'))))")
 echo "Found $SECRET_COUNT secrets"
 
@@ -195,13 +202,10 @@ echo "Updated: $LAST_CHECKPOINT_FILE"
 
 # Rotate old checkpoints
 echo "Rotating old checkpoints (keep $KEEP_CHECKPOINTS)..."
-ls -1t "$CHECKPOINT_DIR"/checkpoint-*.amcp 2>/dev/null | tail -n +$((KEEP_CHECKPOINTS + 1)) | while read f; do
+ls -1t "$CHECKPOINT_DIR"/checkpoint-*.amcp 2>/dev/null | tail -n +$((KEEP_CHECKPOINTS + 1)) | while read -r f; do
   echo "Removing old: $f"
   rm -f "$f"
 done
-
-# Cleanup secrets file
-rm -f "$SECRETS_FILE"
 
 # Notify end
 if [ "$NOTIFY" = "--notify" ]; then

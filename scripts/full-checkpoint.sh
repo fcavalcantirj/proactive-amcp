@@ -2,7 +2,7 @@
 # full-checkpoint.sh - Create FULL AMCP checkpoint with ALL content and secrets
 # Usage: ./full-checkpoint.sh [--dry-run] [--notify]
 
-set -e
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 AMCP_CLI="${AMCP_CLI:-$HOME/bin/amcp}"
@@ -26,6 +26,13 @@ done
 
 # Pinata config
 PINATA_JWT="${PINATA_JWT:-$(python3 -c "import json; d=json.load(open('$HOME/.amcp/config.json')); print(d.get('pinata',{}).get('jwt',''))" 2>/dev/null || echo '')}"
+
+# Cleanup staging dir and secrets on exit (normal or error)
+cleanup() {
+  rm -rf "$STAGING_DIR"
+  rm -f "$SECRETS_FILE"
+}
+trap cleanup EXIT
 
 mkdir -p "$CHECKPOINT_DIR"
 
@@ -220,7 +227,7 @@ for key, key_type in expected_keys:
                         "type": key_type,
                         "targets": [{"kind": "env", "name": key}]
                     })
-        except:
+        except (OSError, subprocess.TimeoutExpired, ValueError):
             pass
 
 # Deduplicate by key
@@ -236,6 +243,7 @@ PYEOF
 }
 
 extract_all_secrets > "$SECRETS_FILE"
+chmod 600 "$SECRETS_FILE"
 SECRET_COUNT=$(python3 -c "import json; print(len(json.load(open('$SECRETS_FILE'))))")
 echo "Found $SECRET_COUNT secrets"
 
@@ -372,13 +380,9 @@ cat > "$LAST_CHECKPOINT_FILE" << EOJSON
 }
 EOJSON
 
-# Cleanup staging
-rm -rf "$STAGING_DIR"
-rm -f "$SECRETS_FILE"
-
 # Rotate old checkpoints
 echo "Rotating old checkpoints (keep $KEEP_CHECKPOINTS)..."
-ls -1t "$CHECKPOINT_DIR"/full-checkpoint-*.amcp 2>/dev/null | tail -n +$((KEEP_CHECKPOINTS + 1)) | while read f; do
+ls -1t "$CHECKPOINT_DIR"/full-checkpoint-*.amcp 2>/dev/null | tail -n +$((KEEP_CHECKPOINTS + 1)) | while read -r f; do
   echo "Removing old: $f"
   rm -f "$f"
 done

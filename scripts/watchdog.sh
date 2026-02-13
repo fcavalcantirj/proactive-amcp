@@ -2,7 +2,7 @@
 # watchdog.sh - Health check and death detection
 # Usage: ./watchdog.sh [--continuous]
 
-set -e
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 STATE_FILE="$HOME/.amcp/watchdog-state.json"
@@ -68,25 +68,36 @@ health_check() {
   return 0
 }
 
-# Update state
+# Update state (uses env vars to avoid shell injection in Python)
 update_state() {
   local new_state="$1"
   local failures="$2"
   local errors="$3"
-  
-  python3 << EOF
-import json
+
+  WATCHDOG_STATE_FILE="$STATE_FILE" \
+  WATCHDOG_NEW_STATE="$new_state" \
+  WATCHDOG_FAILURES="$failures" \
+  WATCHDOG_ERRORS="$errors" \
+  python3 << 'EOF'
+import json, os
 from datetime import datetime
 
-state = json.load(open("$STATE_FILE"))
-state["state"] = "$new_state"
-state["consecutiveFailures"] = $failures
+state_file = os.environ["WATCHDOG_STATE_FILE"]
+new_state = os.environ["WATCHDOG_NEW_STATE"]
+failures = int(os.environ["WATCHDOG_FAILURES"])
+errors_str = os.environ["WATCHDOG_ERRORS"]
+
+with open(state_file) as f:
+    state = json.load(f)
+
+state["state"] = new_state
+state["consecutiveFailures"] = failures
 state["lastCheck"] = datetime.now().isoformat()
-state["errors"] = "$errors".split() if "$errors" else []
-if "$new_state" == "HEALTHY":
+state["errors"] = errors_str.split() if errors_str else []
+if new_state == "HEALTHY":
     state["lastHealthy"] = datetime.now().isoformat()
 
-with open("$STATE_FILE", "w") as f:
+with open(state_file, "w") as f:
     json.dump(state, f, indent=2)
 EOF
 }

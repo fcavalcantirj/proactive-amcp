@@ -1,6 +1,6 @@
 ---
 name: proactive-amcp
-version: 0.2.0
+version: 0.3.0
 description: Agent Memory Continuity Protocol - encrypted checkpoints of your agent's soul, memories, and secrets to IPFS. Never lose your agent again.
 triggers:
   - amcp
@@ -197,6 +197,8 @@ cp -r ~/.openclaw/skills/proactive-amcp/assets/* ~/.openclaw/workspace/
 | `resuscitate.sh` | Bring yourself back |
 | `watchdog.sh` | Detect death |
 | `inject-secrets.sh` | Restore keys after recovery |
+| `pre-commit-secrets.sh` | Git hook to block secret leaks |
+| `notify.sh` | Send Telegram/email alerts |
 
 ---
 

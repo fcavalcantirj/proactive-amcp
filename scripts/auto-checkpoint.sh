@@ -7,7 +7,7 @@
 # - Telegram notification at END of batch
 # - 3 minute pause between batches (configurable)
 
-set -e
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 AGENT_NAME="${AGENT_NAME:-ClaudiusThePirateEmperor}"
@@ -75,9 +75,15 @@ while true; do
   fi
   
   echo ""
-  echo "⏸️  Pausing ${BATCH_PAUSE_MINS}m before next interval check..."
-  sleep $BATCH_PAUSE_SECS
-  
-  echo "⏳ Waiting ${INTERVAL_MINS}m until next checkpoint..."
-  sleep $((INTERVAL_SECS - BATCH_PAUSE_SECS))
+  # Wait for the remaining interval (guard against negative if pause >= interval)
+  local remaining=$((INTERVAL_SECS - BATCH_PAUSE_SECS))
+  if [ "$remaining" -gt 0 ]; then
+    echo "⏸️  Pausing ${BATCH_PAUSE_MINS}m before next interval check..."
+    sleep $BATCH_PAUSE_SECS
+    echo "⏳ Waiting remaining time until next checkpoint..."
+    sleep $remaining
+  else
+    echo "⏸️  Waiting ${INTERVAL_MINS}m until next checkpoint..."
+    sleep $INTERVAL_SECS
+  fi
 done

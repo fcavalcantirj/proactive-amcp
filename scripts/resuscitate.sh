@@ -4,7 +4,7 @@
 #
 # Solvr: SEARCH only (read-only). Agent posts after alive.
 
-set -e
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 AMCP_CLI="${AMCP_CLI:-$HOME/bin/amcp}"
@@ -18,6 +18,15 @@ RECOVERY_LOG="$HOME/.amcp/recovery-$(date +%Y%m%d-%H%M%S).log"
 SOLVR_API_KEY="${SOLVR_API_KEY:-}"
 SOLVR_BASE="https://api.solvr.dev/v1"
 
+# Track temp files for cleanup
+TEMP_FILES=()
+cleanup() {
+  for f in "${TEMP_FILES[@]}"; do
+    rm -rf "$f" 2>/dev/null || true
+  done
+}
+trap cleanup EXIT
+
 # Parse args
 FROM_CID=""
 while [[ $# -gt 0 ]]; do
@@ -28,6 +37,15 @@ while [[ $# -gt 0 ]]; do
     *) shift ;;
   esac
 done
+
+# Validate CID format if provided (alphanumeric, starts with Qm or bafy)
+if [ -n "$FROM_CID" ]; then
+  if ! echo "$FROM_CID" | grep -qE '^(Qm[a-zA-Z0-9]{44}|bafy[a-zA-Z0-9]{55,})$'; then
+    echo "ERROR: Invalid CID format: $FROM_CID"
+    echo "CIDs should start with 'Qm' (CIDv0) or 'bafy' (CIDv1)"
+    exit 1
+  fi
+fi
 
 mkdir -p "$(dirname "$RECOVERY_LOG")"
 
@@ -119,6 +137,7 @@ try_rehydrate() {
   local checkpoint_path=""
   if [ -n "$cid" ]; then
     checkpoint_path="/tmp/checkpoint-$cid.amcp"
+    TEMP_FILES+=("$checkpoint_path")
     log "Fetching from IPFS: $cid"
     if curl -s --max-time 120 "https://gateway.pinata.cloud/ipfs/$cid" -o "$checkpoint_path"; then
       log "Downloaded checkpoint from IPFS"
@@ -154,6 +173,7 @@ try_rehydrate() {
   # Resuscitate (verify + decrypt)
   local secrets_file="/tmp/secrets-$$.json"
   local content_dir="/tmp/restored-$$"
+  TEMP_FILES+=("$secrets_file" "$content_dir")
   
   if ! $AMCP_CLI resuscitate \
        --checkpoint "$checkpoint_path" \

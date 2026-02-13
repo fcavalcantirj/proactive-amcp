@@ -2,15 +2,21 @@
 # inject-secrets.sh - Inject secrets to file/env/systemd targets
 # Usage: ./inject-secrets.sh <secrets.json>
 
-set -e
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-SECRETS_FILE="$1"
+SECRETS_FILE="${1:-}"
 BACKUP_DIR="$HOME/.amcp/backups/$(date +%Y%m%d-%H%M%S)"
 AGENT_NAME="${AGENT_NAME:-ClaudiusThePirateEmperor}"
 
 if [ -z "$SECRETS_FILE" ] || [ ! -f "$SECRETS_FILE" ]; then
   echo "Usage: $0 <secrets.json>"
+  exit 1
+fi
+
+# Validate JSON before processing
+if ! python3 -c "import json; json.load(open('$SECRETS_FILE'))" 2>/dev/null; then
+  echo "ERROR: $SECRETS_FILE is not valid JSON"
   exit 1
 fi
 
