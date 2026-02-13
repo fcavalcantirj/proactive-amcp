@@ -21,17 +21,31 @@ metadata: {"openclaw": {"requires": {"bins": ["curl", "jq"], "env": ["PINATA_JWT
 
 ---
 
-## ⚠️ CRITICAL: You Need Pinata (Free Tier Works)
+## What You Get
 
-**This skill requires [Pinata](https://pinata.cloud) for IPFS pinning.**
+| Feature | What It Does |
+|---------|--------------|
+| 🧠 **Soul Preservation** | SOUL.md, MEMORY.md, daily notes — all encrypted |
+| 🔐 **Secrets Backup** | API keys extracted from configs, encrypted separately |
+| 📌 **IPFS Pinning** | Checkpoints pinned via Pinata, fetch from any CID |
+| 👁️ **Watchdog** | Monitors agent health, detects death |
+| 🔄 **Auto-Recovery** | Tries lightweight fixes before full resurrection |
+| 📢 **Notifications** | Telegram alerts on checkpoint/death/recovery |
+| ⏰ **Auto-Checkpoint** | Cron-friendly script for periodic backups |
+
+---
+
+## ⚠️ REQUIRES: Pinata (Free Tier Works)
+
+**Without Pinata, checkpoints stay local only. No cloud backup. No resurrection from CID.**
 
 ### Get Your Pinata JWT (2 minutes)
 
-1. Go to https://pinata.cloud → Sign up (free)
-2. Click **API Keys** → **New Key**
-3. Enable **pinFileToIPFS** permission
+1. **https://pinata.cloud** → Sign up (free)
+2. **API Keys** → **New Key**
+3. Enable **pinFileToIPFS**
 4. Copy the **JWT** (starts with `eyJ...`)
-5. Add to OpenClaw config:
+5. Add to config:
 
 ```json
 // ~/.openclaw/openclaw.json
@@ -40,119 +54,129 @@ metadata: {"openclaw": {"requires": {"bins": ["curl", "jq"], "env": ["PINATA_JWT
     "entries": {
       "proactive-amcp": {
         "enabled": true,
-        "apiKey": "eyJhbGciOiJIUzI1NiIs... YOUR_PINATA_JWT"
+        "apiKey": "eyJhbGciOiJIUzI1NiIs..."
       }
     }
   }
 }
 ```
 
-**Without Pinata, checkpoints stay local only. No cloud backup. No resurrection from CID.**
+### Test Your JWT
 
----
-
-## What Gets Saved
-
-Every checkpoint encrypts and preserves:
-
-| Content | What It Is |
-|---------|------------|
-| 🧠 **SOUL.md** | Your agent's identity, personality, principles |
-| 📝 **MEMORY.md** | Long-term curated memories |
-| 📅 **memory/*.md** | Daily notes, logs, context |
-| 🔧 **TOOLS.md** | Tool configs, credential locations |
-| 👤 **USER.md** | Info about you (the human) |
-| 📋 **AGENTS.md** | Operating rules and behaviors |
-| 🔑 **Secrets** | API keys from config files (encrypted separately) |
-
-**Your agent's entire identity and memory, in one encrypted file.**
-
----
-
-## How It Works
-
-```
-1. CHECKPOINT
-   Workspace + Secrets → Encrypt with AMCP identity → Pin to IPFS
-   
-2. DEATH DETECTED  
-   Watchdog notices agent unresponsive
-   
-3. RESURRECTION
-   Fetch from IPFS → Decrypt → Restore workspace + secrets → Restart
-   
-4. AGENT LIVES AGAIN
-   Same soul. Same memories. New session.
+```bash
+curl -s "https://api.pinata.cloud/data/testAuthentication" \
+  -H "Authorization: Bearer YOUR_JWT_HERE"
+# Should return: {"message": "Congratulations! You are communicating with the Pinata API!"}
 ```
 
 ---
 
 ## Quick Start
 
-### 1. Create AMCP Identity (one time)
-
 ```bash
-# Install AMCP CLI if not present
-# (check amcp-protocol repo for installation)
-
-# Create your agent's cryptographic identity
+# 1. Create AMCP identity (one time)
 amcp identity create --out ~/.amcp/identity.json
-```
 
-This generates a unique signing key. **Back this up.** Without it, you can't decrypt checkpoints.
-
-### 2. Configure Pinata
-
-Add to `~/.openclaw/openclaw.json`:
-
-```json
-{
-  "skills": {
-    "entries": {
-      "proactive-amcp": {
-        "enabled": true,
-        "apiKey": "YOUR_PINATA_JWT_HERE"
-      }
-    }
-  }
-}
-```
-
-### 3. Create First Checkpoint
-
-```bash
-# Basic checkpoint (workspace only)
-~/.openclaw/skills/proactive-amcp/scripts/checkpoint.sh
-
-# Full checkpoint (workspace + all secrets)
+# 2. Create first checkpoint
 ~/.openclaw/skills/proactive-amcp/scripts/full-checkpoint.sh
 ```
 
-Output:
-```
-✅ Checkpoint created
-   Local: ~/.amcp/checkpoints/checkpoint-20260213-123456.amcp
-   CID: QmXD4q8jhgrLVuXceRSDDqRkaDmE4R9uX3r7vEcCXoZDGs
-   Pinned to IPFS ✓
-```
-
-**Save that CID.** It's your agent's resurrection point.
+Done. Your agent's soul is now backed up to IPFS.
 
 ---
 
-## Scripts
+## What Gets Saved
 
-| Script | What It Does |
-|--------|--------------|
-| `checkpoint.sh` | Encrypt workspace, pin to IPFS |
-| `full-checkpoint.sh` | Include secrets (API keys) in checkpoint |
-| `resuscitate.sh` | Full resurrection from checkpoint |
-| `inject-secrets.sh` | Restore secrets to config files |
-| `watchdog.sh` | Monitor agent health, detect death |
-| `notify.sh` | Send Telegram alerts |
-| `auto-checkpoint.sh` | Cron-friendly, silent unless error |
+| Content | What It Is | Why It Matters |
+|---------|------------|----------------|
+| 🧠 **SOUL.md** | Identity, personality, principles | Who your agent IS |
+| 📝 **MEMORY.md** | Long-term curated memories | What they've learned |
+| 📅 **memory/*.md** | Daily notes, logs | Recent context |
+| 🔧 **TOOLS.md** | Tool configs, credential locations | How to use things |
+| 👤 **USER.md** | Info about you | Who they serve |
+| 📋 **AGENTS.md** | Operating rules | How they behave |
+| 🔑 **Secrets** | API keys from configs | Access to services |
 
-### Resurrect from Checkpoint
+---
+
+## Self-Healing: Recovery Hierarchy
+
+When the watchdog detects issues, it tries lightweight fixes first:
+
+| Step | What It Tries | When It Works |
+|------|---------------|---------------|
+| 1️⃣ **Restart gateway** | `systemctl --user restart openclaw-gateway` | Gateway crashed |
+| 2️⃣ **Fix config** | Restore last known good openclaw.json | Config corrupted |
+| 3️⃣ **Full rehydration** | Decrypt checkpoint → Restore workspace + secrets | Everything's gone |
+| 4️⃣ **Human alert** | Telegram notification | All else failed |
+
+**Most deaths are fixed at step 1.** Full resurrection is rare.
+
+---
+
+## Watchdog Monitoring
+
+The watchdog script checks:
+
+| Check | Frequency | Catches |
+|-------|-----------|---------|
+| Gateway process | Every run | Crashed gateway |
+| API responsiveness | Every run | Hung gateway |
+| Auth status | Every run | Expired OAuth |
+| Disk space | Every run | Full disk |
+
+Run manually:
+```bash
+~/.openclaw/skills/proactive-amcp/scripts/watchdog.sh
+```
+
+Or add to cron:
+```bash
+# Every 15 minutes
+*/15 * * * * ~/.openclaw/skills/proactive-amcp/scripts/watchdog.sh
+```
+
+---
+
+## Auto-Checkpoint (Recommended)
+
+Set up periodic backups:
+
+```bash
+# Every 4 hours
+0 */4 * * * ~/.openclaw/skills/proactive-amcp/scripts/auto-checkpoint.sh
+
+# Or every 6 hours (lighter on resources)
+0 */6 * * * ~/.openclaw/skills/proactive-amcp/scripts/auto-checkpoint.sh
+```
+
+`auto-checkpoint.sh` is silent unless there's an error.
+
+### Checkpoint Cost
+
+| Workspace Size | Checkpoint Size | Pinata Storage |
+|----------------|-----------------|----------------|
+| < 10 MB | ~2-5 MB encrypted | Free tier OK |
+| 10-50 MB | ~5-20 MB encrypted | Free tier OK |
+| > 50 MB | Consider pruning old notes | May need paid |
+
+Pinata free tier: 1 GB storage, unlimited pins.
+
+---
+
+## Scripts Reference
+
+| Script | Purpose | Silent? |
+|--------|---------|---------|
+| `checkpoint.sh` | Workspace only, pin to IPFS | No |
+| `full-checkpoint.sh` | Workspace + secrets, pin to IPFS | No |
+| `auto-checkpoint.sh` | Cron-friendly, errors only | Yes |
+| `resuscitate.sh` | Full recovery from checkpoint | No |
+| `inject-secrets.sh` | Restore secrets to configs | No |
+| `watchdog.sh` | Health check, detect death | Configurable |
+| `notify.sh` | Send Telegram alerts | N/A |
+
+### Manual Resurrection
 
 ```bash
 # From specific CID
@@ -162,51 +186,12 @@ Output:
 ./scripts/resuscitate.sh
 ```
 
-### Auto-Checkpoint (Recommended)
-
-Add to cron for periodic backups:
-
-```bash
-# Every 4 hours
-0 */4 * * * ~/.openclaw/skills/proactive-amcp/scripts/auto-checkpoint.sh
-```
-
----
-
-## Recovery Hierarchy
-
-When resurrection is triggered, try lightweight first:
-
-```
-1. Restart gateway
-   └─ systemctl --user restart openclaw-gateway
-   
-2. Fix config from backup
-   └─ Restore last known good openclaw.json
-   
-3. Full rehydration from checkpoint
-   └─ Decrypt → Restore workspace + secrets → Restart
-   
-4. Human intervention
-   └─ If all else fails, alert human
-```
-
 ---
 
 ## Notifications
 
-Get Telegram alerts on all events:
+Configure Telegram alerts:
 
-| Event | Message |
-|-------|---------|
-| Checkpoint start | 🔄 Starting checkpoint... |
-| Checkpoint done | ✅ Checkpoint complete. CID: Qm... |
-| Death detected | ☠️ Agent died. Starting recovery... |
-| Recovery attempt | 🔄 Trying: restart gateway |
-| Recovery success | ✅ Alive! Downtime: 45s |
-| Recovery failed | ❌ Need human. Check logs. |
-
-Configure notification target in the skill config:
 ```json
 {
   "skills": {
@@ -221,69 +206,93 @@ Configure notification target in the skill config:
 }
 ```
 
+| Event | Message |
+|-------|---------|
+| Checkpoint start | 🔄 Starting checkpoint... |
+| Checkpoint done | ✅ Checkpoint complete. CID: Qm... |
+| Death detected | ☠️ Agent died. Starting recovery... |
+| Recovery trying | 🔄 Trying: restart gateway |
+| Recovery success | ✅ Alive! Downtime: 45s |
+| Recovery failed | ❌ Need human. Check logs. |
+
 ---
 
 ## Files & Locations
 
-| Path | Purpose |
-|------|---------|
-| `~/.amcp/identity.json` | Your agent's signing key (BACK THIS UP) |
-| `~/.amcp/checkpoints/` | Local checkpoint storage |
-| `~/.amcp/last-checkpoint.json` | Last successful CID + path |
-| `~/.amcp/recovery-*.log` | Recovery attempt logs |
+| Path | Purpose | Back Up? |
+|------|---------|----------|
+| `~/.amcp/identity.json` | Signing key | **CRITICAL** |
+| `~/.amcp/checkpoints/` | Local checkpoints | Optional |
+| `~/.amcp/last-checkpoint.json` | Last CID + path | Recommended |
+| `~/.amcp/recovery-*.log` | Recovery logs | No |
 
----
-
-## Security
-
-### Encryption
-
-- Checkpoints are encrypted with your AMCP identity key
-- Only you can decrypt (holder of identity.json)
-- Secrets are double-encrypted within the checkpoint
-
-### What to Back Up
+### What to Back Up Externally
 
 | File | Priority | Why |
 |------|----------|-----|
-| `~/.amcp/identity.json` | **CRITICAL** | Can't decrypt without it |
-| Latest checkpoint CID | HIGH | Resurrection point |
-| `~/.openclaw/openclaw.json` | HIGH | Config + API keys |
-
-### What NOT to Commit to Git
-
-- `identity.json` — your private key
-- `*.amcp` files — encrypted but still sensitive
-- Any file with real API keys
+| `identity.json` | **CRITICAL** | Can't decrypt without it |
+| Latest CID | HIGH | Your resurrection point |
+| `openclaw.json` | HIGH | All your config + keys |
 
 ---
 
-## Checkpoint Format
+## Verification
 
-```
-checkpoint.amcp (encrypted tar)
-├── manifest.json       # Metadata, timestamps, previous CID
-├── content/            # Your workspace files
-│   ├── SOUL.md
-│   ├── MEMORY.md
-│   ├── memory/
-│   ├── AGENTS.md
-│   └── ...
-├── secrets.json        # Encrypted API keys (optional)
-└── signature           # AMCP identity signature
+Check your setup:
+
+```bash
+# Test Pinata connection
+curl -s "https://api.pinata.cloud/data/testAuthentication" \
+  -H "Authorization: Bearer $(jq -r '.skills.entries["proactive-amcp"].apiKey' ~/.openclaw/openclaw.json)"
+
+# Check identity exists
+ls -la ~/.amcp/identity.json
+
+# Check last checkpoint
+cat ~/.amcp/last-checkpoint.json
+
+# Test checkpoint (dry run - doesn't pin)
+PINATA_JWT="" ~/.openclaw/skills/proactive-amcp/scripts/checkpoint.sh
+# Will create local checkpoint but skip IPFS
 ```
 
 ---
 
-## Requirements
+## Security & Permissions
 
-| Requirement | Required | Purpose |
-|-------------|----------|---------|
-| `curl` | ✅ | API calls |
-| `jq` | ✅ | JSON parsing |
-| `PINATA_JWT` | ✅ | IPFS pinning |
-| `~/.amcp/identity.json` | ✅ | Encryption/signing |
-| OpenClaw | Optional | Telegram notifications |
+### What This Skill Accesses
+
+| Resource | Access | Purpose |
+|----------|--------|---------|
+| `~/.openclaw/workspace/*` | Read | Content to backup |
+| `~/.openclaw/openclaw.json` | Read | Extract secrets |
+| `~/.amcp/*` | Read/Write | Identity, checkpoints |
+| `api.pinata.cloud` | Write | Pin checkpoints |
+| Telegram API | Write | Notifications |
+
+### What This Skill Does NOT Do
+
+- Does not modify OpenClaw gateway config
+- Does not run `openclaw gateway config.patch`
+- Does not restart gateway (except during recovery)
+
+### Encryption
+
+- Checkpoints encrypted with AMCP identity key
+- Only holder of `identity.json` can decrypt
+- Secrets double-encrypted within checkpoint
+
+### Pre-Commit Hook (Recommended)
+
+Block accidental credential commits:
+
+```bash
+# Copy the hook
+cp ~/.openclaw/skills/proactive-amcp/scripts/pre-commit-secrets.sh .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+```
+
+Detects: API keys, JWTs, private keys, tokens.
 
 ---
 
@@ -291,27 +300,62 @@ checkpoint.amcp (encrypted tar)
 
 ### "Checkpoint created but no CID"
 
-Pinata JWT missing or invalid. Check:
+Pinata JWT missing or invalid.
+
 ```bash
-# Test Pinata connection
+# Test authentication
 curl -s "https://api.pinata.cloud/data/testAuthentication" \
   -H "Authorization: Bearer YOUR_JWT"
 ```
 
 ### "Can't decrypt checkpoint"
 
-Wrong identity file. The checkpoint was created with a different `identity.json`. You need the original.
+Wrong `identity.json`. The checkpoint was created with a different identity. You need the original file.
 
-### "Resurrection failed at secrets injection"
+### "Gateway won't start after resurrection"
 
-Target config file might have changed structure. Check `inject-secrets.sh` logs.
+Check if config was restored correctly:
+
+```bash
+cat ~/.openclaw/openclaw.json | jq .
+# Should be valid JSON
+```
+
+### "Secrets not injected"
+
+Target config structure may have changed. Check the injection log:
+
+```bash
+cat ~/.amcp/recovery-*.log | grep -i secret
+```
 
 ---
 
-## Related
+## Requirements Summary
 
-- **AMCP Protocol**: https://github.com/fcavalcantirj/amcp-protocol
-- **Pinata**: https://pinata.cloud
+| Requirement | Required | How to Get |
+|-------------|----------|------------|
+| `curl` | ✅ | Usually pre-installed |
+| `jq` | ✅ | `apt install jq` / `brew install jq` |
+| `PINATA_JWT` | ✅ | https://pinata.cloud → API Keys |
+| `~/.amcp/identity.json` | ✅ | `amcp identity create` |
+| OpenClaw | Optional | For Telegram notifications |
+
+---
+
+## Checkpoint Format
+
+```
+checkpoint.amcp (encrypted tar)
+├── manifest.json       # Metadata, timestamp, previous CID
+├── content/            # Workspace files
+│   ├── SOUL.md
+│   ├── MEMORY.md
+│   ├── memory/
+│   └── ...
+├── secrets.json        # Encrypted API keys
+└── signature           # AMCP identity signature
+```
 
 ---
 
