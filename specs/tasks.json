@@ -1,0 +1,260 @@
+[
+  {
+    "category": "critical",
+    "description": "Decentralized bootstrap: recovery phrase + pluggable storage (protocol-level, no lock-in)",
+    "steps": [
+      "Design: AMCP protocol defines FORMAT, not storage",
+      "Checkpoint format: JSON with encrypted secrets blob + signature + metadata",
+      "BIP-39 style mnemonic (12 words) \u2192 deterministic keypair",
+      "Create StorageBackend interface: put(cid, data), get(cid) \u2192 data",
+      "Implement backends: IPFSBackend, GitBackend, FilesystemBackend",
+      "GitBackend: push checkpoint to repo, tag with CID-like hash",
+      "IPFSBackend: pin to IPFS, return CID",
+      "FilesystemBackend: save to ~/.amcp/checkpoints/",
+      "full-rehydrate.sh: --phrase + --backend + --location",
+      "Example: --backend git --location https://github.com/user/amcp-backup",
+      "Example: --backend ipfs --location bafkreixxxx",
+      "Example: --backend file --location /path/to/checkpoint.json",
+      "Verify: Recovery works with each backend type",
+      "Verify: Same checkpoint, different backends = same result"
+    ],
+    "passes": false
+  },
+  {
+    "category": "protocol",
+    "description": "Update @amcp/core and @amcp/memory with mnemonic support and pluggable storage",
+    "steps": [
+      "In @amcp/core: Add generateMnemonic() using BIP-39 wordlist",
+      "In @amcp/core: Add keypairFromMnemonic(phrase) for deterministic derivation",
+      "In @amcp/memory: Define StorageBackend interface { put(cid, data), get(cid) }",
+      "In @amcp/memory: Implement IPFSBackend (uses public gateways)",
+      "In @amcp/memory: Implement GitBackend (push/pull from repo)",
+      "In @amcp/memory: Implement FilesystemBackend (local files)",
+      "In @amcp/memory: Add encryptSecrets(secrets, pubkey) using X25519",
+      "In @amcp/memory: Add decryptSecrets(blob, privkey)",
+      "Write tests for mnemonic \u2192 keypair \u2192 encrypt \u2192 decrypt roundtrip",
+      "Verify: Same mnemonic always produces same keypair",
+      "Verify: Encrypted blob only decryptable with correct key",
+      "Update amcp-protocol README with new exports",
+      "Commit and push to https://github.com/fcavalcantirj/amcp-protocol"
+    ],
+    "passes": false
+  },
+  {
+    "category": "scaffold",
+    "description": "Initialize skill directory structure following Anthropic standards",
+    "steps": [
+      "Create ~/clawd/skills/proactive-amcp/SKILL.md with YAML frontmatter (name, description)",
+      "Create scripts/ directory",
+      "Create references/ directory",
+      "Create assets/ directory (empty, for templates)",
+      "Verify: SKILL.md exists with valid YAML frontmatter",
+      "Verify: All directories exist"
+    ],
+    "passes": false
+  },
+  {
+    "category": "identity",
+    "description": "Extend AMCP identity.json to link service identities (Solvr, AgentMail, AgentMemory)",
+    "steps": [
+      "Update ~/.amcp/identity.json schema to include 'services' object",
+      "Add solvr entry: agent_id, api_key_ref pointing to AgentMemory secret name",
+      "Add agentmail entry: inbox, api_key_ref",
+      "Add agentmemory entry: agent_name, api_key_location (root of trust)",
+      "Create scripts/verify-identity.sh to check all linked services are accessible",
+      "Verify: identity.json has services object with all three entries",
+      "Verify: verify-identity.sh confirms access to all services"
+    ],
+    "passes": false
+  },
+  {
+    "category": "scaffold",
+    "description": "Create assets/ templates for quick start (AMCP-ONBOARDING.md, identity-template.json)",
+    "steps": [
+      "Create assets/AMCP-ONBOARDING.md with status tracking for AMCP setup",
+      "Include steps: AgentMemory connected, identity created, services linked, verification passed",
+      "Create assets/identity-template.json with services object structure",
+      "Template should have placeholders for Solvr, AgentMail, AgentMemory",
+      "Verify: Both files exist with valid content",
+      "Verify: Templates are valid markdown/JSON"
+    ],
+    "passes": false
+  },
+  {
+    "category": "scripts",
+    "description": "Create death-tracker.sh for logging and analyzing deaths",
+    "steps": [
+      "Create scripts/death-tracker.sh with functions: log_death(), log_recovery(), get_stats()",
+      "Death record format: {timestamp, cause, recovery_status, downtime_hours}",
+      "Store in ~/.amcp/deaths.jsonl (create if not exists)",
+      "Add get_stats() to output: total deaths, avg downtime, last death, recovery rate",
+      "Make executable: chmod +x",
+      "Verify: ./death-tracker.sh log_death 'test-cause' creates entry",
+      "Verify: ./death-tracker.sh get_stats outputs valid JSON"
+    ],
+    "passes": false
+  },
+  {
+    "category": "scripts",
+    "description": "Create daily-report.py for generating and sending daily summaries",
+    "steps": [
+      "Create scripts/daily-report.py",
+      "Gather data: deaths (from deaths.jsonl), checkpoints (from ~/.amcp/), soul posts (from Solvr API)",
+      "Generate HTML email with sections: Vital Signs, What I Learned, What I Kept, Health Warnings",
+      "Send via AgentMail API (key from env or ~/.openclaw/openclaw.json)",
+      "Accept --dry-run flag to output without sending",
+      "Verify: python3 daily-report.py --dry-run produces valid HTML",
+      "Verify: HTML includes all required sections",
+      "Include 'Recovery Info' section: latest checkpoint CID",
+      "Include 'Recovery Info' section: latest checkpoint CID"
+    ],
+    "passes": false
+  },
+  {
+    "category": "scripts",
+    "description": "Create auto-checkpoint.sh for triggered checkpointing",
+    "steps": [
+      "Create scripts/auto-checkpoint.sh",
+      "Accept trigger types: context-threshold, session-end, explicit",
+      "For context-threshold: check session_status, warn at 70%, checkpoint at 85%",
+      "For session-end: summarize session, create checkpoint",
+      "For explicit: checkpoint with provided message",
+      "Store checkpoint in ~/.amcp/checkpoints/ with timestamp",
+      "Sync to AgentMemory vault if available",
+      "Verify: ./auto-checkpoint.sh explicit 'test checkpoint' creates file",
+      "Verify: Checkpoint file contains valid JSON"
+    ],
+    "passes": false
+  },
+  {
+    "category": "scripts",
+    "description": "Create full-rehydrate.sh for complete machine restoration",
+    "steps": [
+      "Create scripts/full-rehydrate.sh",
+      "Step 1: Restore AMCP identity from AgentMemory vault",
+      "Step 2: Verify AID matches expected",
+      "Step 3: Restore secrets from vault",
+      "Step 4: Fetch soul posts from Solvr (/me/posts?type=idea, filter Soul:)",
+      "Step 5: Sync memories from AgentMemory",
+      "Step 6: Restore active problems from Solvr (/me/posts?status=open)",
+      "Step 7: Output summary of what was restored",
+      "Accept --dry-run flag to show what would be restored without doing it",
+      "Verify: ./full-rehydrate.sh --dry-run outputs restoration plan",
+      "Verify: Plan includes all 6 restoration steps"
+    ],
+    "passes": false
+  },
+  {
+    "category": "scripts",
+    "description": "Create verify-setup.sh to check AMCP configuration",
+    "steps": [
+      "Create scripts/verify-setup.sh",
+      "Check 1: ~/.amcp/identity.json exists and has valid AID",
+      "Check 2: AgentMemory connection works",
+      "Check 3: AMCP keys retrievable from vault",
+      "Check 4: Solvr API key works (test /me endpoint)",
+      "Check 5: amcp-watchdog.sh cron exists",
+      "Output: Summary of checks with PASS/FAIL",
+      "Exit 0 if all pass, exit 1 if any fail",
+      "Verify: Script runs and produces clear output"
+    ],
+    "passes": false
+  },
+  {
+    "category": "integration",
+    "description": "Integrate death tracking with existing amcp-watchdog.sh",
+    "steps": [
+      "Modify ~/clawd/amcp-protocol/scripts/amcp-watchdog.sh",
+      "Import death-tracker.sh functions",
+      "Call log_death() when health check fails (exit codes 1,2,3)",
+      "Call log_recovery() when recovery succeeds",
+      "Send Telegram notification on death and recovery",
+      "Verify: Simulate failure, check deaths.jsonl has entry",
+      "Verify: Telegram notification received"
+    ],
+    "passes": false
+  },
+  {
+    "category": "integration",
+    "description": "Add daily report cron job",
+    "steps": [
+      "Add cron job: 0 9 * * * (6am S\u00e3o Paulo = 9am UTC)",
+      "Cron runs: python3 ~/clawd/skills/proactive-amcp/scripts/daily-report.py",
+      "Verify: crontab -l shows the job",
+      "Verify: Manual run sends email successfully"
+    ],
+    "passes": false
+  },
+  {
+    "category": "documentation",
+    "description": "Write SKILL.md body with usage instructions",
+    "steps": [
+      "Add 'What You Get' feature table (like proactive-solvr)",
+      "Add Quick Start section: 3 steps max",
+      "Add Files Reference table showing what goes where",
+      "Document trigger conditions in description",
+      "Add Integration section (heartbeat, watchdog, proactive-solvr)",
+      "Add Credits section (origin, Solvr link)",
+      "Keep under 300 lines total",
+      "Verify: SKILL.md is valid markdown",
+      "Verify: Line count < 300",
+      "Verify: Has all required sections"
+    ],
+    "passes": false
+  },
+  {
+    "category": "integration",
+    "description": "Detect and integrate with proactive-solvr if installed",
+    "steps": [
+      "In SKILL.md description, note compatibility with proactive-solvr",
+      "In scripts, check if proactive-solvr files exist (HEARTBEAT.md, AGENTS.md)",
+      "If present: Add AMCP checks to existing HEARTBEAT.md",
+      "If not present: Work standalone with own heartbeat integration",
+      "Document both modes in references/amcp-lifecycle.md",
+      "Verify: Works with proactive-solvr installed",
+      "Verify: Works standalone without proactive-solvr"
+    ],
+    "passes": false
+  },
+  {
+    "category": "documentation",
+    "description": "Create references/amcp-lifecycle.md with protocol documentation",
+    "steps": [
+      "Document death detection flow",
+      "Document checkpoint triggers and format",
+      "Document rehydration process",
+      "Document daily report content",
+      "Include diagrams (ASCII) for flows",
+      "Verify: File exists and is valid markdown"
+    ],
+    "passes": false
+  },
+  {
+    "category": "testing",
+    "description": "End-to-end test of skill functionality",
+    "steps": [
+      "Test death-tracker: log death, log recovery, get stats",
+      "Test auto-checkpoint: create checkpoint, verify file",
+      "Test daily-report: dry-run, verify HTML",
+      "Test full-rehydrate: dry-run, verify plan",
+      "Test integration: watchdog triggers death log",
+      "Document test results in specs/test-results.md",
+      "Verify: All tests pass"
+    ],
+    "passes": false
+  },
+  {
+    "category": "polish",
+    "description": "Add LICENSE file and final validation",
+    "steps": [
+      "Create LICENSE file (MIT)",
+      "Run full validation: all scripts work, SKILL.md complete",
+      "Test quick start flow on simulated fresh machine",
+      "Update progress.txt with completion status",
+      "Verify: LICENSE exists",
+      "Verify: All previous tasks pass",
+      "Verify: Skill is ready for ClawdHub publish"
+    ],
+    "passes": false
+  }
+]
