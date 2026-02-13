@@ -7,7 +7,14 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 AMCP_CLI="${AMCP_CLI:-$HOME/bin/amcp}"
 IDENTITY_PATH="${IDENTITY_PATH:-$HOME/.amcp/identity.json}"
-CONTENT_DIR="${CONTENT_DIR:-$HOME/clawd}"
+
+# Get workspace from OpenClaw config, default to ~/.openclaw/workspace
+get_workspace() {
+  local ws
+  ws=$(python3 -c "import json,os; d=json.load(open(os.path.expanduser('~/.openclaw/openclaw.json'))); print(d.get('agents',{}).get('defaults',{}).get('workspace','~/.openclaw/workspace'))" 2>/dev/null || echo '~/.openclaw/workspace')
+  echo "${ws/#\~/$HOME}"
+}
+CONTENT_DIR="${CONTENT_DIR:-$(get_workspace)}"
 CHECKPOINT_DIR="${CHECKPOINT_DIR:-$HOME/.amcp/checkpoints}"
 LAST_CHECKPOINT_FILE="$HOME/.amcp/last-checkpoint.json"
 SECRETS_FILE="$HOME/.amcp/secrets.json"

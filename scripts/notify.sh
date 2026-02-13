@@ -17,24 +17,38 @@ telegram_notify() {
   }
 }
 
-# Email notification (via AgentMail or gog)
+# Email notification (optional - requires agentmail pip package)
 email_notify() {
   local subject="$1"
   local body="$2"
-  local to="${EMAIL_TO:-felipe.cavalcanti.rj@gmail.com}"
+  local to="${EMAIL_TO:-}"
   
-  # Try AgentMail first
-  if command -v python3 &>/dev/null && [ -f ~/clawd/skills/agentmail/.venv/bin/python3 ]; then
-    ~/clawd/skills/agentmail/.venv/bin/python3 << EOF 2>/dev/null || true
+  # Skip if no email configured
+  [ -z "$to" ] && return 0
+  
+  # Try AgentMail if available
+  if python3 -c "import agentmail" 2>/dev/null; then
+    python3 << EOF 2>/dev/null || true
+import os, json
 from agentmail import AgentMail
-client = AgentMail(api_key='$(grep -o '"am_[^"]*"' ~/.openclaw/openclaw.json | head -1 | tr -d '"')')
-client.inboxes.messages.send(
-    inbox_id='claudiusthepirateemperor@agentmail.to',
-    to='$to',
-    subject='$subject',
-    html='<pre>$body</pre>'
-)
-print("Email sent via AgentMail")
+
+# Get API key from openclaw config
+config_path = os.path.expanduser('~/.openclaw/openclaw.json')
+with open(config_path) as f:
+    config = json.load(f)
+    
+api_key = config.get('skills', {}).get('entries', {}).get('agentmail', {}).get('apiKey', '')
+inbox = config.get('skills', {}).get('entries', {}).get('agentmail', {}).get('inbox', '')
+
+if api_key and inbox:
+    client = AgentMail(api_key=api_key)
+    client.inboxes.messages.send(
+        inbox_id=inbox,
+        to='$to',
+        subject='$subject',
+        html='<pre>$body</pre>'
+    )
+    print("Email sent via AgentMail")
 EOF
   fi
 }

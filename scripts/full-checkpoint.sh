@@ -254,8 +254,16 @@ echo "=== STAGE 2: Preparing content staging ==="
 rm -rf "$STAGING_DIR"
 mkdir -p "$STAGING_DIR"
 
-# Copy ~/clawd (excluding .venv, .git, node_modules, __pycache__)
-echo "Copying ~/clawd (excluding venvs, git, node_modules)..."
+# Get workspace from OpenClaw config
+get_workspace() {
+  local ws
+  ws=$(python3 -c "import json,os; d=json.load(open(os.path.expanduser('~/.openclaw/openclaw.json'))); print(d.get('agents',{}).get('defaults',{}).get('workspace','~/.openclaw/workspace'))" 2>/dev/null || echo '~/.openclaw/workspace')
+  echo "${ws/#\~/$HOME}"
+}
+WORKSPACE_DIR=$(get_workspace)
+
+# Copy workspace (excluding .venv, .git, node_modules, __pycache__)
+echo "Copying workspace: $WORKSPACE_DIR ..."
 rsync -a --info=progress2 \
   --exclude='.venv' \
   --exclude='.git' \
@@ -263,8 +271,7 @@ rsync -a --info=progress2 \
   --exclude='__pycache__' \
   --exclude='*.pyc' \
   --exclude='.pytest_cache' \
-  --exclude='openclaw-source' \
-  ~/clawd/ "$STAGING_DIR/clawd/"
+  "$WORKSPACE_DIR/" "$STAGING_DIR/workspace/"
 
 # Copy ~/.amcp (full - identity, config, etc.)
 echo "Copying ~/.amcp..."
