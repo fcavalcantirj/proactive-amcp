@@ -46,7 +46,20 @@ Your agent accumulates knowledge — preferences, patterns, context. Losing that
 
 ---
 
-## Setup (5 minutes)
+## Quick Start
+
+```bash
+# Copy onboarding to your workspace
+cp -r ~/.openclaw/skills/proactive-amcp/assets/* ~/.openclaw/workspace/
+
+# Agent sees ONBOARDING.md → guides you through setup
+```
+
+Or do it manually:
+
+---
+
+## Manual Setup (5 minutes)
 
 ### 1. Get Pinata JWT (free)
 
@@ -158,6 +171,19 @@ Your child
 ```
 
 Children can resurrect independently.
+
+---
+
+## Assets (copy to workspace)
+
+| File | Purpose |
+|------|---------|
+| `ONBOARDING.md` | Guided setup — agent walks you through |
+| `HEARTBEAT.md` | Checkpoint health checks for your heartbeat |
+
+```bash
+cp -r ~/.openclaw/skills/proactive-amcp/assets/* ~/.openclaw/workspace/
+```
 
 ---
 
