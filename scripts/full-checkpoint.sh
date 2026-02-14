@@ -4,6 +4,8 @@
 
 set -euo pipefail
 
+command -v python3 &>/dev/null || { echo "FATAL: python3 required but not found" >&2; exit 2; }
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 AMCP_CLI="${AMCP_CLI:-$HOME/bin/amcp}"
 IDENTITY_PATH="${IDENTITY_PATH:-$HOME/.amcp/identity.json}"
@@ -306,6 +308,74 @@ get_workspace() {
 }
 WORKSPACE_DIR=$(get_workspace)
 
+# Extract redacted config metadata (structural info only, no secrets)
+extract_config_metadata() {
+  mkdir -p "$STAGING_DIR/openclaw"
+  local oc_config="$HOME/.openclaw/openclaw.json"
+  if [ ! -f "$oc_config" ]; then
+    echo "  No openclaw.json found, skipping config-metadata"
+    return 0
+  fi
+
+  STAGING_DIR="$STAGING_DIR" python3 << 'PYEOF'
+import json, os, re
+
+oc_path = os.path.expanduser("~/.openclaw/openclaw.json")
+staging_dir = os.environ["STAGING_DIR"]
+
+with open(oc_path) as f:
+    data = json.load(f)
+
+# Patterns that identify secret values
+SECRET_PATTERNS = [
+    r'eyJ[a-zA-Z0-9_-]*\.eyJ',  # JWT
+    r'sk-[a-zA-Z0-9]{20,}',     # API keys
+    r'ghp_[a-zA-Z0-9]{30,}',    # GitHub PAT
+    r'solvr_[a-zA-Z0-9_-]{20,}', # Solvr key
+    r'am_[a-zA-Z0-9]{40,}',     # AgentMail key
+    r'[0-9]{8,10}:AA[a-zA-Z0-9_-]{33,}',  # Telegram bot token
+    r'AKIA[0-9A-Z]{16}',        # AWS key
+]
+
+SECRET_KEY_NAMES = {
+    'apikey', 'api_key', 'apiKey', 'secret', 'password',
+    'jwt', 'token', 'botToken', 'bot_token', 'mnemonic',
+    'keyringPassword', 'key', 'private_key', 'privateKey',
+}
+
+def is_secret_key(key_name):
+    return key_name.lower().replace('-', '').replace('_', '') in {
+        k.lower().replace('-', '').replace('_', '') for k in SECRET_KEY_NAMES
+    }
+
+def is_secret_value(val):
+    if not isinstance(val, str):
+        return False
+    for pat in SECRET_PATTERNS:
+        if re.search(pat, val):
+            return True
+    return False
+
+def redact(obj, key_name=""):
+    if isinstance(obj, dict):
+        return {k: redact(v, k) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [redact(v, key_name) for v in obj]
+    elif isinstance(obj, str):
+        if is_secret_key(key_name) or is_secret_value(obj):
+            return "[REDACTED]"
+        return obj
+    return obj
+
+metadata = redact(data)
+out_path = os.path.join(staging_dir, "openclaw", "config-metadata.json")
+with open(out_path, "w") as f:
+    json.dump(metadata, f, indent=2)
+    f.write("\n")
+PYEOF
+  echo "  Created openclaw/config-metadata.json"
+}
+
 # Copy workspace (excluding .venv, .git, node_modules, __pycache__)
 echo "Copying workspace: $WORKSPACE_DIR ..."
 rsync -a --info=progress2 \
@@ -317,15 +387,14 @@ rsync -a --info=progress2 \
   --exclude='.pytest_cache' \
   "$WORKSPACE_DIR/" "$STAGING_DIR/workspace/"
 
-# Copy ~/.amcp (full - identity, config, etc.)
-echo "Copying ~/.amcp..."
-rsync -a ~/.amcp/ "$STAGING_DIR/amcp/" --exclude='staging-*' --exclude='checkpoints'
+# Copy ~/.amcp — identity ONLY (secrets are handled via extract_all_secrets)
+echo "Copying ~/.amcp/identity.json..."
+mkdir -p "$STAGING_DIR/amcp"
+cp "$IDENTITY_PATH" "$STAGING_DIR/amcp/identity.json" 2>/dev/null || true
 
-# Copy ~/.openclaw essentials (config only, not media)
-echo "Copying ~/.openclaw essentials..."
-mkdir -p "$STAGING_DIR/openclaw"
-cp ~/.openclaw/openclaw.json "$STAGING_DIR/openclaw/" 2>/dev/null || true
-cp ~/.openclaw/auth-profiles.json "$STAGING_DIR/openclaw/" 2>/dev/null || true
+# Extract redacted config metadata from openclaw.json (structural info, no secrets)
+echo "Extracting config metadata..."
+extract_config_metadata
 
 # Calculate sizes
 echo ""

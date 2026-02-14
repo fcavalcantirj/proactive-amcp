@@ -159,8 +159,13 @@ new_state = os.environ["WATCHDOG_NEW_STATE"]
 failures = int(os.environ["WATCHDOG_FAILURES"])
 errors_str = os.environ["WATCHDOG_ERRORS"]
 
-with open(state_file) as f:
-    state = json.load(f)
+try:
+    with open(state_file) as f:
+        state = json.load(f)
+except (json.JSONDecodeError, FileNotFoundError):
+    state = {"state": "HEALTHY", "consecutiveFailures": 0, "lastCheck": None,
+             "lastHealthy": None, "resurrectionPid": None,
+             "lastResurrectionAttempt": None, "retryDelay": 0}
 
 state["state"] = new_state
 state["consecutiveFailures"] = failures
@@ -171,17 +176,31 @@ if new_state == "HEALTHY":
     state["retryDelay"] = 0
     state["resurrectionPid"] = None
 
-with open(state_file, "w") as f:
+tmp = state_file + ".tmp"
+with open(tmp, "w") as f:
     json.dump(state, f, indent=2)
+os.replace(tmp, state_file)
 EOF
 }
 
 get_state() {
-  python3 -c "import json; print(json.load(open('$STATE_FILE')).get('state', 'UNKNOWN'))"
+  python3 -c "
+import json
+try:
+    print(json.load(open('$STATE_FILE')).get('state', 'UNKNOWN'))
+except (json.JSONDecodeError, FileNotFoundError):
+    print('UNKNOWN')
+"
 }
 
 get_failures() {
-  python3 -c "import json; print(json.load(open('$STATE_FILE')).get('consecutiveFailures', 0))"
+  python3 -c "
+import json
+try:
+    print(json.load(open('$STATE_FILE')).get('consecutiveFailures', 0))
+except (json.JSONDecodeError, FileNotFoundError):
+    print(0)
+"
 }
 
 # ============================================================
@@ -201,14 +220,24 @@ is_resurrection_running() {
 }
 
 get_retry_delay() {
-  python3 -c "import json; print(json.load(open('$STATE_FILE')).get('retryDelay', 0))"
+  python3 -c "
+import json
+try:
+    print(json.load(open('$STATE_FILE')).get('retryDelay', 0))
+except (json.JSONDecodeError, FileNotFoundError):
+    print(0)
+"
 }
 
 get_last_resurrection_attempt() {
   python3 -c "
 import json
 from datetime import datetime
-s = json.load(open('$STATE_FILE'))
+try:
+    s = json.load(open('$STATE_FILE'))
+except (json.JSONDecodeError, FileNotFoundError):
+    print(0)
+    exit(0)
 ts = s.get('lastResurrectionAttempt')
 if ts:
     try:
@@ -241,13 +270,20 @@ record_resurrection_launch() {
 import json, os
 from datetime import datetime
 state_file = os.environ["WATCHDOG_STATE_FILE"]
-with open(state_file) as f:
-    state = json.load(f)
+try:
+    with open(state_file) as f:
+        state = json.load(f)
+except (json.JSONDecodeError, FileNotFoundError):
+    state = {"state": "DEAD", "consecutiveFailures": 0, "lastCheck": None,
+             "lastHealthy": None, "resurrectionPid": None,
+             "lastResurrectionAttempt": None, "retryDelay": 0}
 state["resurrectionPid"] = int(os.environ["WATCHDOG_RES_PID"])
 state["lastResurrectionAttempt"] = datetime.now().isoformat()
 state["retryDelay"] = int(os.environ["WATCHDOG_NEXT_DELAY"])
-with open(state_file, "w") as f:
+tmp = state_file + ".tmp"
+with open(tmp, "w") as f:
     json.dump(state, f, indent=2)
+os.replace(tmp, state_file)
 PYEOF
 }
 

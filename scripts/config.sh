@@ -7,6 +7,8 @@
 
 set -euo pipefail
 
+command -v python3 &>/dev/null || { echo "FATAL: python3 required but not found" >&2; exit 2; }
+
 CONFIG_FILE="${CONFIG_FILE:-$HOME/.amcp/config.json}"
 
 usage() {

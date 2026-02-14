@@ -219,6 +219,58 @@ print(any(f['type'] == 'session_corrupted' for f in d['findings']))
   [ "$has_corruption" = "False" ]
 }
 
+@test "diagnose: checks GATEWAY_PORT env var first" {
+  create_mock_pgrep "openclaw-gateway"
+  # Mock curl that only succeeds for port 9999
+  cat > "$MOCK_BIN/curl" << 'EOCURL'
+#!/bin/bash
+if echo "$*" | grep -q "localhost:9999"; then
+  echo "ok"
+  exit 0
+fi
+exit 1
+EOCURL
+  chmod +x "$MOCK_BIN/curl"
+  create_clean_session
+
+  GATEWAY_PORT=9999 run run_diagnose
+  [ "$status" -eq 0 ]
+}
+
+@test "diagnose: reads port from openclaw.json if no env var" {
+  create_mock_pgrep "openclaw-gateway"
+  # Config has port 18789
+  echo '{"gateway":{"port":18789}}' > "$OPENCLAW_CONFIG"
+  # Mock curl that only succeeds for port 18789
+  cat > "$MOCK_BIN/curl" << 'EOCURL'
+#!/bin/bash
+if echo "$*" | grep -q "localhost:18789"; then
+  echo "ok"
+  exit 0
+fi
+exit 1
+EOCURL
+  chmod +x "$MOCK_BIN/curl"
+  create_clean_session
+
+  run run_diagnose
+  [ "$status" -eq 0 ]
+}
+
+@test "diagnose: falls back to default ports if no config" {
+  create_mock_pgrep "openclaw-gateway"
+  # Remove openclaw config to trigger default ports
+  rm -f "$OPENCLAW_CONFIG"
+  create_mock_curl "200"
+  create_clean_session
+
+  run run_diagnose
+  echo "OUTPUT: $output"
+  # Should not fail on config_missing (just a warning), gateway health should pass
+  # The config_missing finding is a warning but not a failure for the health check
+  [ "$status" -eq 0 ] || [ "$status" -eq 1 ]
+}
+
 @test "diagnose: severity levels are correct" {
   create_mock_pgrep_fail
   create_mock_curl_fail

@@ -11,6 +11,10 @@ HELPER="$(cd "$(dirname "$BATS_TEST_FILENAME")" && pwd)/test_helper.sh"
 setup() {
   source "$HELPER"
   setup_test_env
+  create_mock_amcp 0
+  create_valid_identity
+  export AMCP_CLI="$MOCK_BIN/amcp"
+  export IDENTITY_PATH="$AMCP_DIR/identity.json"
   create_mock_systemctl
   create_mock_df 50
   create_mock_free 50

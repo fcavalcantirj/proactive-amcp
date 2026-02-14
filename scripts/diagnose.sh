@@ -15,6 +15,8 @@
 
 set -euo pipefail
 
+command -v python3 &>/dev/null || { echo "FATAL: python3 required but not found" >&2; exit 2; }
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SESSION_DIR="${SESSION_DIR:-$HOME/.openclaw/agents/main/sessions}"
 OPENCLAW_CONFIG="${OPENCLAW_CONFIG:-$HOME/.openclaw/openclaw.json}"
@@ -75,17 +77,29 @@ check_gateway_process() {
 # Check 2: Gateway health endpoint
 # ============================================================
 check_gateway_health() {
-  if curl -s --max-time 5 "http://localhost:3141/health" > /dev/null 2>&1; then
-    return 0
+  # Determine which ports to check: GATEWAY_PORT env > openclaw.json > defaults
+  local ports_to_check=()
+  if [ -n "${GATEWAY_PORT:-}" ]; then
+    ports_to_check=("$GATEWAY_PORT")
+  elif [ -f "$OPENCLAW_CONFIG" ]; then
+    local cfg_port
+    cfg_port=$(python3 -c "import json; print(json.load(open('$OPENCLAW_CONFIG')).get('gateway',{}).get('port',''))" 2>/dev/null || echo '')
+    if [ -n "$cfg_port" ]; then
+      ports_to_check=("$cfg_port")
+    fi
   fi
-  if curl -s --max-time 5 "http://localhost:8080/health" > /dev/null 2>&1; then
-    return 0
+  # Fall back to default ports if nothing configured
+  if [ ${#ports_to_check[@]} -eq 0 ]; then
+    ports_to_check=(3141 8080 18789)
   fi
-  if curl -s --max-time 5 "http://localhost:18789/health" > /dev/null 2>&1; then
-    return 0
-  fi
+
+  for port in "${ports_to_check[@]}"; do
+    if curl -s --max-time 5 "http://localhost:${port}/health" > /dev/null 2>&1; then
+      return 0
+    fi
+  done
   add_finding "gateway_unresponsive" "warning" \
-    "Gateway process exists but health endpoint not responding" \
+    "Gateway process exists but health endpoint not responding (checked ports: ${ports_to_check[*]})" \
     "" \
     "systemctl --user restart openclaw-gateway"
   return 1
