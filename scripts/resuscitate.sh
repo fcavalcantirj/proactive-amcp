@@ -79,6 +79,22 @@ if [ -n "$FROM_CID" ]; then
   fi
 fi
 
+# ============================================================
+# Identity pre-flight — validate before operating
+# ============================================================
+validate_identity() {
+  if [ ! -f "$IDENTITY_PATH" ]; then
+    echo "FATAL: Invalid AMCP identity — run amcp identity create or amcp identity validate for details"
+    exit 1
+  fi
+  if ! "$AMCP_CLI" identity validate --identity "$IDENTITY_PATH" 2>/dev/null; then
+    echo "FATAL: Invalid AMCP identity — run amcp identity create or amcp identity validate for details"
+    exit 1
+  fi
+}
+
+validate_identity
+
 # Acquire lock before doing anything
 acquire_lock
 

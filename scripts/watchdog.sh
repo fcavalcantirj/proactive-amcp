@@ -11,6 +11,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+AMCP_CLI="${AMCP_CLI:-$HOME/bin/amcp}"
+IDENTITY_PATH="${IDENTITY_PATH:-$HOME/.amcp/identity.json}"
 STATE_FILE="$HOME/.amcp/watchdog-state.json"
 LOCK_FILE="$HOME/.amcp/resurrection.lock"
 AGENT_NAME="${AGENT_NAME:-ClaudiusThePirateEmperor}"
@@ -19,6 +21,22 @@ CHECK_INTERVAL="${CHECK_INTERVAL:-60}"  # seconds
 FAIL_THRESHOLD="${FAIL_THRESHOLD:-2}"   # consecutive failures before DEAD
 RETRY_DELAY_INITIAL="${RETRY_DELAY_INITIAL:-300}"  # 5 min initial retry delay
 RETRY_DELAY_MAX="${RETRY_DELAY_MAX:-1800}"          # 30 min max retry delay
+
+# ============================================================
+# Identity pre-flight — validate before operating
+# ============================================================
+validate_identity() {
+  if [ ! -f "$IDENTITY_PATH" ]; then
+    echo "FATAL: Invalid AMCP identity — run amcp identity create or amcp identity validate for details"
+    exit 1
+  fi
+  if ! "$AMCP_CLI" identity validate --identity "$IDENTITY_PATH" 2>/dev/null; then
+    echo "FATAL: Invalid AMCP identity — run amcp identity create or amcp identity validate for details"
+    exit 1
+  fi
+}
+
+validate_identity
 
 mkdir -p "$(dirname "$STATE_FILE")"
 

@@ -213,6 +213,48 @@ EOJSON
   echo "$path"
 }
 
+# Mock amcp CLI: configurable identity validate behavior
+# Usage: create_mock_amcp [validate_exit_code]
+create_mock_amcp() {
+  local validate_exit="${1:-0}"
+  cat > "$MOCK_BIN/amcp" << EOAMCP
+#!/bin/bash
+echo "amcp \$*" >> "\${TEST_DIR}/amcp.log"
+if [ "\$1" = "identity" ] && [ "\$2" = "validate" ]; then
+  exit $validate_exit
+fi
+exit 0
+EOAMCP
+  chmod +x "$MOCK_BIN/amcp"
+}
+
+# Create a valid (mock) AMCP identity.json for testing
+create_valid_identity() {
+  local path="${1:-$AMCP_DIR/identity.json}"
+  cat > "$path" << 'EOIDENTITY'
+{
+  "aid": "did:keri:EBqK1z2v3jFj4L5q6R7sT8uV9wXyZ",
+  "kel": [{"event": "inception", "sn": 0}],
+  "keys": {"current": "key-placeholder"},
+  "created": "2025-01-01T00:00:00Z"
+}
+EOIDENTITY
+  echo "$path"
+}
+
+# Create a fake (openclaw-deploy-style) identity.json that should fail validation
+create_fake_identity() {
+  local path="${1:-$AMCP_DIR/identity.json}"
+  cat > "$path" << 'EOIDENTITY'
+{
+  "aid": "sha256:fakehash123456",
+  "pinata_jwt": "eyJhbGciOiJIUzI1NiJ9.fake",
+  "solvr_api_key": "solvr_fake_key"
+}
+EOIDENTITY
+  echo "$path"
+}
+
 # Create mock SCRIPT_DIR with no-op notify.sh
 setup_script_dir_mock() {
   local script_dir="$1"

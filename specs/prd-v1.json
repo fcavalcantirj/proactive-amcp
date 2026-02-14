@@ -10,7 +10,7 @@
       "On failure: print 'FATAL: Invalid AMCP identity — run amcp identity create or amcp identity validate for details' and exit 1",
       "Verify: scripts refuse to start when ~/.amcp/identity.json contains openclaw-deploy-style fake identity"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "interface",

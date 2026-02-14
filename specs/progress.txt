@@ -1,1 +1,13 @@
 # proactive-amcp Progress
+
+## Task 1: validation — Identity pre-flight check (DONE)
+- Added `validate_identity()` function to watchdog.sh, checkpoint.sh, full-checkpoint.sh, resuscitate.sh
+- Function checks: (1) identity file exists, (2) `amcp identity validate` passes
+- On failure: prints "FATAL: Invalid AMCP identity" and exits 1
+- watchdog.sh: validates before entering monitoring loop (added AMCP_CLI/IDENTITY_PATH vars)
+- checkpoint.sh: validates before creating tarball
+- full-checkpoint.sh: validates before staging content
+- resuscitate.sh: validates after arg parsing, before acquiring lock
+- Added test helpers: create_mock_amcp(), create_valid_identity(), create_fake_identity()
+- All scripts pass bash -n syntax check
+- Structural grep confirms validate_identity in all 4 scripts
