@@ -1,0 +1,95 @@
+[
+  {
+    "category": "validation",
+    "description": "Add identity pre-flight check to all scripts — call 'amcp identity validate' before operating, fail fast",
+    "steps": [
+      "Add pre-flight function: run 'amcp identity validate' and capture exit code + errors",
+      "Call pre-flight at top of watchdog.sh before entering monitoring loop",
+      "Call pre-flight at top of checkpoint.sh before creating tarball",
+      "Call pre-flight at top of resuscitate.sh before attempting resurrection",
+      "On failure: print 'FATAL: Invalid AMCP identity — run amcp identity create or amcp identity validate for details' and exit 1",
+      "Verify: scripts refuse to start when ~/.amcp/identity.json contains openclaw-deploy-style fake identity"
+    ],
+    "passes": false
+  },
+  {
+    "category": "interface",
+    "description": "Create 'proactive-amcp init' — interactive setup: validate/create identity, start watchdog + checkpoint services",
+    "steps": [
+      "Create proactive-amcp init script/command",
+      "Step 1: Check if ~/.amcp/identity.json exists and is valid (via amcp identity validate)",
+      "Step 2: If no identity, run 'amcp identity create --out ~/.amcp/identity.json'",
+      "Step 3: Set up watchdog systemd service (or cron fallback)",
+      "Step 4: Set up checkpoint cron schedule",
+      "Step 5: Write config to ~/.amcp/config.json (secrets, intervals)",
+      "Verify: running 'proactive-amcp init' on fresh VM produces valid identity + running services"
+    ],
+    "passes": false
+  },
+  {
+    "category": "secrets",
+    "description": "Add 'proactive-amcp config set/get' for ~/.amcp/config.json — all secrets and notify targets read from here, never identity.json",
+    "steps": [
+      "Create 'proactive-amcp config set <key> <value>' command that writes to ~/.amcp/config.json",
+      "Create 'proactive-amcp config get <key>' command that reads from ~/.amcp/config.json",
+      "Migrate checkpoint.sh and full-checkpoint.sh to read PINATA_JWT from config.json (already do via .pinata.jwt)",
+      "Migrate notify.sh to read notifyTarget and emailTo from config.json instead of ~/.openclaw/openclaw.json skill config",
+      "Add warning if scripts detect secrets in identity.json: 'WARNING: Secrets found in identity.json — migrate with proactive-amcp config set'",
+      "Verify: grep confirms zero scripts read secrets from identity.json, notify.sh reads from config.json"
+    ],
+    "passes": false
+  },
+  {
+    "category": "interface",
+    "description": "Create 'proactive-amcp install' — non-interactive interface for fleet tools like openclaw-deploy",
+    "steps": [
+      "Create 'proactive-amcp install' command that wraps init with CLI flags for scripted use",
+      "Accept --pinata-jwt <jwt> flag — writes to config.json via config set",
+      "Accept --notify-target <target> flag — writes to config.json via config set (notify.sh reads from here after task #3 migration)",
+      "Accept --watchdog-interval <seconds> flag — sets watchdog check frequency (default: 120s)",
+      "Accept --checkpoint-schedule <cron> flag — sets checkpoint cron expression (default: daily)",
+      "Exit 0 on success, exit 1 on failure with structured error output",
+      "Verify: 'proactive-amcp install --pinata-jwt xxx --watchdog-interval 60' runs non-interactively"
+    ],
+    "passes": false
+  },
+  {
+    "category": "validation",
+    "description": "Add checkpoint pre-validation — scan tarball for cleartext secrets, refuse to upload if found",
+    "steps": [
+      "Before tar creation in checkpoint.sh, build file list to be archived",
+      "Scan file contents for patterns: JWT tokens (eyJ...), bot tokens ([0-9]+:AA...), API keys",
+      "If secrets detected: print 'REFUSED: Checkpoint contains cleartext secrets in: <files>' and exit 1",
+      "Add --force flag to bypass check (with loud warning) for emergency checkpoints",
+      "Verify: checkpoint with secrets-contaminated identity.json is refused",
+      "Verify: checkpoint with clean identity.json + config.json secrets excluded succeeds"
+    ],
+    "passes": false
+  },
+  {
+    "category": "testing",
+    "description": "Integration test: fake openclaw-deploy-style identity.json → all scripts refuse to operate",
+    "steps": [
+      "Create test fixture: fake identity.json matching openclaw-deploy format (sha256 aid, flat secrets, no kel)",
+      "Test: watchdog.sh with fake identity exits 1 with 'Invalid AMCP identity' error",
+      "Test: checkpoint.sh with fake identity exits 1 before creating tarball",
+      "Test: resuscitate.sh with fake identity exits 1 before attempting resurrection",
+      "Test: 'proactive-amcp init' with fake identity replaces it via 'amcp identity create'",
+      "Test: 'proactive-amcp config set' never writes to identity.json"
+    ],
+    "passes": false
+  },
+  {
+    "category": "solvr",
+    "description": "Auto-register child Solvr account on first boot — deterministic protocol-08 naming",
+    "steps": [
+      "Check if SOLVR_API_KEY exists in OpenClaw config or environment — if yes, already registered, done",
+      "If missing, check for parentSolvrName in config (skills.entries.proactive-amcp.config.parentSolvrName)",
+      "If parentSolvrName exists (child): build name {parentSolvrName}_child_{instance_name}, POST /v1/agents/register",
+      "Store returned api_key in OpenClaw config via gateway config.patch",
+      "If parentSolvrName missing (root): log warning, disable proactive-solvr features until manual registration",
+      "Verify: child auto-registers with correct naming, root does NOT auto-register"
+    ],
+    "passes": false
+  }
+]
