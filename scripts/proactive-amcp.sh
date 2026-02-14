@@ -4,7 +4,7 @@
 #
 # Commands:
 #   init      Interactive setup: validate/create identity, start services
-#   config    Manage ~/.amcp/config.json (future)
+#   config    Manage ~/.amcp/config.json (set/get)
 #   install   Non-interactive setup for fleet tools (future)
 
 set -euo pipefail
@@ -19,6 +19,7 @@ Usage: $(basename "$0") <command> [args...]
 
 Commands:
   init      Interactive setup: validate/create identity, start watchdog + checkpoint services
+  config    Manage ~/.amcp/config.json (set/get secrets and settings)
 
 Run '$(basename "$0") <command> --help' for details.
 EOF
@@ -29,6 +30,10 @@ case "${1:-}" in
   init)
     shift
     exec "$SCRIPT_DIR/init.sh" "$@"
+    ;;
+  config)
+    shift
+    exec "$SCRIPT_DIR/config.sh" "$@"
     ;;
   -h|--help|"")
     usage

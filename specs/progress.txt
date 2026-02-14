@@ -25,3 +25,24 @@
 - Guard pattern: `[ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" ...`
 - Both scripts pass `bash -n` syntax check
 - File sizes: proactive-amcp.sh=41 lines, init.sh=461 lines (well under 800 limit)
+
+## Task 3: secrets — config set/get for ~/.amcp/config.json (DONE)
+- Created `scripts/config.sh` (234 lines) — implements `config set` and `config get` subcommands
+- `config set <key> <value>`: dot-path notation (e.g. `pinata.jwt`, `notify.target`), auto type-coercion (bool/int)
+- `config get [key]`: returns specific value or full config (with secrets redacted in display)
+- Updated `scripts/proactive-amcp.sh` — added `config` subcommand routing via `exec "$SCRIPT_DIR/config.sh"`
+- Migrated `notify.sh` to read from `~/.amcp/config.json` (AMCP config) with fallback to `~/.openclaw/openclaw.json`
+  - `notify.target` → Telegram user ID
+  - `notify.emailOnResurrect` → email enabled flag
+  - `notify.emailTo` → email address
+  - `notify.agentmailApiKey` → AgentMail API key
+  - `notify.agentmailInbox` → AgentMail inbox address
+- Added `warn_identity_secrets()` to checkpoint.sh, full-checkpoint.sh, watchdog.sh, resuscitate.sh, config.sh
+  - Scans identity.json for common secret field names (pinata_jwt, solvr_api_key, etc.)
+  - Prints warning + migration instructions to stderr
+- Verification:
+  - All 7 modified scripts pass `bash -n` syntax check
+  - `grep` confirms zero scripts read secrets from identity.json
+  - `grep` confirms notify.sh reads from `~/.amcp/config.json`
+  - `grep` confirms `warn_identity_secrets` present in all 5 scripts (4 core + config.sh)
+  - All files under 800 lines (largest: resuscitate.sh at 446 lines)

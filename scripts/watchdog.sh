@@ -38,6 +38,21 @@ validate_identity() {
 
 validate_identity
 
+# Warn if secrets found in identity.json (they belong in config.json)
+warn_identity_secrets() {
+  python3 -c "
+import json, os, sys
+p = os.path.expanduser('$IDENTITY_PATH')
+if not os.path.exists(p): sys.exit(0)
+d = json.load(open(p))
+bad = [k for k in d if k in ('pinata_jwt','pinata_api_key','solvr_api_key','api_key','apiKey','jwt','token','secret','password','mnemonic','email','notifyTarget')]
+if bad:
+    print(f'WARNING: Secrets found in identity.json: {\", \".join(bad)}', file=sys.stderr)
+    print('  Migrate with: proactive-amcp config set <key> <value>', file=sys.stderr)
+" 2>&1 || true
+}
+warn_identity_secrets
+
 mkdir -p "$(dirname "$STATE_FILE")"
 
 # Initialize state if not exists

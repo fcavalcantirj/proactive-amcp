@@ -37,7 +37,7 @@
       "Add warning if scripts detect secrets in identity.json: 'WARNING: Secrets found in identity.json — migrate with proactive-amcp config set'",
       "Verify: grep confirms zero scripts read secrets from identity.json, notify.sh reads from config.json"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "interface",
