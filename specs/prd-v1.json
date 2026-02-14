@@ -90,6 +90,6 @@
       "If parentSolvrName missing (root): log warning, disable proactive-solvr features until manual registration",
       "Verify: child auto-registers with correct naming, root does NOT auto-register"
     ],
-    "passes": false
+    "passes": true
   }
 ]

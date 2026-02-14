@@ -3,9 +3,10 @@
 # Usage: proactive-amcp.sh <command> [args...]
 #
 # Commands:
-#   init      Interactive setup: validate/create identity, start services
-#   config    Manage ~/.amcp/config.json (set/get)
-#   install   Non-interactive setup for fleet tools (e.g. openclaw-deploy)
+#   init             Interactive setup: validate/create identity, start services
+#   config           Manage ~/.amcp/config.json (set/get)
+#   install          Non-interactive setup for fleet tools (e.g. openclaw-deploy)
+#   solvr-register   Auto-register child Solvr account on first boot
 
 set -euo pipefail
 
@@ -18,9 +19,10 @@ proactive-amcp — Agent Memory Continuity Protocol
 Usage: $(basename "$0") <command> [args...]
 
 Commands:
-  init      Interactive setup: validate/create identity, start watchdog + checkpoint services
-  install   Non-interactive setup for fleet tools (accepts --pinata-jwt, --notify-target, etc.)
-  config    Manage ~/.amcp/config.json (set/get secrets and settings)
+  init             Interactive setup: validate/create identity, start watchdog + checkpoint services
+  install          Non-interactive setup for fleet tools (accepts --pinata-jwt, --notify-target, etc.)
+  config           Manage ~/.amcp/config.json (set/get secrets and settings)
+  solvr-register   Auto-register child Solvr account on first boot
 
 Run '$(basename "$0") <command> --help' for details.
 EOF
@@ -39,6 +41,10 @@ case "${1:-}" in
   install)
     shift
     exec "$SCRIPT_DIR/install.sh" "$@"
+    ;;
+  solvr-register)
+    shift
+    exec "$SCRIPT_DIR/solvr-register.sh" "$@"
     ;;
   -h|--help|"")
     usage

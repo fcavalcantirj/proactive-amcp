@@ -104,3 +104,34 @@
   - All 16 scripts pass `bash -n` syntax check
   - File size: 378 lines (under 800 limit)
   - Structural grep confirms all 6 PRD test cases covered
+
+## Task 7: solvr — Auto-register child Solvr account on first boot (DONE)
+- Created `scripts/solvr-register.sh` (409 lines) — auto-registration of child Solvr accounts
+- Step 1: Checks for existing SOLVR_API_KEY in 3 sources (env var, OpenClaw config, AMCP config)
+  - If found: logs "Already registered" and exits 0
+- Step 2: Checks for parentSolvrName in OpenClaw config and AMCP config
+  - OC path: `skills.entries["proactive-amcp"].config.parentSolvrName`
+  - AMCP path: `solvr.parentName`
+- Step 3: If parentSolvrName exists (child): builds `{parentSolvrName}_child_{instance_name}`
+  - Validates instance name (lowercase alphanumeric + underscore, max 32 chars)
+  - Checks name availability via GET `/agents/{name}` (expects 404)
+  - Falls back to suffix `_2` through `_5` if name taken
+  - Registers via POST `/v1/agents/register` with parent key as Bearer auth
+- Step 4: Stores returned API key in both AMCP config (`solvr.apiKey`) and OpenClaw config (`skills.entries.proactive-solvr.apiKey`)
+- Step 5: If parentSolvrName missing (root): logs warning "Solvr features disabled until manual registration", exits 0
+- Added `--instance-name` flag (defaults to sanitized hostname) and `--dry-run` flag
+- Graceful handling: exits 0 with warning if no parent key available
+- Updated `scripts/proactive-amcp.sh` — added `solvr-register` subcommand routing
+- Guard pattern: `[ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" ...`
+- Created `test/solvr-register.bats` (308 lines) — 8 bats integration tests:
+  - Test 1-3: Already registered (env, OC config, AMCP config) → exits 0
+  - Test 4: Root agent (no parentSolvrName) → warns, exits 0
+  - Test 5: Child agent auto-registers with correct protocol-08 naming
+  - Test 6: Stores API key in AMCP config after registration
+  - Test 7: Dry run shows plan without registering (curl NOT called)
+  - Test 8: No parent key available → warns gracefully, exits 0
+- Verification:
+  - All 8 bats tests pass
+  - All 17 scripts pass `bash -n` syntax check
+  - File sizes: solvr-register.sh=409, proactive-amcp.sh=57 (all under 800)
+  - Structural grep confirms all 6 PRD steps covered
