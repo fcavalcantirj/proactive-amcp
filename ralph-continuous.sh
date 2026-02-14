@@ -39,8 +39,15 @@ runner_start=$(date +%s)
 
 # Cleanup on Ctrl+C
 cleanup() {
+  local runner_end=$(date +%s)
+  local total_time=$((runner_end - runner_start))
   echo ""
   echo -e "${YELLOW}${BOLD}Interrupted. Exiting...${NC}"
+  send_telegram "🛑 *proactive-amcp Ralph* - Runner Stopped
+
+⏱️ Uptime: $(format_time $total_time)
+📦 Batches completed: ${batch_count}
+📊 Progress: $(./progress.sh)"
   exit 1
 }
 trap cleanup INT TERM
@@ -79,6 +86,13 @@ echo -e "${MAGENTA}${BOLD}║   🕐 Started at:     $(date '+%Y-%m-%d %H:%M:%S'
 echo -e "${MAGENTA}${BOLD}║                                                                   ║${NC}"
 echo -e "${MAGENTA}${BOLD}╚═══════════════════════════════════════════════════════════════════╝${NC}"
 echo ""
+
+# Notify runner START via Telegram
+send_telegram "🟢 *proactive-amcp Ralph* - Runner Started
+
+📦 Batch size: ${BATCH_SIZE} iterations
+⏸️ Batch pause: ${BATCH_PAUSE_MINS} min
+📊 Progress: $(./progress.sh)"
 
 while true; do
   batch_count=$((batch_count + 1))
