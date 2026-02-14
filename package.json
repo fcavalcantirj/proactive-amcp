@@ -1,0 +1,31 @@
+{
+  "name": "proactive-amcp",
+  "version": "0.7.1",
+  "description": "AMCP skill — encrypted agent checkpoints to IPFS, watchdog health monitoring, multi-tier resurrection",
+  "bin": {
+    "proactive-amcp": "./scripts/proactive-amcp.sh"
+  },
+  "files": [
+    "scripts/"
+  ],
+  "scripts": {},
+  "keywords": [
+    "amcp",
+    "agent-checkpoint",
+    "ipfs",
+    "watchdog",
+    "resurrection",
+    "openclaw"
+  ],
+  "author": "ClaudiusThePirateEmperor & Felipe Cavalcanti",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fcavalcantirj/proactive-amcp.git"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "os": ["linux"],
+  "dependencies": {}
+}
