@@ -91,5 +91,81 @@
       "Verify: child auto-registers with correct naming, root does NOT auto-register"
     ],
     "passes": true
+  },
+  {
+    "category": "diagnose",
+    "description": "Add 'proactive-amcp diagnose' — Claude-powered health diagnostics with Solvr integration",
+    "steps": [
+      "Create scripts/claude-diagnose.sh: runs diagnose.sh bash checks, invokes Claude CLI with Solvr skill context",
+      "Add 'diagnose' subcommand to proactive-amcp.sh CLI dispatcher",
+      "Read ANTHROPIC_API_KEY and SOLVR_API_KEY from env or ~/.amcp/config.json",
+      "Build prompt with health findings + Solvr CLI path, invoke claude --dangerously-skip-permissions --no-session-persistence",
+      "Claude searches Solvr for each finding, tries fixes, posts novel issues, returns enriched JSON",
+      "Support --bash-only (skip Claude), --no-solvr (skip Solvr), --json (raw output) flags",
+      "Verify: proactive-amcp diagnose outputs JSON with solvr_searches and fixes_attempted fields"
+    ],
+    "passes": true
+  },
+  {
+    "category": "diagnose",
+    "description": "Bundle Solvr skill with proactive-amcp and install during fleet setup",
+    "steps": [
+      "Copy Solvr skill files (SKILL.md, solvr.sh, skill.json, api.md, examples.md) to skills/solvr/",
+      "install.sh fetches latest via curl -sL solvr.dev/install.sh | bash, falls back to bundled copy",
+      "claude-diagnose.sh prefers installed skill at ~/.claude/skills/solvr/, falls back to bundled",
+      "Verify: skills/solvr/scripts/solvr.sh exists and is executable",
+      "Verify: install.sh installs Solvr skill to ~/.claude/skills/solvr/"
+    ],
+    "passes": true
+  },
+  {
+    "category": "diagnose",
+    "description": "Store anthropic.apiKey in proactive-amcp config for diagnose command",
+    "steps": [
+      "config.sh already supports arbitrary dot-paths — no changes needed",
+      "openclaw-deploy master-setup.sh stores ANTHROPIC_API_KEY via proactive-amcp config set anthropic.apiKey",
+      "claude-diagnose.sh reads ANTHROPIC_API_KEY from env or config.json",
+      "Verify: proactive-amcp config get anthropic.apiKey returns stored key"
+    ],
+    "passes": true
+  },
+  {
+    "category": "bugfix",
+    "description": "Fix full-checkpoint.sh staging to exclude secret-bearing config files — stop copying ~/.amcp/config.json, secrets-full.json, cache, openclaw.json, auth-profiles.json into staging content",
+    "steps": [
+      "Replace rsync of ~/.amcp/ (line 322) with targeted copy: only copy identity.json into $STAGING_DIR/amcp/ (secrets are already handled by --secrets flag to amcp checkpoint create)",
+      "Remove cp of ~/.openclaw/openclaw.json into staging (line 327) — secrets are extracted by extract_all_secrets(), raw config should not be in content",
+      "Remove cp of ~/.openclaw/auth-profiles.json into staging (line 328) — tokens are extracted by extract_all_secrets()",
+      "Add config metadata extraction: write non-secret structural metadata to $STAGING_DIR/openclaw/config-metadata.json using jq or python3 (agent names, skill names, gateway port, channel types — no secret values)",
+      "Verify: staging directory contains amcp/identity.json but NOT amcp/config.json, amcp/secrets-full.json, amcp/cache/, openclaw/openclaw.json, or openclaw/auth-profiles.json",
+      "Verify: pre-validation (scan_for_secrets) passes without --force on staging directory that previously required --force"
+    ],
+    "passes": false
+  },
+  {
+    "category": "bugfix",
+    "description": "Add config-metadata.json extraction — capture non-secret config structure for recovery without exposing credentials",
+    "steps": [
+      "Create extract_config_metadata() function in full-checkpoint.sh that reads ~/.openclaw/openclaw.json and outputs redacted structural metadata",
+      "Metadata must include: gateway.port, gateway.bind, channels (names + enabled status, NOT tokens), skills.entries (names + enabled status, NOT apiKeys), agents.defaults.workspace path",
+      "Metadata must NOT include: any field matching secret patterns (jwt, token, apiKey, password, secret, mnemonic, key), channel botToken values, auth profile credentials",
+      "Write output to $STAGING_DIR/openclaw/config-metadata.json",
+      "Verify: config-metadata.json passes scan_for_secrets with zero detections",
+      "Verify: config-metadata.json contains skill names and gateway port but no secret values"
+    ],
+    "passes": false
+  },
+  {
+    "category": "testing",
+    "description": "Integration tests for staging exclusion fix — full-checkpoint succeeds without --force when config files contain secrets",
+    "steps": [
+      "Test: full-checkpoint.sh with secrets in ~/.amcp/config.json and ~/.openclaw/openclaw.json succeeds without --force (exit 0, no REFUSED message)",
+      "Test: full-checkpoint.sh still refuses if workspace content (e.g., workspace/MEMORY.md) contains a hardcoded API key (exit 1, REFUSED message)",
+      "Test: staging directory after STAGE 2 contains amcp/identity.json but NOT amcp/config.json or amcp/secrets-full.json",
+      "Test: staging directory after STAGE 2 contains openclaw/config-metadata.json but NOT openclaw/openclaw.json or openclaw/auth-profiles.json",
+      "Test: config-metadata.json contains gateway port and skill names but zero values matching secret patterns",
+      "Test: --force flag still works and produces loud warning when workspace content has secrets"
+    ],
+    "passes": false
   }
 ]

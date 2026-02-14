@@ -346,7 +346,30 @@ install_checkpoint_cron() {
 }
 
 # ============================================================
-# Step 4: Summary — structured JSON on success
+# Step 4: Solvr skill — install for Claude-powered diagnose
+# ============================================================
+
+install_solvr_skill() {
+  local target_dir="$HOME/.claude/skills/solvr"
+
+  # Skip if already installed
+  if [[ -d "$target_dir" && -f "$target_dir/scripts/solvr.sh" ]]; then
+    log_ok "Solvr skill already installed at $target_dir"
+    return 0
+  fi
+
+  log_info "Installing Solvr skill from solvr.dev..."
+
+  if curl -sL --connect-timeout 10 --max-time 30 "https://solvr.dev/install.sh" | bash 2>/dev/null; then
+    log_ok "Solvr skill installed from solvr.dev"
+    return 0
+  fi
+
+  log_warn "Solvr skill not installed (network unavailable) — diagnose will skip Solvr"
+}
+
+# ============================================================
+# Step 5: Summary — structured JSON on success
 # ============================================================
 
 print_summary() {
@@ -367,6 +390,7 @@ main() {
 
   install_identity
   install_config
+  install_solvr_skill
 
   install_services
   print_summary

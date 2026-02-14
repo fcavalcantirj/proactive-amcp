@@ -6,6 +6,7 @@
 #   init             Interactive setup: validate/create identity, start services
 #   config           Manage ~/.amcp/config.json (set/get)
 #   install          Non-interactive setup for fleet tools (e.g. openclaw-deploy)
+#   diagnose         Claude-powered health diagnostics with Solvr integration
 #   solvr-register   Auto-register child Solvr account on first boot
 
 set -euo pipefail
@@ -22,6 +23,7 @@ Commands:
   init             Interactive setup: validate/create identity, start watchdog + checkpoint services
   install          Non-interactive setup for fleet tools (accepts --pinata-jwt, --notify-target, etc.)
   config           Manage ~/.amcp/config.json (set/get secrets and settings)
+  diagnose         Claude-powered health diagnostics with Solvr integration
   solvr-register   Auto-register child Solvr account on first boot
 
 Run '$(basename "$0") <command> --help' for details.
@@ -41,6 +43,10 @@ case "${1:-}" in
   install)
     shift
     exec "$SCRIPT_DIR/install.sh" "$@"
+    ;;
+  diagnose)
+    shift
+    exec "$SCRIPT_DIR/claude-diagnose.sh" "$@"
     ;;
   solvr-register)
     shift
