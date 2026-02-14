@@ -1,6 +1,6 @@
 #!/bin/bash
 # full-checkpoint.sh - Create FULL AMCP checkpoint with ALL content and secrets
-# Usage: ./full-checkpoint.sh [--dry-run] [--notify]
+# Usage: ./full-checkpoint.sh [--dry-run] [--notify] [--force]
 
 set -euo pipefail
 
@@ -16,13 +16,18 @@ AGENT_NAME="${AGENT_NAME:-ClaudiusThePirateEmperor}"
 
 DRY_RUN=false
 NOTIFY=false
+FORCE_CHECKPOINT=""
 
 for arg in "$@"; do
   case $arg in
     --dry-run) DRY_RUN=true ;;
     --notify) NOTIFY=true ;;
+    --force)  FORCE_CHECKPOINT="force" ;;
   esac
 done
+
+# Source secret scanner
+source "$SCRIPT_DIR/scan-secrets.sh"
 
 # Pinata config
 PINATA_JWT="${PINATA_JWT:-$(python3 -c "import json; d=json.load(open('$HOME/.amcp/config.json')); print(d.get('pinata',{}).get('jwt',''))" 2>/dev/null || echo '')}"
@@ -339,6 +344,11 @@ if [ "$DRY_RUN" = true ]; then
   rm -f "$SECRETS_FILE"
   exit 0
 fi
+
+# Pre-validation: scan staged content for cleartext secrets
+echo ""
+echo "=== PRE-VALIDATION: Scanning for cleartext secrets ==="
+scan_for_secrets "$STAGING_DIR" "$FORCE_CHECKPOINT"
 
 # ===========================================
 # STAGE 3: Create checkpoint

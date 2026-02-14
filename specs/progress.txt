@@ -64,3 +64,22 @@
   - Config values written via 4 `config.sh set` calls (pinata.jwt, notify.target, watchdog.interval, checkpoint.schedule)
   - `proactive-amcp.sh` routes `install` → `install.sh` confirmed
   - File sizes: install.sh=377 lines, proactive-amcp.sh=51 lines (well under 800 limit)
+
+## Task 5: validation — Checkpoint pre-validation for cleartext secrets (DONE)
+- Created `scripts/scan-secrets.sh` (160 lines) — shared secret scanner, sourceable by checkpoint scripts
+- Detects 11 secret patterns: GitHub PATs (classic + fine-grained), OpenAI keys, Solvr keys, AgentMail keys,
+  Moltbook keys, webhook secrets, AWS access keys, JWT tokens (eyJ...), Telegram bot tokens ([0-9]+:AA...)
+- `scan_for_secrets <dir> [force]`: scans directory recursively, skips binary/.git/node_modules/__pycache__
+- On detection (no force): prints "REFUSED: Checkpoint contains cleartext secrets in: <files>" and exits 1
+- On detection (force): prints loud warning but continues for emergency checkpoints
+- Updated `checkpoint.sh`: added `--force` flag, sources scan-secrets.sh, calls scan_for_secrets before $AMCP_CLI
+- Updated `full-checkpoint.sh`: added `--force` flag, sources scan-secrets.sh, calls scan_for_secrets after staging
+- Replaced positional arg parsing in checkpoint.sh with proper for-loop arg parsing (supports --notify + --force)
+- scan-secrets.sh also works standalone: `./scan-secrets.sh <directory> [--force]`
+- Verification:
+  - All 3 scripts pass `bash -n` syntax check
+  - `grep` confirms scan_for_secrets called in both checkpoint.sh and full-checkpoint.sh
+  - `grep` confirms --force flag parsed in both checkpoint scripts
+  - `grep` confirms REFUSED message in scan-secrets.sh
+  - All required patterns present: JWT (eyJ...), bot tokens ([0-9]+:AA...), API keys
+  - File sizes: scan-secrets.sh=160, checkpoint.sh=265, full-checkpoint.sh=454 (all under 800)

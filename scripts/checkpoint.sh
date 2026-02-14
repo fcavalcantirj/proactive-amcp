@@ -1,6 +1,6 @@
 #!/bin/bash
 # checkpoint.sh - Create AMCP checkpoint and pin to IPFS
-# Usage: ./checkpoint.sh [--notify]
+# Usage: ./checkpoint.sh [--notify] [--force]
 
 set -euo pipefail
 
@@ -19,8 +19,20 @@ CHECKPOINT_DIR="${CHECKPOINT_DIR:-$HOME/.amcp/checkpoints}"
 LAST_CHECKPOINT_FILE="$HOME/.amcp/last-checkpoint.json"
 SECRETS_FILE="$HOME/.amcp/secrets.json"
 KEEP_CHECKPOINTS="${KEEP_CHECKPOINTS:-5}"
-NOTIFY="${1:-}"
 AGENT_NAME="${AGENT_NAME:-ClaudiusThePirateEmperor}"
+
+# Parse args
+NOTIFY=""
+FORCE_CHECKPOINT=""
+for arg in "$@"; do
+  case $arg in
+    --notify) NOTIFY="--notify" ;;
+    --force)  FORCE_CHECKPOINT="force" ;;
+  esac
+done
+
+# Source secret scanner
+source "$SCRIPT_DIR/scan-secrets.sh"
 
 # Pinata config - read from ~/.amcp/config.json (AMCP's own config, not openclaw.json)
 PINATA_JWT="${PINATA_JWT:-$(python3 -c "import json; d=json.load(open('$HOME/.amcp/config.json')); print(d.get('pinata',{}).get('jwt',''))" 2>/dev/null || echo '')}"
@@ -183,6 +195,9 @@ extract_secrets > "$SECRETS_FILE"
 chmod 600 "$SECRETS_FILE"
 SECRET_COUNT=$(python3 -c "import json; print(len(json.load(open('$SECRETS_FILE'))))")
 echo "Found $SECRET_COUNT secrets"
+
+# Pre-validation: scan content for cleartext secrets
+scan_for_secrets "$CONTENT_DIR" "$FORCE_CHECKPOINT"
 
 # Create checkpoint
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)

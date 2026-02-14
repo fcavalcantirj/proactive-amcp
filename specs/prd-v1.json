@@ -64,7 +64,7 @@
       "Verify: checkpoint with secrets-contaminated identity.json is refused",
       "Verify: checkpoint with clean identity.json + config.json secrets excluded succeeds"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "testing",
