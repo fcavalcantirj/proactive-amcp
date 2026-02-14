@@ -1,17 +1,16 @@
 # Installing the AMCP CLI on Child VMs
 
-The `amcp` CLI provides cryptographic identity management and checkpoint operations for the AMCP protocol. It is installed from the GitHub repository (not the npm registry).
+The `amcp` CLI provides cryptographic identity management and checkpoint operations for the AMCP protocol. Published on npm as `amcp-protocol`.
 
 ## Prerequisites
 
-- Node.js >= 20 (recommend 22 LTS)
+- Node.js >= 22 LTS
 - npm (comes with Node.js)
-- git
 
 ## Install
 
 ```bash
-npm install -g github:fcavalcantirj/amcp-protocol
+npm install -g amcp-protocol
 ```
 
 This installs the `amcp` binary globally. Verify with:
@@ -22,7 +21,7 @@ amcp --help
 
 ## What it does
 
-npm clones the repo, runs `npm install` (which fetches `tsx` and `@noble/ed25519`), and symlinks `scripts/amcp` into your global bin directory. The wrapper script resolves paths relative to the installed package, so it works regardless of where npm places global packages (`/usr/local/bin/`, `/usr/bin/`, etc.).
+npm downloads a pre-bundled package (~17 KB) with zero runtime dependencies. The CLI is compiled to a single `.mjs` file (esbuild bundle of `@noble/ed25519` + the CLI logic). The wrapper script resolves paths relative to the installed package, so it works regardless of where npm places global packages (`/usr/local/bin/`, `/usr/bin/`, etc.).
 
 ## Core commands
 
@@ -72,7 +71,7 @@ Resolution order:
 ## Upgrading
 
 ```bash
-npm install -g github:fcavalcantirj/amcp-protocol
+npm install -g amcp-protocol
 ```
 
 Same command as install -- npm replaces the existing version.
@@ -91,13 +90,6 @@ npm's global bin directory may not be on your PATH. Check with:
 ```bash
 npm config get prefix
 # Add <prefix>/bin to PATH if missing
-```
-
-**`tsx: not found` errors**
-
-The `tsx` runtime should be installed as a dependency of the package. Reinstall:
-```bash
-npm install -g github:fcavalcantirj/amcp-protocol
 ```
 
 **Permission errors on global install**
