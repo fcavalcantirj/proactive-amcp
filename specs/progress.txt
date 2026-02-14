@@ -46,3 +46,21 @@
   - `grep` confirms notify.sh reads from `~/.amcp/config.json`
   - `grep` confirms `warn_identity_secrets` present in all 5 scripts (4 core + config.sh)
   - All files under 800 lines (largest: resuscitate.sh at 446 lines)
+
+## Task 4: interface — proactive-amcp install (DONE)
+- Created `scripts/install.sh` (377 lines) — non-interactive setup for fleet tools like openclaw-deploy
+- Accepts CLI flags: `--pinata-jwt`, `--notify-target`, `--watchdog-interval`, `--checkpoint-schedule`, `--skip-services`
+- All config values written via `config.sh set` (reuses existing config infrastructure)
+- Identity: creates if missing, validates if present, backs up + replaces if invalid
+- Services: systemd (preferred) or cron fallback, started automatically (no prompts)
+- `--skip-services` flag: writes config + identity only, skips systemd/cron setup
+- Structured JSON error output via `die_json()` — exits 1 with `{"error": true, "code": "...", "message": "..."}`
+- Structured JSON success output: `{"success": true, "identity": "...", "config": "...", "services": "..."}`
+- Guard pattern: `[ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" ...`
+- Updated `scripts/proactive-amcp.sh` — added `install` subcommand routing via `exec "$SCRIPT_DIR/install.sh"`
+- Verification:
+  - Both scripts pass `bash -n` syntax check
+  - All 4 CLI flags present in install.sh (--pinata-jwt, --notify-target, --watchdog-interval, --checkpoint-schedule)
+  - Config values written via 4 `config.sh set` calls (pinata.jwt, notify.target, watchdog.interval, checkpoint.schedule)
+  - `proactive-amcp.sh` routes `install` → `install.sh` confirmed
+  - File sizes: install.sh=377 lines, proactive-amcp.sh=51 lines (well under 800 limit)

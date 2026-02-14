@@ -51,7 +51,7 @@
       "Exit 0 on success, exit 1 on failure with structured error output",
       "Verify: 'proactive-amcp install --pinata-jwt xxx --watchdog-interval 60' runs non-interactively"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "validation",
