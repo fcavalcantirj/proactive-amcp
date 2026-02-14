@@ -77,7 +77,7 @@
       "Test: 'proactive-amcp init' with fake identity replaces it via 'amcp identity create'",
       "Test: 'proactive-amcp config set' never writes to identity.json"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "solvr",

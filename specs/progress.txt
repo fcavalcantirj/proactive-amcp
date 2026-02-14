@@ -83,3 +83,24 @@
   - `grep` confirms REFUSED message in scan-secrets.sh
   - All required patterns present: JWT (eyJ...), bot tokens ([0-9]+:AA...), API keys
   - File sizes: scan-secrets.sh=160, checkpoint.sh=265, full-checkpoint.sh=454 (all under 800)
+
+## Task 6: testing — Integration test: fake identity rejection (DONE)
+- Created `test/fake-identity.bats` (378 lines) — 8 bats integration tests
+- Test fixture: openclaw-deploy-style identity (sha256 AID, flat secrets pinata_jwt/solvr_api_key, no KEL)
+- Tests use `create_fake_identity()` from test_helper.sh + `create_mock_amcp 1` (validate fails)
+- Smart mock amcp for init/install tests: fails validate on sha256 AID, succeeds on did:keri AID, creates valid identity on `identity create`
+- Test 1: watchdog.sh with fake identity exits 1 with "FATAL: Invalid AMCP identity" before monitoring loop
+- Test 2: checkpoint.sh with fake identity exits 1 before creating tarball (verified no .amcp files created)
+- Test 3: full-checkpoint.sh with fake identity exits 1 before staging content
+- Test 4: resuscitate.sh with fake identity exits 1 before attempting resurrection (no lock file created)
+- Test 5: proactive-amcp init detects fake identity → backs up → replaces via `amcp identity create` → new identity has did:keri AID
+- Test 6: config set writes to config.json, identity.json unchanged (content identical before/after)
+- Test 7 (bonus): fake identity fixture validation — sha256 AID, flat secrets present, no KEL
+- Test 8 (bonus): install.sh replaces fake identity non-interactively with --skip-services
+- Key setup: export AMCP_CLI="$MOCK_BIN/amcp" (scripts use absolute path, not PATH)
+- All scripts in sandbox (isolated from real gateway), mock notify.sh/crontab/systemctl
+- Verification:
+  - All 8 bats tests pass
+  - All 16 scripts pass `bash -n` syntax check
+  - File size: 378 lines (under 800 limit)
+  - Structural grep confirms all 6 PRD test cases covered
