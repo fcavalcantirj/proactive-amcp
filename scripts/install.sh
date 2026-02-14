@@ -10,7 +10,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-AMCP_CLI="${AMCP_CLI:-$HOME/bin/amcp}"
+AMCP_CLI="${AMCP_CLI:-$(command -v amcp 2>/dev/null || echo "$HOME/bin/amcp")}"
 IDENTITY_PATH="${IDENTITY_PATH:-$HOME/.amcp/identity.json}"
 CONFIG_FILE="${CONFIG_FILE:-$HOME/.amcp/config.json}"
 AMCP_DIR="${AMCP_DIR:-$HOME/.amcp}"

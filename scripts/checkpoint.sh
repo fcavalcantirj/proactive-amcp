@@ -7,7 +7,7 @@ set -euo pipefail
 command -v python3 &>/dev/null || { echo "FATAL: python3 required but not found" >&2; exit 2; }
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-AMCP_CLI="${AMCP_CLI:-$HOME/bin/amcp}"
+AMCP_CLI="${AMCP_CLI:-$(command -v amcp 2>/dev/null || echo "$HOME/bin/amcp")}"
 IDENTITY_PATH="${IDENTITY_PATH:-$HOME/.amcp/identity.json}"
 
 # Get workspace from OpenClaw config, default to ~/.openclaw/workspace

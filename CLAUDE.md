@@ -1,12 +1,12 @@
 # proactive-amcp
 
-OpenClaw skill (v0.7.0) implementing the AMCP (Agent Memory Continuity Protocol). Encrypted agent checkpoints to IPFS, watchdog health monitoring, and multi-tier resurrection. Bash primary, Python3 for JSON helpers. BATS for tests.
+OpenClaw skill (v0.7.1) implementing the AMCP (Agent Memory Continuity Protocol). Encrypted agent checkpoints to IPFS, watchdog health monitoring, and multi-tier resurrection. Bash primary, Python3 for JSON helpers. BATS for tests.
 
 ## Golden Rules
 
 1. **Dynamic paths** — No hardcoded paths or magic strings. Use `$HOME`, env vars, or derive dynamically. Every script already follows this via overridable variables at the top.
 
-2. **~800 line max per code file** — Refactor into logical modules if a file grows past this. Largest script today is full-checkpoint.sh at 454 lines.
+2. **~800 line max per code file** — Refactor into logical modules if a file grows past this. Largest script today is full-checkpoint.sh at 523 lines.
 
 ## Architecture
 
@@ -20,15 +20,16 @@ All core scripts validate the AMCP identity (`~/.amcp/identity.json`) before ope
 
 ```
 scripts/
-  proactive-amcp.sh    CLI dispatcher (57L)
+  proactive-amcp.sh    CLI dispatcher (63L)
   init.sh              Interactive onboarding: identity, config, systemd/cron (461L)
-  install.sh           Non-interactive fleet setup via CLI flags (377L)
-  config.sh            ~/.amcp/config.json management, dot-path notation (234L)
-  checkpoint.sh        Quick checkpoint: validate, scan, create, pin to IPFS (265L)
-  full-checkpoint.sh   Full checkpoint with all agent files + secrets (454L)
+  install.sh           Non-interactive fleet setup via CLI flags (401L)
+  config.sh            ~/.amcp/config.json management, dot-path notation (236L)
+  checkpoint.sh        Quick checkpoint: validate, scan, create, pin to IPFS (267L)
+  full-checkpoint.sh   Full checkpoint with all agent files + secrets (523L)
   auto-checkpoint.sh   Continuous checkpoint runner for cron (89L)
-  watchdog.sh          Health monitor, delegates to diagnose.sh, routes to fix (396L)
-  diagnose.sh          Health diagnostics, outputs structured JSON findings (320L)
+  watchdog.sh          Health monitor, delegates to diagnose.sh, routes to fix (432L)
+  diagnose.sh          Health diagnostics, outputs structured JSON findings (334L)
+  claude-diagnose.sh   Claude-powered diagnostics with Solvr integration (354L)
   resuscitate.sh       3-tier recovery: restart -> fix config -> full rehydrate (446L)
   session-fix.sh       Repair corrupted JSONL session transcripts (57L)
   notify.sh            Telegram + email alerts, graceful degradation (126L)
@@ -41,9 +42,10 @@ scripts/
 test/
   test_helper.sh       Fixtures, mocks, setup/teardown (263L)
   fake-identity.bats   Identity validation across all scripts (378L)
+  full-checkpoint.bats Checkpoint staging and secret scanning (283L)
   solvr-register.bats  Child registration flows (308L)
-  watchdog.bats        State transitions, retry backoff (208L)
-  diagnose.bats        Gateway checks, session corruption (240L)
+  watchdog.bats        State transitions, retry backoff (212L)
+  diagnose.bats        Gateway checks, session corruption (292L)
   session-fix.bats     Corruption repair (198L)
   inject-secrets.bats  Secret injection targets (138L)
   resuscitate.bats     Tier cascade, Solvr search (152L)
@@ -85,7 +87,7 @@ All have defaults, all overridable:
 
 | Variable | Default | Used By |
 |----------|---------|---------|
-| AMCP_CLI | $HOME/bin/amcp | All scripts |
+| AMCP_CLI | PATH lookup, fallback $HOME/bin/amcp | All scripts |
 | IDENTITY_PATH | ~/.amcp/identity.json | All scripts |
 | CONFIG_FILE | ~/.amcp/config.json | All scripts |
 | CONTENT_DIR | ~/.openclaw/workspace | checkpoint, full-checkpoint |
@@ -221,7 +223,7 @@ Fleet deployment tool for OpenClaw Gateway instances on Hetzner Cloud. Source: `
 
 deploy.sh provisions a Hetzner cx23 VM, registers a child Solvr account (protocol-08 naming), uploads master-setup.sh (fire-and-forget via nohup), and notifies parent Telegram.
 
-master-setup.sh runs on-VM: installs Node 22, amcp CLI (`npm install -g @amcp/cli`), proactive-amcp, OpenClaw gateway. Creates real KERI identity via `amcp identity create --seed`, stores secrets in `~/.amcp/config.json` via `proactive-amcp config set`. Installs watchdog via `proactive-amcp install`. Configures OpenClaw with Telegram bot, loopback binding on port 18789, token auth.
+master-setup.sh runs on-VM: installs Node 22, amcp CLI (`npm install -g github:fcavalcantirj/amcp-protocol`), proactive-amcp, OpenClaw gateway. Creates real KERI identity via `amcp identity create --seed`, stores secrets in `~/.amcp/config.json` via `proactive-amcp config set`. Installs watchdog via `proactive-amcp install`. Configures OpenClaw with Telegram bot, loopback binding on port 18789, token auth.
 
 ### How openclaw-deploy Uses proactive-amcp
 
