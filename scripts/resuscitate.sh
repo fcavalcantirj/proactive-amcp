@@ -53,6 +53,30 @@ log() {
   echo "[$(date -Iseconds)] $1" | tee -a "$RECOVERY_LOG"
 }
 
+# Send email summary on resurrection completion
+send_resurrection_email() {
+  local status="$1"  # "success" or "failed"
+  local method="$2"  # recovery method used
+  local downtime="$3"  # seconds
+  local log_file="$4"  # path to recovery log
+  
+  local subject="Agent Resurrection: $AGENT_NAME - ${status^^}"
+  local body="
+=== Agent Resurrection Report ===
+
+Agent: $AGENT_NAME
+Status: ${status^^}
+Recovery Method: $method
+Downtime: ${downtime}s
+Timestamp: $(date -Iseconds)
+
+=== Recovery Log ===
+$(tail -50 "$log_file" 2>/dev/null || echo "Log not available")
+"
+
+  [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "$body" --email "$subject"
+}
+
 # Solvr SEARCH only (no POST)
 solvr_search() {
   local query="$1"
@@ -270,6 +294,9 @@ main() {
     
     # Write recovery summary for agent to post to Solvr
     echo "{\"method\":\"restart\",\"downtime\":$downtime,\"timestamp\":\"$(date -Iseconds)\"}" > "$HOME/.amcp/last-recovery.json"
+    
+    # Send email summary
+    send_resurrection_email "success" "restart" "$downtime" "$RECOVERY_LOG"
     return 0
   fi
   log "❌ Restart gateway failed"
@@ -286,6 +313,9 @@ main() {
     [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "✅ [$AGENT_NAME] Alive! Downtime: ${downtime}s. Method: config fix"
     
     echo "{\"method\":\"config_fix\",\"downtime\":$downtime,\"timestamp\":\"$(date -Iseconds)\"}" > "$HOME/.amcp/last-recovery.json"
+    
+    # Send email summary
+    send_resurrection_email "success" "config_fix" "$downtime" "$RECOVERY_LOG"
     return 0
   fi
   log "❌ Fix config failed"
@@ -307,6 +337,9 @@ main() {
     [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "✅ [$AGENT_NAME] Alive! Downtime: ${downtime}s. Method: checkpoint"
     
     echo "{\"method\":\"rehydrate\",\"cid\":\"$cid\",\"downtime\":$downtime,\"timestamp\":\"$(date -Iseconds)\"}" > "$HOME/.amcp/last-recovery.json"
+    
+    # Send email summary
+    send_resurrection_email "success" "rehydrate" "$downtime" "$RECOVERY_LOG"
     return 0
   fi
   log "❌ Rehydrate failed"
@@ -325,6 +358,9 @@ main() {
   [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "❌ [$AGENT_NAME] Resurrection FAILED! Need human. Log: $RECOVERY_LOG"
   
   echo "{\"method\":\"failed\",\"downtime\":$downtime,\"timestamp\":\"$(date -Iseconds)\",\"log\":\"$RECOVERY_LOG\"}" > "$HOME/.amcp/last-recovery.json"
+  
+  # Send email summary (critical - always send on failure)
+  send_resurrection_email "failed" "all_methods_exhausted" "$downtime" "$RECOVERY_LOG"
   return 1
 }
 
