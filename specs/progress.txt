@@ -11,3 +11,17 @@
 - Added test helpers: create_mock_amcp(), create_valid_identity(), create_fake_identity()
 - All scripts pass bash -n syntax check
 - Structural grep confirms validate_identity in all 4 scripts
+
+## Task 2: interface — proactive-amcp init (DONE)
+- Created `scripts/proactive-amcp.sh` — main CLI entry point, dispatches subcommands
+- Created `scripts/init.sh` — interactive setup (5 steps)
+- Step 1: Checks ~/.amcp/identity.json exists + validates via `amcp identity validate`
+- Step 2: If missing/invalid, creates identity via `amcp identity create --out`; backs up invalid identity
+- Step 3: Sets up watchdog — systemd user service (preferred) or cron fallback
+- Step 4: Sets up checkpoint schedule — systemd timer (preferred) or cron fallback
+- Step 5: Writes config to ~/.amcp/config.json (Pinata JWT, notify target, watchdog interval, checkpoint schedule)
+- Idempotent: detects existing config/identity/cron entries and updates in place
+- Includes cron_to_oncalendar() for systemd timer conversion
+- Guard pattern: `[ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" ...`
+- Both scripts pass `bash -n` syntax check
+- File sizes: proactive-amcp.sh=41 lines, init.sh=461 lines (well under 800 limit)

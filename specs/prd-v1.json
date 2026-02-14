@@ -24,7 +24,7 @@
       "Step 5: Write config to ~/.amcp/config.json (secrets, intervals)",
       "Verify: running 'proactive-amcp init' on fresh VM produces valid identity + running services"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "secrets",
