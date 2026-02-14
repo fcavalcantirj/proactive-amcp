@@ -1,15 +1,24 @@
 #!/bin/bash
-# watchdog.sh - Health check and death detection
+# watchdog.sh - Health check, diagnosis, and intelligent recovery
 # Usage: ./watchdog.sh [--continuous]
+#
+# Uses diagnose.sh to detect issues, then routes to the right fix:
+#   session_corrupted → session-fix.sh + gateway restart (lightweight)
+#   gateway_down      → full resurrection
+#   gateway_unresponsive → gateway restart
+#   config_invalid    → resurrection (config fix tier)
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 STATE_FILE="$HOME/.amcp/watchdog-state.json"
+LOCK_FILE="$HOME/.amcp/resurrection.lock"
 AGENT_NAME="${AGENT_NAME:-ClaudiusThePirateEmperor}"
 CONTINUOUS="${1:-}"
 CHECK_INTERVAL="${CHECK_INTERVAL:-60}"  # seconds
 FAIL_THRESHOLD="${FAIL_THRESHOLD:-2}"   # consecutive failures before DEAD
+RETRY_DELAY_INITIAL="${RETRY_DELAY_INITIAL:-300}"  # 5 min initial retry delay
+RETRY_DELAY_MAX="${RETRY_DELAY_MAX:-1800}"          # 30 min max retry delay
 
 mkdir -p "$(dirname "$STATE_FILE")"
 
@@ -20,55 +29,85 @@ if [ ! -f "$STATE_FILE" ]; then
   "state": "HEALTHY",
   "consecutiveFailures": 0,
   "lastCheck": null,
-  "lastHealthy": null
+  "lastHealthy": null,
+  "resurrectionPid": null,
+  "lastResurrectionAttempt": null,
+  "retryDelay": 0
 }
 EOJSON
 fi
 
-# Health check function
-health_check() {
-  local errors=()
-  
-  # Check 1: Gateway process running
-  if ! pgrep -f "openclaw-gateway" > /dev/null 2>&1; then
-    # Also check for openclaw in gateway mode
-    if ! pgrep -f "openclaw.*gateway" > /dev/null 2>&1; then
-      errors+=("gateway_not_running")
-    fi
-  fi
-  
-  # Check 2: Gateway responding (if running)
-  if [ ${#errors[@]} -eq 0 ]; then
-    if ! curl -s --max-time 5 "http://localhost:3141/health" > /dev/null 2>&1; then
-      # Try alternative port
-      if ! curl -s --max-time 5 "http://localhost:8080/health" > /dev/null 2>&1; then
-        errors+=("gateway_not_responding")
-      fi
-    fi
-  fi
-  
-  # Check 3: Disk space (>10% free)
-  local disk_free=$(df -h "$HOME" | awk 'NR==2 {gsub(/%/,""); print 100-$5}')
-  if [ "$disk_free" -lt 10 ] 2>/dev/null; then
-    errors+=("disk_low:${disk_free}%")
-  fi
-  
-  # Check 4: Memory (>10% free)
-  local mem_free=$(free | awk '/Mem:/ {printf "%.0f", $7/$2*100}')
-  if [ "$mem_free" -lt 10 ] 2>/dev/null; then
-    errors+=("memory_low:${mem_free}%")
-  fi
-  
-  # Return errors
-  if [ ${#errors[@]} -gt 0 ]; then
-    echo "${errors[*]}"
-    return 1
-  fi
-  
-  return 0
+# ============================================================
+# Diagnose — delegates to diagnose.sh, returns structured JSON
+# ============================================================
+run_diagnosis() {
+  local diag_output
+  local diag_status=0
+  diag_output=$("$SCRIPT_DIR/diagnose.sh" 2>/dev/null) || diag_status=$?
+  echo "$diag_output"
+  return $diag_status
 }
 
-# Update state (uses env vars to avoid shell injection in Python)
+# Extract finding types from diagnose JSON
+get_finding_types() {
+  local diag_json="$1"
+  echo "$diag_json" | python3 -c "
+import json, sys
+try:
+    d = json.load(sys.stdin)
+    for f in d.get('findings', []):
+        print(f['type'])
+except:
+    pass
+"
+}
+
+# Extract error summary string from diagnose JSON (for state file)
+get_error_summary() {
+  local diag_json="$1"
+  echo "$diag_json" | python3 -c "
+import json, sys
+try:
+    d = json.load(sys.stdin)
+    types = [f['type'] for f in d.get('findings', [])]
+    print(' '.join(types))
+except:
+    print('diagnosis_failed')
+"
+}
+
+# Check if a specific finding type exists
+has_finding() {
+  local diag_json="$1"
+  local finding_type="$2"
+  echo "$diag_json" | python3 -c "
+import json, sys
+d = json.load(sys.stdin)
+for f in d.get('findings', []):
+    if f['type'] == '$finding_type':
+        print('yes')
+        exit(0)
+print('no')
+"
+}
+
+# Get the fix command for a finding type
+get_fix_command() {
+  local diag_json="$1"
+  local finding_type="$2"
+  echo "$diag_json" | python3 -c "
+import json, sys
+d = json.load(sys.stdin)
+for f in d.get('findings', []):
+    if f['type'] == '$finding_type':
+        print(f.get('fix_command', ''))
+        exit(0)
+"
+}
+
+# ============================================================
+# State management
+# ============================================================
 update_state() {
   local new_state="$1"
   local failures="$2"
@@ -96,13 +135,14 @@ state["lastCheck"] = datetime.now().isoformat()
 state["errors"] = errors_str.split() if errors_str else []
 if new_state == "HEALTHY":
     state["lastHealthy"] = datetime.now().isoformat()
+    state["retryDelay"] = 0
+    state["resurrectionPid"] = None
 
 with open(state_file, "w") as f:
     json.dump(state, f, indent=2)
 EOF
 }
 
-# Get current state
 get_state() {
   python3 -c "import json; print(json.load(open('$STATE_FILE')).get('state', 'UNKNOWN'))"
 }
@@ -111,55 +151,207 @@ get_failures() {
   python3 -c "import json; print(json.load(open('$STATE_FILE')).get('consecutiveFailures', 0))"
 }
 
-# Single check
+# ============================================================
+# Resurrection management (lock, PID, retry backoff)
+# ============================================================
+is_resurrection_running() {
+  if [ ! -f "$LOCK_FILE" ]; then
+    return 1
+  fi
+  local pid
+  pid=$(cat "$LOCK_FILE" 2>/dev/null || echo "")
+  if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+    return 0
+  fi
+  rm -f "$LOCK_FILE"
+  return 1
+}
+
+get_retry_delay() {
+  python3 -c "import json; print(json.load(open('$STATE_FILE')).get('retryDelay', 0))"
+}
+
+get_last_resurrection_attempt() {
+  python3 -c "
+import json
+from datetime import datetime
+s = json.load(open('$STATE_FILE'))
+ts = s.get('lastResurrectionAttempt')
+if ts:
+    try:
+        print(int(datetime.fromisoformat(ts).timestamp()))
+    except:
+        print(0)
+else:
+    print(0)
+"
+}
+
+record_resurrection_launch() {
+  local pid="$1"
+  local current_delay
+  current_delay=$(get_retry_delay)
+  local next_delay
+  if [ "$current_delay" -eq 0 ]; then
+    next_delay="$RETRY_DELAY_INITIAL"
+  else
+    next_delay=$((current_delay * 2))
+    if [ "$next_delay" -gt "$RETRY_DELAY_MAX" ]; then
+      next_delay="$RETRY_DELAY_MAX"
+    fi
+  fi
+
+  WATCHDOG_STATE_FILE="$STATE_FILE" \
+  WATCHDOG_RES_PID="$pid" \
+  WATCHDOG_NEXT_DELAY="$next_delay" \
+  python3 << 'PYEOF'
+import json, os
+from datetime import datetime
+state_file = os.environ["WATCHDOG_STATE_FILE"]
+with open(state_file) as f:
+    state = json.load(f)
+state["resurrectionPid"] = int(os.environ["WATCHDOG_RES_PID"])
+state["lastResurrectionAttempt"] = datetime.now().isoformat()
+state["retryDelay"] = int(os.environ["WATCHDOG_NEXT_DELAY"])
+with open(state_file, "w") as f:
+    json.dump(state, f, indent=2)
+PYEOF
+}
+
+launch_resurrection() {
+  if is_resurrection_running; then
+    echo "⏳ Resurrection already in progress (PID $(cat "$LOCK_FILE"))"
+    return 0
+  fi
+  echo "🔄 Launching resurrection..."
+  "$SCRIPT_DIR/resuscitate.sh" &
+  local res_pid=$!
+  record_resurrection_launch "$res_pid"
+  echo "🔄 Resurrection PID: $res_pid"
+}
+
+should_retry_resurrection() {
+  local retry_delay
+  retry_delay=$(get_retry_delay)
+  if [ "$retry_delay" -eq 0 ]; then
+    return 0
+  fi
+  local last_attempt
+  last_attempt=$(get_last_resurrection_attempt)
+  local now
+  now=$(date +%s)
+  local elapsed=$((now - last_attempt))
+  if [ "$elapsed" -ge "$retry_delay" ]; then
+    return 0
+  fi
+  echo "⏳ Retry cooldown: ${elapsed}s / ${retry_delay}s"
+  return 1
+}
+
+# ============================================================
+# Fix routing — pick the right fix based on diagnosis
+# ============================================================
+try_fix_session() {
+  local fix_cmd="$1"
+  echo "🔧 Fixing corrupted session..."
+  if eval "$fix_cmd" 2>&1; then
+    echo "✅ Session repaired"
+    # Restart gateway to pick up the fixed session
+    if systemctl --user restart openclaw-gateway 2>/dev/null; then
+      echo "✅ Gateway restarted after session fix"
+      return 0
+    fi
+  fi
+  echo "❌ Session fix failed"
+  return 1
+}
+
+# ============================================================
+# Main check — diagnose then route
+# ============================================================
 do_check() {
   local current_state=$(get_state)
   local failures=$(get_failures)
-  
+
   echo "[$(date -Iseconds)] Checking health..."
-  
-  if errors=$(health_check); then
-    # Healthy
+
+  local diag_json=""
+  local diag_status=0
+  diag_json=$(run_diagnosis) || diag_status=$?
+
+  if [ "$diag_status" -eq 0 ]; then
+    # Healthy — clear everything
     if [ "$current_state" != "HEALTHY" ]; then
       echo "✅ Recovered! State: $current_state -> HEALTHY"
-      "$SCRIPT_DIR/notify.sh" "✅ [$AGENT_NAME] Recovered from $current_state"
+      [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "✅ [$AGENT_NAME] Recovered from $current_state"
+      rm -f "$LOCK_FILE"
     fi
     update_state "HEALTHY" 0 ""
     echo "✅ HEALTHY"
     return 0
-  else
-    # Failed
-    failures=$((failures + 1))
-    echo "⚠️ Check failed ($failures/$FAIL_THRESHOLD): $errors"
-    
-    if [ "$failures" -ge "$FAIL_THRESHOLD" ]; then
-      if [ "$current_state" != "DEAD" ]; then
-        echo "☠️ State: $current_state -> DEAD"
-        update_state "DEAD" "$failures" "$errors"
-        "$SCRIPT_DIR/notify.sh" "☠️ [$AGENT_NAME] DEAD! Errors: $errors. Starting recovery..."
-        
-        # Trigger resurrection
-        "$SCRIPT_DIR/resuscitate.sh" &
-        return 2
-      fi
-      update_state "DEAD" "$failures" "$errors"
-    else
-      update_state "CHECKING" "$failures" "$errors"
-    fi
-    
-    return 1
   fi
+
+  # Issues found — determine what and how to fix
+  local errors
+  errors=$(get_error_summary "$diag_json")
+  failures=$((failures + 1))
+  echo "⚠️ Check failed ($failures/$FAIL_THRESHOLD): $errors"
+
+  local has_session_corrupt
+  has_session_corrupt=$(has_finding "$diag_json" "session_corrupted")
+  local has_gateway_down
+  has_gateway_down=$(has_finding "$diag_json" "gateway_down")
+
+  # Session corruption with gateway still running = lightweight fix
+  if [ "$has_session_corrupt" = "yes" ] && [ "$has_gateway_down" != "yes" ]; then
+    echo "🔍 Diagnosis: session corrupted (gateway still running)"
+    local fix_cmd
+    fix_cmd=$(get_fix_command "$diag_json" "session_corrupted")
+    if [ -n "$fix_cmd" ] && try_fix_session "$fix_cmd"; then
+      update_state "HEALTHY" 0 ""
+      [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "✅ [$AGENT_NAME] Session corruption auto-fixed"
+      return 0
+    fi
+    echo "❌ Session fix failed, escalating to resurrection"
+  fi
+
+  # Gateway down or fix failed — use threshold + resurrection flow
+  if [ "$failures" -ge "$FAIL_THRESHOLD" ]; then
+    if [ "$current_state" != "DEAD" ]; then
+      echo "☠️ State: $current_state -> DEAD"
+      update_state "DEAD" "$failures" "$errors"
+      [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "☠️ [$AGENT_NAME] DEAD! Errors: $errors. Starting recovery..."
+      launch_resurrection
+      return 2
+    fi
+
+    # Already DEAD — retry if cooldown elapsed
+    update_state "DEAD" "$failures" "$errors"
+    if ! is_resurrection_running; then
+      if should_retry_resurrection; then
+        echo "🔄 Retrying resurrection (previous attempt failed)"
+        [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "🔄 [$AGENT_NAME] Retrying resurrection..."
+        launch_resurrection
+      fi
+    fi
+  else
+    update_state "CHECKING" "$failures" "$errors"
+  fi
+
+  return 1
 }
 
+# ============================================================
 # Main
+# ============================================================
 echo "=== AMCP Watchdog ==="
 echo "Agent: $AGENT_NAME"
 echo "State file: $STATE_FILE"
 
 if [ "$CONTINUOUS" = "--continuous" ]; then
   echo "Mode: Continuous (checking every ${CHECK_INTERVAL}s)"
-  "$SCRIPT_DIR/notify.sh" "🔄 [$AGENT_NAME] Watchdog started (continuous mode)"
-  
+  [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "🔄 [$AGENT_NAME] Watchdog started (continuous mode)"
+
   while true; do
     do_check || true
     sleep "$CHECK_INTERVAL"

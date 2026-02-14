@@ -1,4 +1,17 @@
 {
   "slug": "proactive-amcp",
-  "version": "0.3.0"
+  "version": "0.6.0",
+  "configPaths": {
+    "reads": [
+      "~/.openclaw/openclaw.json",
+      "~/.openclaw/agents/*/sessions/sessions.json",
+      "~/.openclaw/agents/*/sessions/*.jsonl"
+    ],
+    "writes": [
+      "~/.openclaw/openclaw.json",
+      "~/.openclaw/agents/*/sessions/*.jsonl",
+      "~/.amcp/",
+      "~/.config/openclaw/env"
+    ]
+  }
 }
