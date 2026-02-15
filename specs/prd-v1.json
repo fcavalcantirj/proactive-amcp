@@ -140,7 +140,7 @@
       "Verify: staging directory contains amcp/identity.json but NOT amcp/config.json, amcp/secrets-full.json, amcp/cache/, openclaw/openclaw.json, or openclaw/auth-profiles.json",
       "Verify: pre-validation (scan_for_secrets) passes without --force on staging directory that previously required --force"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "bugfix",
@@ -153,7 +153,7 @@
       "Verify: config-metadata.json passes scan_for_secrets with zero detections",
       "Verify: config-metadata.json contains skill names and gateway port but no secret values"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "testing",
@@ -166,6 +166,6 @@
       "Test: config-metadata.json contains gateway port and skill names but zero values matching secret patterns",
       "Test: --force flag still works and produces loud warning when workspace content has secrets"
     ],
-    "passes": false
+    "passes": true
   }
 ]

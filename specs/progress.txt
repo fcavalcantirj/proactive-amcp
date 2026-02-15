@@ -135,3 +135,45 @@
   - All 17 scripts pass `bash -n` syntax check
   - File sizes: solvr-register.sh=409, proactive-amcp.sh=57 (all under 800)
   - Structural grep confirms all 6 PRD steps covered
+
+## Task 11: bugfix — Fix full-checkpoint.sh staging exclusion (DONE)
+- Staging copies ONLY identity.json into $STAGING_DIR/amcp/ (not rsync of ~/.amcp/)
+- No cp of ~/.openclaw/openclaw.json into staging (secrets extracted by extract_all_secrets())
+- No cp of ~/.openclaw/auth-profiles.json into staging (tokens extracted by extract_all_secrets())
+- extract_config_metadata() writes redacted structural metadata to $STAGING_DIR/openclaw/config-metadata.json
+- scan_for_secrets passes without --force on staging (config secrets never enter staging)
+- Verification:
+  - bash -n scripts/full-checkpoint.sh passes
+  - File size: 523 lines (under 800)
+  - No rsync of ~/.amcp/ in staging section
+  - No cp of openclaw.json or auth-profiles.json into staging
+  - Only identity.json copied to staging
+
+## Task 12: bugfix — Config-metadata.json extraction (DONE)
+- Created extract_config_metadata() function in full-checkpoint.sh (lines 312-377)
+- Reads ~/.openclaw/openclaw.json via python3, applies recursive redaction
+- SECRET_KEY_NAMES: apikey, api_key, apiKey, secret, password, jwt, token, botToken, bot_token, mnemonic, keyringPassword, key, private_key, privateKey
+- SECRET_PATTERNS: 7 regexes (JWT, sk-*, ghp_*, solvr_*, am_*, Telegram bot tokens, AWS AKIA)
+- Preserves structural info: gateway.port, skill names, agent workspace path
+- Redacts all secret values to "[REDACTED]"
+- Output: $STAGING_DIR/openclaw/config-metadata.json
+- Verification:
+  - gateway.port preserved (not in SECRET_KEY_NAMES)
+  - botToken, apiKey values redacted
+  - No secret patterns pass through
+
+## Task 13: testing — Integration tests for staging exclusion (DONE)
+- Created test/full-checkpoint.bats (284 lines) — 10 bats integration tests
+- Test 1: staging excludes ~/.amcp/config.json
+- Test 2: staging includes ~/.amcp/identity.json
+- Test 3: full-checkpoint succeeds without --force when config has secrets (exit 0, no REFUSED)
+- Test 4: full-checkpoint refuses when workspace content has hardcoded API key (exit 1, REFUSED)
+- Test 5: --force bypasses workspace secret check with warning
+- Test 6: staging contains openclaw/config-metadata.json in dry-run output
+- Test 7: config-metadata.json does NOT contain botToken values
+- Test 8: config-metadata.json does NOT contain API keys
+- Test 9: full pipeline: stage + scan + create succeeds with secrets in config
+- Test 10: full pipeline: refuses if workspace has hardcoded secret
+- Verification:
+  - All 10 bats tests pass
+  - File size: 284 lines (under 800)
