@@ -167,5 +167,140 @@
       "Test: --force flag still works and produces loud warning when workspace content has secrets"
     ],
     "passes": true
+  },
+  {
+    "category": "ontology",
+    "description": "Include memory/ontology/ in full-checkpoint.sh — checkpoint ontology graphs alongside flat files",
+    "steps": [
+      "Locate staging content copy in full-checkpoint.sh (around line 300-330, STAGE 2: 'Prepare staging content')",
+      "Current state: copies $CONTENT_DIR (workspace) to $STAGING_DIR/workspace/, copies amcp/identity.json, openclaw/config-metadata.json",
+      "Add conditional copy after workspace rsync: if [ -d \"$CONTENT_DIR/memory/ontology\" ]; then echo '  Included ontology graph ($(find \"$CONTENT_DIR/memory/ontology\" -name '*.jsonl' | wc -l) JSONL files)'; fi",
+      "Ontology files already included in workspace rsync — verify they are NOT excluded by scan-secrets.sh (JSONL format should not match secret patterns)",
+      "Test: full-checkpoint with memory/ontology/graph.jsonl present includes it in $STAGING_DIR/workspace/memory/ontology/",
+      "Verify: unpacking checkpoint restores memory/ontology/ directory structure"
+    ],
+    "passes": false
+  },
+  {
+    "category": "ontology",
+    "description": "Validate ontology on resurrection — create validate-ontology.py, call from resuscitate.sh",
+    "steps": [
+      "Create scripts/validate-ontology.py (<200 lines) with schema validation for JSONL graph files",
+      "Schema rules: each line is valid JSON with 'type' field (entity or relation), entities have id/type/properties/created/updated, relations have from_id/relation_type/to_id",
+      "Validation checks: valid JSON per line, required fields present, relation integrity (from_id and to_id reference existing entities), no circular task dependencies (blocks relation must be acyclic)",
+      "Output JSON: { valid: true, entity_count: N, relation_count: M } or { valid: false, errors: [...] }",
+      "Add validation call in resuscitate.sh after workspace restore (around line 350-400, after 'Decrypt and restore from checkpoint' section)",
+      "On validation failure: log warning to $RECOVERY_LOG, do NOT fail resurrection (backward compatible — agents without ontology still resurrect)",
+      "Verify: resuscitate with valid ontology passes validation, resuscitate with missing ontology skips validation, resuscitate with corrupt ontology logs warning but completes"
+    ],
+    "passes": false
+  },
+  {
+    "category": "ontology",
+    "description": "Compute ontology graph CID — add ontologyGraphCID field to last-checkpoint.json",
+    "steps": [
+      "Add compute_ontology_cid() function to full-checkpoint.sh (after extract_all_secrets, around line 200)",
+      "If memory/ontology/graph.jsonl exists: compute SHA256 hash, format as CIDv1 using multihash prefix (0x12 = sha256, 0x20 = 32 bytes), base32 encode with 'bafkrei' prefix",
+      "Fallback: call 'amcp compute-cid' if CLI supports it, otherwise use python3 with multiformats library (pip install multiformats)",
+      "Store in LAST_CHECKPOINT_FILE after checkpoint upload (around line 450-480, where last-checkpoint.json is written)",
+      "Field name: ontologyGraphCID (optional, only present if ontology exists)",
+      "Test: checkpoint with ontology stores CID in last-checkpoint.json, checkpoint without ontology omits field",
+      "Verify: CID is deterministic — same graph content produces same CID across runs"
+    ],
+    "passes": false
+  },
+  {
+    "category": "ontology",
+    "description": "SOUL.md drift detection — store hash, compare on checkpoint, alert on significant changes",
+    "steps": [
+      "Add compute_soul_hash() function to full-checkpoint.sh (calls sha256sum on $CONTENT_DIR/SOUL.md if exists)",
+      "Store soulHash in last-checkpoint.json alongside CID and timestamp (around line 450-480)",
+      "On checkpoint: compare current SOUL.md hash to previous (read from last-checkpoint.json)",
+      "If different: compute diff using 'diff -u' or python difflib, count changed lines",
+      "Severity classification: <5 lines = minor (log), 5-20 lines = moderate (log + optional notify), >20 lines = major (log + notify if configured)",
+      "Log to ~/.amcp/soul-drift.log with timestamp, severity, line change count, and diff snippet",
+      "If notify.sh exists and notify.enableSoulDrift is true in config.json: send Telegram alert for moderate/major changes",
+      "Test: modify SOUL.md by 3 lines, run checkpoint, verify minor drift logged; modify by 25 lines, verify major drift triggers notification",
+      "Verify: first checkpoint (no previous hash) does not trigger drift alert"
+    ],
+    "passes": false
+  },
+  {
+    "category": "ontology",
+    "description": "Document reconstruction sequence — create RECONSTRUCTION.md defining canonical loading order",
+    "steps": [
+      "Create RECONSTRUCTION.md in project root (~150 lines) documenting the Uncanny Seam and memory loading sequence",
+      "Define canonical order (references ONTOLOGY-INTEGRATION-CONTEXT.md Part 4.5): 1. SOUL.md (identity), 2. USER.md (relationships), 3. ontology schema (types), 4. ontology graph (entities), 5. MEMORY.md (curated long-term), 6. daily notes (ephemeral), 7. TOOLS.md (capabilities), 8. [SEAM] marker",
+      "Explain phenomenological rationale: order matters because each layer provides context for the next, seam is the moment agent stops 'reading about self' and starts 'being self'",
+      "Include guidance for agents: 'If you are reading this during resurrection, you are currently between steps 1-7. The seam will fall when you finish loading all context files.'",
+      "Reference LumenNox's research (Aclawdemy, 'The Phenomenology of Forgetting')",
+      "Add link from main README.md under 'Memory Architecture' section",
+      "Verify: RECONSTRUCTION.md passes markdown linting, references are accurate"
+    ],
+    "passes": false
+  },
+  {
+    "category": "ontology",
+    "description": "Typed pruning policy framework — define per-entity-type retention rules in config.json",
+    "steps": [
+      "Extend config.json schema to support pruning.policies object with per-type rules",
+      "Schema: { \"Event\": { \"ttl\": \"30d\", \"preserve_relations\": true }, \"Task\": { \"ttl\": null, \"prune_if\": \"status == 'done' AND updated < 90d\" }, \"Person\": { \"ttl\": null } }",
+      "Create scripts/prune-ontology.py (<300 lines) that reads policies from config.json and prunes memory/ontology/graph.jsonl",
+      "Pruning logic: parse JSONL, identify entities matching prune criteria, remove entities + optionally relations, write new JSONL (append .pruned, then atomic rename)",
+      "Support TTL parsing (30d, 90d, 1y), conditional expressions (status == 'done'), relation preservation (keep relation stubs with deleted_at timestamp)",
+      "Add 'prune' subcommand to proactive-amcp.sh CLI dispatcher (dispatches to prune-ontology.py)",
+      "Dry-run mode: prune-ontology.py --dry-run outputs what would be pruned without modifying files",
+      "Test: define policy pruning Events >30d, run 'proactive-amcp prune --dry-run', verify it identifies correct entities; run without --dry-run, verify entities removed from graph.jsonl",
+      "Verify: pruning never removes Person or Task entities with ttl: null, relation stubs preserve graph connectivity after prune"
+    ],
+    "passes": false
+  },
+  {
+    "category": "testing",
+    "description": "Integration tests for ontology checkpoint — verify graph.jsonl roundtrip through IPFS",
+    "steps": [
+      "Create test/ontology-checkpoint.bats using BATS framework (pattern: test_helper.sh for fixtures + mocks)",
+      "Test 1: Create memory/ontology/graph.jsonl with sample entities (2 Person, 1 Task, 1 relation), run full-checkpoint.sh, verify staging includes ontology/",
+      "Test 2: Mock Pinata upload, run checkpoint, verify last-checkpoint.json includes ontologyGraphCID field",
+      "Test 3: Mock checkpoint download, run resuscitate.sh, verify validate-ontology.py called (check $RECOVERY_LOG for validation output)",
+      "Test 4: Corrupt graph.jsonl (invalid JSON on line 3), run resuscitate, verify validation logs warning but resurrection completes",
+      "Test 5: Missing ontology directory, run checkpoint, verify no ontologyGraphCID in last-checkpoint.json (backward compatible)",
+      "Test 6: CID computation determinism — checkpoint same graph twice, verify identical CID",
+      "Run: bats test/ontology-checkpoint.bats",
+      "Verify: all 6 tests pass, no false positives"
+    ],
+    "passes": false
+  },
+  {
+    "category": "testing",
+    "description": "Integration tests for SOUL drift — verify identity change alerts",
+    "steps": [
+      "Create test/soul-drift.bats using BATS framework",
+      "Test 1: Initial checkpoint with SOUL.md, verify soulHash stored in last-checkpoint.json, no drift alert",
+      "Test 2: Modify SOUL.md (add 3 lines), run checkpoint, verify minor drift logged to ~/.amcp/soul-drift.log, no notification sent",
+      "Test 3: Modify SOUL.md (add 25 lines), mock notify.sh, run checkpoint, verify major drift triggers notification (check notify.sh was called with drift message)",
+      "Test 4: No SOUL.md present, run checkpoint, verify no soulHash in last-checkpoint.json, no error",
+      "Test 5: SOUL.md unchanged across 3 checkpoints, verify no drift alerts logged",
+      "Test 6: config.json has notify.enableSoulDrift: false, modify SOUL.md significantly, verify drift logged but no notification sent",
+      "Run: bats test/soul-drift.bats",
+      "Verify: all 6 tests pass, notification guard works correctly"
+    ],
+    "passes": false
+  },
+  {
+    "category": "documentation",
+    "description": "Update CLAUDE.md and README.md — document ontology integration features",
+    "steps": [
+      "Update CLAUDE.md Architecture section (around line 20-50) to mention three-layer memory: ontology (structured), AMCP (verified), phenomenological (curated)",
+      "Add Ontology section to CLAUDE.md File Map (~50 lines): describe graph.jsonl format, entity types, validation, CID computation, SOUL drift detection, pruning",
+      "Update Data Flows section to include ontology validation in checkpoint/resurrection flows",
+      "Add new environment variables: ONTOLOGY_DIR (default: $CONTENT_DIR/memory/ontology), SOUL_DRIFT_THRESHOLD (default: 20 lines)",
+      "Document 'proactive-amcp prune' subcommand and pruning.policies config schema",
+      "Update README.md Features list to include 'Ontology Integration: Typed knowledge graphs with schema validation, identity drift detection, typed pruning policies'",
+      "Add RECONSTRUCTION.md to README.md table of contents under 'Memory Architecture'",
+      "Reference ONTOLOGY-INTEGRATION-CONTEXT.md in docs/ directory",
+      "Verify: documentation is accurate, all file paths correct, no broken internal links"
+    ],
+    "passes": false
   }
 ]
