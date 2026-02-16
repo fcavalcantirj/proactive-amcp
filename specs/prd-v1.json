@@ -302,5 +302,106 @@
       "Verify: documentation is accurate, all file paths correct, no broken internal links"
     ],
     "passes": false
+  },
+  {
+    "category": "ontology-evolution",
+    "description": "Implement memory evolution engine — Zettelkasten-style dynamic entity linking based on A-MEM (NeurIPS 2025)",
+    "steps": [
+      "Create scripts/memory-evolution.sh (<250 lines) — orchestrates evolution engine: validate identity, read graph.jsonl, call similarity computation, update relations, log evolution chain",
+      "Create scripts/compute-entity-similarity.py (<200 lines) — semantic similarity using Levenshtein distance + keyword overlap, relation inference based on similarity threshold (>0.75 = strong relation)",
+      "Evolution trigger: when new entity X added to graph.jsonl, find top-3 semantically similar entities, add bidirectional 'related_to' relations, log to ~/.amcp/memory/evolution.jsonl",
+      "Evolution log format: { timestamp, trigger_entity_id, related_entity_id, similarity_score, relation_type, reasoning }",
+      "Integration: call memory-evolution.sh from full-checkpoint.sh after graph staging (around line 330, before CID computation)",
+      "Add --skip-evolution flag to full-checkpoint.sh for dry-run checkpoints",
+      "Environment variable: EVOLUTION_THRESHOLD (default: 0.75), EVOLUTION_MAX_RELATIONS (default: 3)",
+      "Verify: adding Task entity mentioning 'API design' triggers relation updates to existing entities with similar keywords, evolution.jsonl records chain"
+    ],
+    "passes": false
+  },
+  {
+    "category": "ontology-evolution",
+    "description": "Integration tests for memory evolution — verify automatic relation inference",
+    "steps": [
+      "Create test/memory-evolution.bats using BATS framework, follow test_helper.sh patterns",
+      "Test 1: Create graph.jsonl with entity-A (properties: 'API design patterns'), add entity-B ('API architecture') via evolution engine, verify 'related_to' relation added to graph.jsonl",
+      "Test 2: Add entity triggering evolution, verify evolution.jsonl contains entry with similarity_score >= 0.75",
+      "Test 3: Add entity with no similar entities (threshold <0.75), verify no relations added",
+      "Test 4: Evolution threshold EVOLUTION_THRESHOLD=0.9, add moderately similar entity, verify no relation (respects threshold)",
+      "Test 5: EVOLUTION_MAX_RELATIONS=1, add entity similar to 5 others, verify only top-1 relation added",
+      "Test 6: --skip-evolution flag prevents evolution.jsonl updates",
+      "Test 7: Trace evolution chain — entity-C added similar to entity-B which was similar to entity-A, verify chain recorded",
+      "Run: bats test/memory-evolution.bats",
+      "Verify: all 7 tests pass, relation inference is deterministic and respects thresholds"
+    ],
+    "passes": false
+  },
+  {
+    "category": "temporal",
+    "description": "Implement temporal query interface — cross-checkpoint entity history (Zep pattern, arXiv:2501.13956)",
+    "steps": [
+      "Create scripts/temporal-queries.py (<250 lines) — temporal query API for entity history across checkpoints",
+      "API functions: queryByTimeRange(entity_id, start_date, end_date) -> list of entity versions with timestamps, getMemoryHistory(entity_id) -> full evolution timeline",
+      "Implement 3-level temporal storage: Level 1 (current graph.jsonl), Level 2 (checkpoint snapshots in ~/.amcp/checkpoints/), Level 3 (temporal index ~/.amcp/memory/temporal-index.jsonl)",
+      "Temporal index format: { entity_id, checkpoint_cid, timestamp, version_hash, properties_snapshot }",
+      "Build temporal index during checkpoint: after graph.jsonl staging, extract entity summaries and append to temporal-index.jsonl",
+      "Query implementation: scan temporal-index.jsonl for entity_id, filter by time range, fetch full entity from checkpoint CID if needed",
+      "Add 'temporal-query' subcommand to proactive-amcp.sh CLI dispatcher: proactive-amcp temporal-query <entity-id> [--start YYYY-MM-DD] [--end YYYY-MM-DD]",
+      "Environment variable: TEMPORAL_INDEX_PATH (default: ~/.amcp/memory/temporal-index.jsonl)",
+      "Verify: create entity in checkpoint-1, modify in checkpoint-2, query history shows both versions with correct timestamps"
+    ],
+    "passes": false
+  },
+  {
+    "category": "temporal",
+    "description": "Integration tests for temporal queries — verify cross-checkpoint history retrieval",
+    "steps": [
+      "Create test/temporal-queries.bats using BATS framework",
+      "Test 1: Create entity-123 in checkpoint-1 (version 1), modify in checkpoint-2 (version 2), run queryByTimeRange covering both, verify returns 2 versions",
+      "Test 2: Query with start_date after checkpoint-1, verify only checkpoint-2 version returned (time filtering works)",
+      "Test 3: getMemoryHistory(entity-123) returns full timeline ordered chronologically",
+      "Test 4: Entity created but never modified, history shows single entry",
+      "Test 5: Non-existent entity_id returns empty list (not error)",
+      "Test 6: Temporal index missing (fresh install), queries gracefully degrade to current graph.jsonl only",
+      "Test 7: Checkpoint with no ontology does not break temporal index (backward compatible)",
+      "Test 8: Query 'what entities existed on 2026-02-15?' returns correct snapshot",
+      "Run: bats test/temporal-queries.bats",
+      "Verify: all 8 tests pass, cross-checkpoint queries work, time-based filtering accurate"
+    ],
+    "passes": false
+  },
+  {
+    "category": "contract",
+    "description": "Implement ontology contract validation — Design by Contract for skills",
+    "steps": [
+      "Create scripts/validate-skill-contract.sh (<200 lines) — validates skill ontology contracts on skill load",
+      "Create docs/ontology-contract.schema.json (<100 lines) — JSON schema for SkillOntologyContract format",
+      "Contract schema: { skill_name: string, version: string, ontology: { reads: EntityType[], writes: EntityType[], preconditions: string[], postconditions: string[] } }",
+      "Example contract: { skill_name: 'task-manager', ontology: { reads: ['Task', 'Person'], writes: ['Task', 'Action'], preconditions: ['Task.assignee exists'], postconditions: ['Task.status is valid enum'] } }",
+      "Skills declare contracts in skill.json: 'ontologyContract': { ... }",
+      "Validation on skill load: check preconditions against current graph.jsonl (e.g., verify all Task entities have assignee property), fail skill load if preconditions not met",
+      "Create scripts/detect-contract-conflicts.sh (<150 lines) — cross-skill conflict detection: finds incompatible postconditions across loaded skills",
+      "Add 'validate-contract' subcommand to proactive-amcp.sh: proactive-amcp validate-contract <skill-name>",
+      "Integration: call validate-skill-contract.sh from OpenClaw skill loader (if proactive-amcp plugin enabled)",
+      "Verify: skill declaring 'precondition: Task.assignee exists' fails to load if some Tasks lack assignee, conflict between skill-A postcondition 'Task.status = done' and skill-B postcondition 'Task.status != done' detected"
+    ],
+    "passes": false
+  },
+  {
+    "category": "contract",
+    "description": "Integration tests for contract validation — verify precondition checking and conflict detection",
+    "steps": [
+      "Create test/skill-contract.bats using BATS framework",
+      "Test 1: Skill with precondition 'Task.assignee exists', all Tasks have assignee, validation passes",
+      "Test 2: Skill with precondition 'Task.assignee exists', some Tasks missing assignee, validation fails with descriptive error",
+      "Test 3: Skill declares reads: ['Task'], graph.jsonl has no Task entities, validation fails (missing required entities)",
+      "Test 4: Skill declares writes: ['Action'], after skill execution, verify Action entities created (postcondition verification)",
+      "Test 5: Two skills loaded, skill-A postcondition: 'Task.priority is high', skill-B postcondition: 'Task.priority is low', detect-contract-conflicts.sh reports conflict",
+      "Test 6: Contract schema validation — invalid contract JSON rejected with schema error",
+      "Test 7: Skill without ontologyContract field (backward compatible), validation skipped gracefully",
+      "Test 8: Cross-skill reads/writes compatible (skill-A writes Task, skill-B reads Task), no conflict detected",
+      "Run: bats test/skill-contract.bats",
+      "Verify: all 8 tests pass, precondition enforcement works, conflict detection catches incompatible contracts"
+    ],
+    "passes": false
   }
 ]
