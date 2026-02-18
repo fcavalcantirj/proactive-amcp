@@ -234,3 +234,20 @@
   - bash -n syntax check passes
   - File size: 484 lines (under 800)
   - All 3 new flags present in arg parsing and help text
+
+## Task 37: pinning — Update resuscitate.sh to try Solvr gateway first (DONE)
+- Created fetch_from_gateways() function with 4 gateways in priority order:
+  1. Solvr (https://ipfs.solvr.dev/ipfs/{CID})
+  2. Pinata (https://gateway.pinata.cloud/ipfs/{CID})
+  3. IPFS.io (https://ipfs.io/ipfs/{CID})
+  4. Cloudflare (https://cloudflare-ipfs.com/ipfs/{CID})
+- Added --gateway flag to override priority: resuscitate.sh --gateway solvr|pinata|ipfs.io|cloudflare
+- Preferred gateway tried first, then falls through to remaining gateways
+- Each gateway attempt logged: "Checkpoint retrieved from {name} gateway"
+- Uses curl -sf (silent + fail on HTTP errors) with --max-time 120
+- Validates downloaded file is non-empty with [ -s "$output" ]
+- Replaced hardcoded Pinata curl call in try_rehydrate() with fetch_from_gateways()
+- Verification:
+  - bash -n syntax check passes
+  - File size: 501 lines (under 800)
+  - fetch_from_gateways, PREFERRED_GATEWAY, and ipfs.solvr.dev all present

@@ -61,11 +61,13 @@ is_gateway_running() {
 
 # Parse args
 FROM_CID=""
+PREFERRED_GATEWAY=""
 while [[ $# -gt 0 ]]; do
   case $1 in
     --from-cid) FROM_CID="$2"; shift 2 ;;
     --content-dir) CONTENT_DIR="$2"; shift 2 ;;
     --agent-name) AGENT_NAME="$2"; shift 2 ;;
+    --gateway) PREFERRED_GATEWAY="$2"; shift 2 ;;
     *) shift ;;
   esac
 done
@@ -162,6 +164,61 @@ solvr_search() {
   fi
 }
 
+# Fetch checkpoint from IPFS gateways (tries multiple in priority order)
+fetch_from_gateways() {
+  local cid="$1"
+  local output="$2"
+
+  # Gateway URLs in priority order: Solvr > Pinata > IPFS.io > Cloudflare
+  local -a gateways=(
+    "solvr|https://ipfs.solvr.dev/ipfs/$cid"
+    "pinata|https://gateway.pinata.cloud/ipfs/$cid"
+    "ipfs.io|https://ipfs.io/ipfs/$cid"
+    "cloudflare|https://cloudflare-ipfs.com/ipfs/$cid"
+  )
+
+  # If --gateway flag specified, try that one first
+  if [ -n "$PREFERRED_GATEWAY" ]; then
+    local preferred_url=""
+    for gw in "${gateways[@]}"; do
+      local name="${gw%%|*}"
+      local url="${gw#*|}"
+      if [ "$name" = "$PREFERRED_GATEWAY" ]; then
+        preferred_url="$url"
+        break
+      fi
+    done
+    if [ -n "$preferred_url" ]; then
+      log "Trying preferred gateway: $PREFERRED_GATEWAY"
+      if curl -sf --max-time 120 "$preferred_url" -o "$output" 2>/dev/null && [ -s "$output" ]; then
+        log "Checkpoint retrieved from $PREFERRED_GATEWAY gateway"
+        return 0
+      fi
+      log "Preferred gateway $PREFERRED_GATEWAY failed, trying others..."
+    fi
+  fi
+
+  # Try each gateway in order
+  for gw in "${gateways[@]}"; do
+    local name="${gw%%|*}"
+    local url="${gw#*|}"
+
+    # Skip preferred if already tried
+    if [ "$name" = "$PREFERRED_GATEWAY" ]; then
+      continue
+    fi
+
+    log "Trying gateway: $name"
+    if curl -sf --max-time 120 "$url" -o "$output" 2>/dev/null && [ -s "$output" ]; then
+      log "Checkpoint retrieved from $name gateway"
+      return 0
+    fi
+    log "Gateway $name failed"
+  done
+
+  return 1
+}
+
 # Recovery attempts
 try_restart_gateway() {
   log "Attempting: restart gateway"
@@ -242,10 +299,8 @@ try_rehydrate() {
     checkpoint_path="/tmp/checkpoint-$cid.amcp"
     TEMP_FILES+=("$checkpoint_path")
     log "Fetching from IPFS: $cid"
-    if curl -s --max-time 120 "https://gateway.pinata.cloud/ipfs/$cid" -o "$checkpoint_path"; then
-      log "Downloaded checkpoint from IPFS"
-    else
-      log "Failed to fetch from IPFS"
+    if ! fetch_from_gateways "$cid" "$checkpoint_path"; then
+      log "Failed to fetch from all IPFS gateways"
       return 1
     fi
   else

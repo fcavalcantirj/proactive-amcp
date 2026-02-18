@@ -847,7 +847,7 @@
       "Log which gateway succeeded: 'Checkpoint retrieved from Solvr gateway'",
       "Verify: resuscitate with Solvr-pinned CID retrieves from Solvr gateway"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "ontology",
