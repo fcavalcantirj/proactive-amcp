@@ -217,3 +217,20 @@
 - Verification:
   - bash -n syntax check passes
   - File size: 272 lines (under 800)
+
+## Task 36: pinning — Update install to accept --solvr-api-key flag (DONE)
+- Added --solvr-api-key <key> flag to install.sh arg parsing
+- Added --pinning-provider <provider> flag with validation ('pinata'|'solvr'|'both')
+- Added --solvr-base-url <url> flag for custom Solvr API endpoint
+- install_config() writes: solvr.apiKey, pinning.solvr.apiKey, pinning.provider, pinning.solvr.baseUrl
+- Created install_solvr_cli() function: installs Solvr CLI when provider is 'solvr' or 'both'
+  - Checks command -v solvr first, skips if already installed
+  - Falls back to curl -sL solvr.dev/install.sh | bash
+  - Verifies installation with solvr --version
+  - Warns (no abort) if installation fails
+- Updated help text with new flags and examples
+- Updated main() to call install_solvr_cli after install_solvr_skill
+- Verification:
+  - bash -n syntax check passes
+  - File size: 484 lines (under 800)
+  - All 3 new flags present in arg parsing and help text

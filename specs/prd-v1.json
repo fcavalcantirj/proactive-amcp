@@ -834,7 +834,7 @@
       "Update help text to document new flags",
       "Verify: proactive-amcp install --solvr-api-key xxx --pinning-provider solvr installs CLI and configures"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "pinning",

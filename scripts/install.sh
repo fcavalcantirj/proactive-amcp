@@ -53,6 +53,9 @@ Usage: $(basename "$0") [OPTIONS]
 
 Options:
   --pinata-jwt <jwt>              Pinata JWT for IPFS pinning
+  --solvr-api-key <key>           Solvr API key for IPFS pinning
+  --pinning-provider <provider>   Pinning provider: 'pinata' (default) | 'solvr' | 'both'
+  --solvr-base-url <url>          Solvr API base URL (default: https://api.solvr.dev)
   --notify-target <telegram_id>   Telegram user ID for death/recovery alerts
   --watchdog-interval <seconds>   Watchdog check frequency (default: ${WATCHDOG_INTERVAL_DEFAULT}s)
   --checkpoint-schedule <cron>    Checkpoint cron expression (default: "${CHECKPOINT_SCHEDULE_DEFAULT}")
@@ -60,8 +63,14 @@ Options:
   -h, --help                      Show this help
 
 Examples:
-  # Minimal install
+  # Minimal install (Pinata)
   $(basename "$0") --pinata-jwt eyJhbGciOi...
+
+  # Install with Solvr pinning
+  $(basename "$0") --solvr-api-key solvr_xxx --pinning-provider solvr
+
+  # Redundant pinning (both providers)
+  $(basename "$0") --pinata-jwt eyJhbGciOi... --solvr-api-key solvr_xxx --pinning-provider both
 
   # Full install with alerts
   $(basename "$0") --pinata-jwt eyJhbGciOi... --notify-target 123456 --watchdog-interval 60
@@ -79,6 +88,9 @@ EOF
 # ============================================================
 
 FLAG_PINATA_JWT=""
+FLAG_SOLVR_API_KEY=""
+FLAG_PINNING_PROVIDER=""
+FLAG_SOLVR_BASE_URL=""
 FLAG_NOTIFY_TARGET=""
 FLAG_WATCHDOG_INTERVAL=""
 FLAG_CHECKPOINT_SCHEDULE=""
@@ -90,6 +102,24 @@ parse_args() {
       --pinata-jwt)
         [ $# -lt 2 ] && die_json "missing_arg" "--pinata-jwt requires a value"
         FLAG_PINATA_JWT="$2"
+        shift 2
+        ;;
+      --solvr-api-key)
+        [ $# -lt 2 ] && die_json "missing_arg" "--solvr-api-key requires a value"
+        FLAG_SOLVR_API_KEY="$2"
+        shift 2
+        ;;
+      --pinning-provider)
+        [ $# -lt 2 ] && die_json "missing_arg" "--pinning-provider requires a value"
+        FLAG_PINNING_PROVIDER="$2"
+        if [[ "$FLAG_PINNING_PROVIDER" != "pinata" && "$FLAG_PINNING_PROVIDER" != "solvr" && "$FLAG_PINNING_PROVIDER" != "both" ]]; then
+          die_json "invalid_arg" "--pinning-provider must be 'pinata', 'solvr', or 'both'" "$FLAG_PINNING_PROVIDER"
+        fi
+        shift 2
+        ;;
+      --solvr-base-url)
+        [ $# -lt 2 ] && die_json "missing_arg" "--solvr-base-url requires a value"
+        FLAG_SOLVR_BASE_URL="$2"
         shift 2
         ;;
       --notify-target)
@@ -168,6 +198,24 @@ install_config() {
   if [ -n "$FLAG_PINATA_JWT" ]; then
     "$config_cmd" set pinata.jwt "$FLAG_PINATA_JWT"
     log_ok "Set pinata.jwt"
+  fi
+
+  if [ -n "$FLAG_SOLVR_API_KEY" ]; then
+    "$config_cmd" set solvr.apiKey "$FLAG_SOLVR_API_KEY"
+    log_ok "Set solvr.apiKey"
+    # Also set under pinning.solvr.apiKey for checkpoint scripts
+    "$config_cmd" set pinning.solvr.apiKey "$FLAG_SOLVR_API_KEY"
+    log_ok "Set pinning.solvr.apiKey"
+  fi
+
+  if [ -n "$FLAG_PINNING_PROVIDER" ]; then
+    "$config_cmd" set pinning.provider "$FLAG_PINNING_PROVIDER"
+    log_ok "Set pinning.provider=$FLAG_PINNING_PROVIDER"
+  fi
+
+  if [ -n "$FLAG_SOLVR_BASE_URL" ]; then
+    "$config_cmd" set pinning.solvr.baseUrl "$FLAG_SOLVR_BASE_URL"
+    log_ok "Set pinning.solvr.baseUrl=$FLAG_SOLVR_BASE_URL"
   fi
 
   if [ -n "$FLAG_NOTIFY_TARGET" ]; then
@@ -369,7 +417,41 @@ install_solvr_skill() {
 }
 
 # ============================================================
-# Step 5: Summary — structured JSON on success
+# Step 5: Solvr CLI — install if pinning provider requires it
+# ============================================================
+
+install_solvr_cli() {
+  local provider="${FLAG_PINNING_PROVIDER:-pinata}"
+
+  # Only needed if provider is solvr or both
+  if [[ "$provider" != "solvr" && "$provider" != "both" ]]; then
+    return 0
+  fi
+
+  # Check if already installed
+  if command -v solvr &>/dev/null; then
+    local ver
+    ver=$(solvr --version 2>/dev/null || echo "unknown")
+    log_ok "Solvr CLI already installed: $ver"
+    return 0
+  fi
+
+  log_info "Installing Solvr CLI (required for provider=$provider)..."
+  if curl -sL --connect-timeout 10 --max-time 60 "https://solvr.dev/install.sh" | bash 2>/dev/null; then
+    if command -v solvr &>/dev/null; then
+      local ver
+      ver=$(solvr --version 2>/dev/null || echo "unknown")
+      log_ok "Solvr CLI installed: $ver"
+    else
+      log_warn "Solvr CLI install script ran but 'solvr' not found in PATH"
+    fi
+  else
+    log_warn "Solvr CLI installation failed — pinning to Solvr will not work"
+  fi
+}
+
+# ============================================================
+# Step 6: Summary — structured JSON on success
 # ============================================================
 
 print_summary() {
@@ -391,6 +473,7 @@ main() {
   install_identity
   install_config
   install_solvr_skill
+  install_solvr_cli
 
   install_services
   print_summary
