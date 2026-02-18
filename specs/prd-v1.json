@@ -798,7 +798,7 @@
       "On set: test key validity by calling GET /v1/me",
       "Verify: config set solvr.apiKey stores key, checkpoint.sh reads it"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "documentation",

@@ -207,3 +207,13 @@
   - File sizes: full-checkpoint.sh=584, checkpoint.sh=315 (under 800)
   - PINNING_PROVIDER present in both scripts
   - pin_to_solvr present in both scripts
+
+## Task 31: pinning — Update config set to support solvr.apiKey (DONE)
+- config.sh already supports arbitrary dot-paths (solvr.apiKey works out of the box)
+- Added validate_after_set() function with post-set validation for solvr.apiKey and pinning.solvr.apiKey
+- Key format validation: warns if key doesn't match 'solvr_...' or agent key pattern
+- Key validity test: calls GET /v1/me with the API key, reports account name on success
+- Graceful degradation: warnings on validation failure, never blocks the set operation
+- Verification:
+  - bash -n syntax check passes
+  - File size: 272 lines (under 800)

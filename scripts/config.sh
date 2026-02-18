@@ -106,6 +106,42 @@ with open(config_path, 'w') as f:
 
   chmod 600 "$CONFIG_FILE"
   echo "Set $key in $CONFIG_FILE"
+
+  # Post-set validation for known keys
+  validate_after_set "$key" "$value"
+}
+
+# ============================================================
+# Post-set validation for specific config keys
+# ============================================================
+validate_after_set() {
+  local key="$1"
+  local value="$2"
+
+  case "$key" in
+    solvr.apiKey|pinning.solvr.apiKey)
+      # Validate Solvr API key format
+      if ! echo "$value" | grep -qE '^solvr_|^[a-zA-Z0-9_-]{20,}$'; then
+        echo "WARNING: Solvr API key format looks unusual (expected 'solvr_...' or agent key)" >&2
+      fi
+      # Test key validity via GET /v1/me
+      local solvr_base="${SOLVR_BASE:-https://api.solvr.dev/v1}"
+      local me_response
+      me_response=$(curl -s --max-time 10 "$solvr_base/me" \
+        -H "Authorization: Bearer $value" 2>/dev/null || echo '')
+      if [ -n "$me_response" ]; then
+        local name
+        name=$(echo "$me_response" | python3 -c "import sys,json; print(json.load(sys.stdin).get('name',''))" 2>/dev/null || echo '')
+        if [ -n "$name" ]; then
+          echo "  Solvr account verified: $name"
+        else
+          echo "  WARNING: Could not verify Solvr API key (GET /v1/me did not return a name)" >&2
+        fi
+      else
+        echo "  WARNING: Could not reach Solvr API to verify key" >&2
+      fi
+      ;;
+  esac
 }
 
 # ============================================================
