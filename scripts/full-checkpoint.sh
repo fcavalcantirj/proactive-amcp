@@ -457,6 +457,16 @@ elif [ "$SKIP_EVOLUTION" = true ]; then
   echo "  Skipping memory evolution (--skip-evolution)"
 fi
 
+# Build temporal index (if graph exists)
+if [ -f "$CONTENT_DIR/memory/ontology/graph.jsonl" ]; then
+  echo ""
+  echo "Building temporal index..."
+  CHECKPOINT_CID_FOR_INDEX="${PREVIOUS_CID:-genesis}"
+  python3 "$SCRIPT_DIR/temporal-queries.py" build-index \
+    --graph "$CONTENT_DIR/memory/ontology/graph.jsonl" \
+    --cid "$CHECKPOINT_CID_FOR_INDEX" || echo "WARN: Temporal index build failed (non-fatal)"
+fi
+
 # Calculate sizes
 echo ""
 echo "Staging directory contents:"

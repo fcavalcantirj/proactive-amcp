@@ -11,6 +11,8 @@
 #   migrate-pins     Transfer historical checkpoints from Pinata to Solvr
 #   problem          Problem CRUD: create, update, get, list, close
 #   learning         Learning CRUD: create, verify, get, list
+#   temporal-query   Cross-checkpoint entity history queries
+#   detect-failure   Scan text for failure patterns, auto-create Problems
 
 set -euo pipefail
 
@@ -31,6 +33,8 @@ Commands:
   migrate-pins     Transfer historical checkpoints from Pinata to Solvr
   problem          Problem CRUD: create, update, get, list, close
   learning         Learning CRUD: create, verify, get, list
+  temporal-query   Cross-checkpoint entity history queries
+  detect-failure   Scan text for failure patterns, auto-create Problems
 
 Run '$(basename "$0") <command> --help' for details.
 EOF
@@ -69,6 +73,14 @@ case "${1:-}" in
   learning)
     shift
     exec python3 "$SCRIPT_DIR/learning.py" learning "$@"
+    ;;
+  temporal-query)
+    shift
+    exec python3 "$SCRIPT_DIR/temporal-queries.py" "$@"
+    ;;
+  detect-failure)
+    shift
+    exec python3 "$SCRIPT_DIR/detect-failure.py" "$@"
     ;;
   -h|--help|"")
     usage

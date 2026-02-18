@@ -447,3 +447,22 @@
   - python3 py_compile passes
   - Functional tests: 3 patterns detected, debounce works, config disable works, detections.log populated
   - File size: 206 lines (under 800)
+
+## Task: temporal — Temporal query interface (DONE)
+- Created `scripts/temporal-queries.py` (238 lines) — cross-checkpoint entity history queries
+- 3-level temporal storage:
+  - Level 1: Current graph.jsonl (live entities)
+  - Level 2: Checkpoint snapshots in ~/.amcp/checkpoints/ (referenced by CID)
+  - Level 3: Temporal index at ~/.amcp/memory/temporal-index.jsonl
+- Temporal index format: {entity_id, checkpoint_cid, timestamp, version_hash, properties_snapshot}
+- build-index: extracts entities from graph.jsonl, computes version_hash (sha256), skips unchanged
+- history <entity_id>: full evolution timeline (index + current graph if changed)
+- query <entity_id> --start/--end: filter by date range
+- Integrated into full-checkpoint.sh: builds temporal index after evolution engine, before size calc
+- Added temporal-query + detect-failure subcommands to proactive-amcp.sh CLI
+- TEMPORAL_INDEX_PATH env var overridable (default: ~/.amcp/memory/temporal-index.jsonl)
+- Verification:
+  - python3 py_compile passes, bash -n passes on all modified scripts
+  - Functional test: entity v0.1 in checkpoint-1, v0.2 in checkpoint-2 → history shows both with timestamps
+  - Time range query correctly filters by date
+  - File sizes: temporal-queries.py=238, full-checkpoint.sh=657, proactive-amcp.sh=93 (all under 800)

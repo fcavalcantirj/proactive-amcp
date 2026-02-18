@@ -506,7 +506,7 @@
       "Environment variable: TEMPORAL_INDEX_PATH (default: ~/.amcp/memory/temporal-index.jsonl)",
       "Verify: create entity in checkpoint-1, modify in checkpoint-2, query history shows both versions with correct timestamps"
     ],
-    "passes": false,
+    "passes": true,
     "phase": 2
   },
   {
