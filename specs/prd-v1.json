@@ -641,7 +641,7 @@
       "Run: bats test/learning-system.bats",
       "Verify: all 10 tests pass, full learning cycle works end-to-end"
     ],
-    "passes": false,
+    "passes": true,
     "phase": 2
   },
   {

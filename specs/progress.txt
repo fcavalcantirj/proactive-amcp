@@ -499,3 +499,19 @@
   - File size: 742 lines (under 800)
   - All 6 soul-drift tests pass
   - No regressions across full suite (84/87 pass, 3 pre-existing solvr-pinning failures)
+
+## Task: testing — Integration tests for learning system (DONE)
+- Created `test/learning-system.bats` (10 tests):
+  - Test 1: /stuck (problem create) stores Problem in problems.jsonl with status=open, stats updated
+  - Test 2: /learned (learning create --source-problem) links Learning to Problem, auto-closes Problem
+  - Test 3: Natural language "Remember that X" creates Learning with insight and confidence=tentative
+  - Test 4: detect-failure.py on 401 error creates Problem with source=self-detect
+  - Test 5: Duplicate Problem detection — same error within 24h debounced (no duplicate created)
+  - Test 6: Learning data survives checkpoint + restore cycle (copy, clear, restore, verify)
+  - Test 7: generate-problem-summary.py surfaces open problems, excludes solved ones
+  - Test 8: Human verification flow — verify changes confidence to verified, stats updated
+  - Test 9: Stats accurate after mixed operations (3 problems, 2 learnings, 1 solved, 1 abandoned)
+  - Test 10: solved_post_recovery — solving pre-resurrection problem increments counter
+- Verification:
+  - All 10 tests pass
+  - No regressions (same 3 pre-existing solvr-pinning failures)
