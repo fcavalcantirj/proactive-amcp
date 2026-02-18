@@ -489,7 +489,7 @@
       "Config toggle: config.json learning.selfDetect.enabled (default: true), learning.selfDetect.debounceHours (default: 24)",
       "Verify: agent hits 401 error, Problem auto-created; same error again within 24h, no duplicate; after 24h, new Problem created"
     ],
-    "passes": false,
+    "passes": true,
     "phase": 2
   },
   {

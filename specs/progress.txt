@@ -427,3 +427,23 @@
   - bash -n / python3 py_compile passes on all scripts
   - File sizes: memory-evolution.sh=279, compute-entity-similarity.py=185, full-checkpoint.sh=647 (all under 800)
   - surface_open_problems called at all 3 recovery success points
+
+## Task: learning — Self-detect trigger (DONE)
+- Created `scripts/detect-failure.py` (206 lines) — scans agent text for failure patterns, auto-creates Problems
+- 7 failure patterns across 4 categories:
+  - api_error: HTTP 4xx/5xx with status names, status_code/HTTP/error codes
+  - knowledge_gap: "I don't know how to", "I need help with", "I'm not sure/unable to/struggling to"
+  - error_signal: FATAL/CRITICAL/ERROR: messages
+  - auth_failure: authentication/auth/token/api_key failed/expired/invalid/rejected/revoked
+- One detection per category per scan (prevents duplicate noise)
+- Debounce: checks existing open self-detect problems within configurable window (default 24h)
+  - Token-based Jaccard similarity (>0.5 overlap = duplicate)
+- Creates Problems via learning.py subprocess with source=self-detect
+- Logs all detections to memory/learning/detections.log (JSONL)
+- Config toggle: learning.selfDetect.enabled (default: true), learning.selfDetect.debounceHours (default: 24)
+- Input modes: --input <file_or_stdin> or --scan-sessions (last 24h session transcripts)
+- --dry-run shows detections without creating Problems
+- Verification:
+  - python3 py_compile passes
+  - Functional tests: 3 patterns detected, debounce works, config disable works, detections.log populated
+  - File size: 206 lines (under 800)
