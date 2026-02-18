@@ -124,19 +124,6 @@
     "passes": false
   },
   {
-    "category": "pinning",
-    "phase": 2,
-    "description": "Auto-register Solvr account for child agents — get API key during fleet deploy",
-    "steps": [
-      "During 'proactive-amcp install', check if parent passed --solvr-api-key",
-      "If child deployment: register child agent via POST /v1/agents/register (parent sponsors)",
-      "Store returned child API key in config.json",
-      "If standalone deployment: prompt for existing Solvr account or skip",
-      "Verify: child agents auto-register and can pin checkpoints"
-    ],
-    "passes": false
-  },
-  {
     "category": "solvr",
     "description": "Auto-register child Solvr account on first boot — deterministic protocol-08 naming",
     "steps": [

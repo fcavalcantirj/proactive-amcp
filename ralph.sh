@@ -75,12 +75,12 @@ for ((i=1; i<=$1; i++)); do
 === WORKFLOW ===
 
 🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨
-⛔ PHASE RESTRICTION: ONLY WORK ON TASKS WHERE \"phase\": 1 ⛔
-⛔ DO NOT TOUCH phase 2 or phase 3 tasks - they are BLOCKED ⛔
-⛔ If all phase 1 tasks pass, STOP and report PHASE_1_COMPLETE ⛔
+⛔ PHASE RESTRICTION: ONLY WORK ON TASKS WHERE \"phase\": 2 ⛔
+⛔ DO NOT TOUCH phase 1 or phase 3 tasks - they are BLOCKED ⛔
+⛔ If all phase 2 tasks pass, STOP and report PHASE_2_COMPLETE ⛔
 🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨
 
-1. Find the highest-priority requirement in specs/prd-v1.json where passes=false AND phase=1 and work ONLY on that.
+1. Find the highest-priority requirement in specs/prd-v1.json where passes=false AND phase=2 and work ONLY on that.
 2. Implement the requirement in scripts/ (bash) or as a new command.
 3. Test: run 'bash -n scripts/<script>.sh' for syntax validation.
 4. Test: run structural grep checks where applicable.
