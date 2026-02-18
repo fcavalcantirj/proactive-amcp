@@ -251,3 +251,21 @@
   - bash -n syntax check passes
   - File size: 501 lines (under 800)
   - fetch_from_gateways, PREFERRED_GATEWAY, and ipfs.solvr.dev all present
+
+## Task 42: testing — Integration tests for Solvr pinning (DONE)
+- Created `test/solvr-pinning.bats` (399 lines) — 8 bats integration tests
+- Test 1: pin-to-solvr.sh with valid file returns CID (mock solvr CLI)
+- Test 2: pin-to-solvr.sh with missing API key fails gracefully (exit 1, "No Solvr API key")
+- Test 3: full-checkpoint.sh with provider=solvr uploads to Solvr (pinningProvider=solvr in last-checkpoint.json)
+- Test 4: full-checkpoint.sh with provider=both uploads to both (Pinata + Solvr)
+- Test 5: resuscitate.sh tries Solvr gateway first when fetching by CID (ipfs.solvr.dev in curl.log)
+- Test 6: resuscitate.sh --gateway flag overrides default order
+- Test 7: last-checkpoint.json stores pinataCid and solvrCid when provider=both
+- Test 8: pin-to-solvr.sh --dry-run shows plan without calling Solvr CLI
+- Fixed pin-to-solvr.sh: progress messages to stderr (only CID on stdout), broadened CID regex to match bafk*
+- Fixed pin_to_solvr() in checkpoint.sh and full-checkpoint.sh: capture only stdout (not stderr)
+- Fixed full-checkpoint.bats mock curl: use quoted heredoc to preserve JSON quotes
+- Verification:
+  - All 8 new tests pass
+  - All 75 tests across full suite pass (no regressions)
+  - File size: 399 lines (under 800)

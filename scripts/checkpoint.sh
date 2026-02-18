@@ -247,11 +247,13 @@ pin_to_pinata() {
 # Pin to Solvr
 pin_to_solvr() {
   if [ -x "$SCRIPT_DIR/pin-to-solvr.sh" ]; then
-    SOLVR_CID=$("$SCRIPT_DIR/pin-to-solvr.sh" "$CHECKPOINT_PATH" "amcp-$AGENT_NAME-$TIMESTAMP" 2>&1) || {
-      echo "⚠️ Solvr pin failed: $SOLVR_CID"
+    local solvr_output
+    solvr_output=$("$SCRIPT_DIR/pin-to-solvr.sh" "$CHECKPOINT_PATH" "amcp-$AGENT_NAME-$TIMESTAMP") || {
+      echo "⚠️ Solvr pin failed"
       SOLVR_CID=""
       return 1
     }
+    SOLVR_CID="$solvr_output"
     echo "  Solvr: $SOLVR_CID"
     return 0
   else

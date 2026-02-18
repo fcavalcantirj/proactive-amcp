@@ -54,8 +54,13 @@ exit 0
 EOAMCP
   chmod +x "$MOCK_BIN/amcp"
 
-  # Mock curl (Pinata upload)
-  create_mock_curl "200" '{"IpfsHash":"bafkrei_test_cid_12345"}'
+  # Mock curl (Pinata upload) — custom mock to preserve JSON quotes
+  cat > "$MOCK_BIN/curl" << 'EOCURL'
+#!/bin/bash
+echo '{"IpfsHash":"QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG"}'
+exit 0
+EOCURL
+  chmod +x "$MOCK_BIN/curl"
 
   # Mock rsync — just use cp -a
   cat > "$MOCK_BIN/rsync" << 'EORSYNC'

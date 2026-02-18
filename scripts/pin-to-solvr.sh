@@ -110,7 +110,7 @@ if [ "$DRY_RUN" = true ]; then
   exit 0
 fi
 
-echo "Pinning to Solvr: $FILE_PATH (name: $PIN_NAME)..."
+echo "Pinning to Solvr: $FILE_PATH (name: $PIN_NAME)..." >&2
 
 # Use Solvr CLI to pin the file
 RESULT=$("$SOLVR_CLI" pin add-file "$FILE_PATH" --name "$PIN_NAME" 2>&1) || {
@@ -120,7 +120,8 @@ RESULT=$("$SOLVR_CLI" pin add-file "$FILE_PATH" --name "$PIN_NAME" 2>&1) || {
 
 # Extract CID from CLI output
 # Solvr CLI outputs the CID on success — try common output formats
-CID=$(echo "$RESULT" | grep -oE '(Qm[a-zA-Z0-9]{44}|bafy[a-zA-Z0-9]{55,})' | head -1)
+# CIDv0 starts with Qm, CIDv1 starts with bafy/bafk
+CID=$(echo "$RESULT" | grep -oE '(Qm[a-zA-Z0-9]{44}|baf[a-z2-7]{55,})' | head -1)
 
 if [ -z "$CID" ]; then
   # Try JSON output format

@@ -615,7 +615,7 @@
       "Run: SOLVR_API_KEY=xxx bats test/solvr-pinning.bats",
       "Verify: all 6 tests pass"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "contract",
