@@ -442,6 +442,13 @@ if os.path.isfile(stats_path):
 " 2>&1 | tee -a "$RECOVERY_LOG" || echo "WARN: learning validation failed" | tee -a "$RECOVERY_LOG"
   fi
 
+  # Validate ontology graph (if present)
+  local ontology_graph="$CONTENT_DIR/memory/ontology/graph.jsonl"
+  if [ -f "$ontology_graph" ] && [ -f "$SCRIPT_DIR/validate-ontology.py" ]; then
+    log "Validating ontology graph..."
+    python3 "$SCRIPT_DIR/validate-ontology.py" "$ontology_graph" 2>&1 | tee -a "$RECOVERY_LOG" || echo "WARN: ontology validation failed" | tee -a "$RECOVERY_LOG"
+  fi
+
   # Recreate virtual environments from manifest (if present)
   local venvs_manifest="$CONTENT_DIR/memory/venvs-manifest.json"
   if [ -x "$SCRIPT_DIR/recreate-venvs.sh" ]; then

@@ -676,7 +676,7 @@
       "Run: bats test/ontology-checkpoint.bats",
       "Verify: all 6 tests pass, no false positives"
     ],
-    "passes": false,
+    "passes": true,
     "phase": 2
   },
   {
@@ -848,7 +848,7 @@
       "On validation failure: log warning to $RECOVERY_LOG, do NOT fail resurrection (backward compatible — agents without ontology still resurrect)",
       "Verify: resuscitate with valid ontology passes validation, resuscitate with missing ontology skips validation, resuscitate with corrupt ontology logs warning but completes"
     ],
-    "passes": false,
+    "passes": true,
     "phase": 2
   }
 ]

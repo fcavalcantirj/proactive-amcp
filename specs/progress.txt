@@ -531,3 +531,28 @@
 - Verification:
   - All 7 tests pass
   - No regressions (same 3 pre-existing solvr-pinning failures)
+
+## Task: ontology — Validate ontology on resurrection (DONE)
+- Created `scripts/validate-ontology.py` (195 lines) — JSONL graph schema validation
+  - Validates: valid JSON per line, required fields (id, type, properties for entities; from_id, relation_type, to_id for relations)
+  - Relation integrity: from_id and to_id must reference existing entities
+  - Acyclic check: 'blocks' relations must not form cycles (DFS cycle detection)
+  - Output: JSON {valid, entity_count, relation_count, errors[]}
+- Integrated into resuscitate.sh: calls validate-ontology.py after learning validation, before venvs
+  - Guard pattern: only runs if graph.jsonl exists AND validate-ontology.py exists
+  - Non-blocking: warnings logged to RECOVERY_LOG, resurrection continues on validation failure
+- Verification:
+  - python3 py_compile passes
+  - bash -n resuscitate.sh passes, 588 lines (under 800)
+
+## Task: testing — Integration tests for ontology checkpoint (DONE)
+- Created `test/ontology-checkpoint.bats` (6 tests):
+  - Test 1: Checkpoint with ontology includes memory/ontology/ in staging output
+  - Test 2: last-checkpoint.json includes ontologyGraphCID (starts with 'b' multibase prefix)
+  - Test 3: validate-ontology.py validates valid graph (3 entities, 1 relation)
+  - Test 4: Corrupt graph (invalid JSON + dangling relation) reports errors but doesn't crash
+  - Test 5: No ontology directory → no ontologyGraphCID in last-checkpoint.json (backward compatible)
+  - Test 6: CID determinism — same graph produces identical CID across two runs
+- Verification:
+  - All 6 tests pass
+  - No regressions (same 3 pre-existing solvr-pinning failures)
