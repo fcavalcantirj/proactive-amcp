@@ -278,3 +278,15 @@
 - Documented retrieval priority: Solvr > Pinata > IPFS.io > Cloudflare
 - Linked to Solvr registration: https://solvr.dev/register
 - Added setup examples for Solvr and redundant pinning
+
+## Task: recovery — Hook recreate-venvs.sh into resuscitate.sh (DONE)
+- Added recreate-venvs.sh call in try_rehydrate() after workspace restore + secret injection
+- Placed BEFORE gateway restart (temp file cleanup + restart gateway)
+- Uses guard pattern: [ -x "$SCRIPT_DIR/recreate-venvs.sh" ] to skip if not present
+- Manifest path: $CONTENT_DIR/memory/venvs-manifest.json (dynamic)
+- Output piped to $RECOVERY_LOG via tee
+- Uses || echo "WARN:" to prevent venv failures from aborting resurrection
+- Verification:
+  - bash -n syntax check passes
+  - File size: 508 lines (under 800)
+  - All 75 tests pass (no regressions)

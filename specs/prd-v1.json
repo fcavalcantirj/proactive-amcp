@@ -355,7 +355,7 @@
       "Log output goes to $RECOVERY_LOG",
       "Verify: run full resurrection with missing venv, confirm venv recreated, resurrection completes"
     ],
-    "passes": false,
+    "passes": true,
     "phase": 1
   },
   {

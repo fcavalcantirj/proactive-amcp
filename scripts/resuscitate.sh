@@ -375,6 +375,13 @@ try_rehydrate() {
     fi
   fi
 
+  # Recreate virtual environments from manifest (if present)
+  local venvs_manifest="$CONTENT_DIR/memory/venvs-manifest.json"
+  if [ -x "$SCRIPT_DIR/recreate-venvs.sh" ]; then
+    log "Checking for venv manifest..."
+    "$SCRIPT_DIR/recreate-venvs.sh" "$venvs_manifest" 2>&1 | tee -a "$RECOVERY_LOG" || echo "WARN: venv recreation failed" | tee -a "$RECOVERY_LOG"
+  fi
+
   # Cleanup temp files
   rm -rf "$content_dir" "$secrets_file"
   [ -n "$cid" ] && rm -f "$checkpoint_path"
