@@ -39,6 +39,9 @@ source "$SCRIPT_DIR/scan-secrets.sh"
 # Pinata config - read from ~/.amcp/config.json (AMCP's own config, not openclaw.json)
 PINATA_JWT="${PINATA_JWT:-$(python3 -c "import json; d=json.load(open('$HOME/.amcp/config.json')); print(d.get('pinata',{}).get('jwt',''))" 2>/dev/null || echo '')}"
 
+# Pinning provider: 'pinata' (default) | 'solvr' | 'both'
+PINNING_PROVIDER="${PINNING_PROVIDER:-$(python3 -c "import json; d=json.load(open('$HOME/.amcp/config.json')); print(d.get('pinning',{}).get('provider','pinata'))" 2>/dev/null || echo 'pinata')}"
+
 # Cleanup secrets on exit (normal or error) to prevent plaintext secrets on disk
 cleanup() {
   rm -f "$SECRETS_FILE"
@@ -213,26 +216,71 @@ $AMCP_CLI $AMCP_ARGS
 
 echo "Checkpoint created: $CHECKPOINT_PATH"
 
-# Pin to IPFS via Pinata
+# Pin to IPFS
+echo "Pinning to IPFS (provider: $PINNING_PROVIDER)..."
+
 CID=""
-if [ -n "$PINATA_JWT" ]; then
-  echo "Pinning to IPFS via Pinata..."
-  
-  RESPONSE=$(curl -s -X POST "https://api.pinata.cloud/pinning/pinFileToIPFS" \
+PINATA_CID=""
+SOLVR_CID=""
+
+# Pin to Pinata
+pin_to_pinata() {
+  if [ -z "$PINATA_JWT" ]; then
+    echo "⚠️ No Pinata JWT configured"
+    return 1
+  fi
+  local response
+  response=$(curl -s -X POST "https://api.pinata.cloud/pinning/pinFileToIPFS" \
     -H "Authorization: Bearer $PINATA_JWT" \
     -F "file=@$CHECKPOINT_PATH" \
     -F "pinataMetadata={\"name\":\"amcp-$AGENT_NAME-$TIMESTAMP\"}")
-  
-  CID=$(echo "$RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin).get('IpfsHash',''))" 2>/dev/null || echo '')
-  
-  if [ -n "$CID" ]; then
-    echo "✅ Pinned to IPFS: $CID"
-    echo "Gateway: https://gateway.pinata.cloud/ipfs/$CID"
+  PINATA_CID=$(echo "$response" | python3 -c "import sys,json; print(json.load(sys.stdin).get('IpfsHash',''))" 2>/dev/null || echo '')
+  if [ -n "$PINATA_CID" ]; then
+    echo "  Pinata: $PINATA_CID"
+    return 0
   else
-    echo "⚠️ Pinata response: $RESPONSE"
+    echo "⚠️ Pinata error: $response"
+    return 1
   fi
-else
-  echo "⚠️ No Pinata JWT configured, skipping IPFS pin"
+}
+
+# Pin to Solvr
+pin_to_solvr() {
+  if [ -x "$SCRIPT_DIR/pin-to-solvr.sh" ]; then
+    SOLVR_CID=$("$SCRIPT_DIR/pin-to-solvr.sh" "$CHECKPOINT_PATH" "amcp-$AGENT_NAME-$TIMESTAMP" 2>&1) || {
+      echo "⚠️ Solvr pin failed: $SOLVR_CID"
+      SOLVR_CID=""
+      return 1
+    }
+    echo "  Solvr: $SOLVR_CID"
+    return 0
+  else
+    echo "⚠️ pin-to-solvr.sh not found"
+    return 1
+  fi
+}
+
+case "$PINNING_PROVIDER" in
+  solvr)
+    pin_to_solvr
+    CID="$SOLVR_CID"
+    ;;
+  both)
+    pin_to_pinata || true
+    pin_to_solvr || true
+    CID="${PINATA_CID:-$SOLVR_CID}"
+    if [ -z "$PINATA_CID" ] && [ -z "$SOLVR_CID" ]; then
+      echo "⚠️ Both pinning providers failed"
+    fi
+    ;;
+  pinata|*)
+    pin_to_pinata
+    CID="$PINATA_CID"
+    ;;
+esac
+
+if [ -n "$CID" ]; then
+  echo "✅ Pinned to IPFS: $CID"
 fi
 
 # Update last checkpoint file

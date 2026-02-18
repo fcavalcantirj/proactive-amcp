@@ -34,6 +34,9 @@ source "$SCRIPT_DIR/scan-secrets.sh"
 # Pinata config
 PINATA_JWT="${PINATA_JWT:-$(python3 -c "import json; d=json.load(open('$HOME/.amcp/config.json')); print(d.get('pinata',{}).get('jwt',''))" 2>/dev/null || echo '')}"
 
+# Pinning provider: 'pinata' (default) | 'solvr' | 'both'
+PINNING_PROVIDER="${PINNING_PROVIDER:-$(python3 -c "import json; d=json.load(open('$HOME/.amcp/config.json')); print(d.get('pinning',{}).get('provider','pinata'))" 2>/dev/null || echo 'pinata')}"
+
 # Cleanup staging dir and secrets on exit (normal or error)
 cleanup() {
   rm -rf "$STAGING_DIR"
@@ -446,28 +449,76 @@ echo "Checkpoint created: $CHECKPOINT_PATH ($CHECKPOINT_SIZE)"
 # STAGE 4: Pin to IPFS
 # ===========================================
 echo ""
-echo "=== STAGE 4: Pinning to IPFS ==="
+echo "=== STAGE 4: Pinning to IPFS (provider: $PINNING_PROVIDER) ==="
 
 CID=""
-if [ -n "$PINATA_JWT" ]; then
+PINATA_CID=""
+SOLVR_CID=""
+
+# Pin to Pinata
+pin_to_pinata() {
+  if [ -z "$PINATA_JWT" ]; then
+    echo "⚠️ No Pinata JWT configured"
+    return 1
+  fi
   echo "Uploading to Pinata..."
-  
-  RESPONSE=$(curl -s -X POST "https://api.pinata.cloud/pinning/pinFileToIPFS" \
+  local response
+  response=$(curl -s -X POST "https://api.pinata.cloud/pinning/pinFileToIPFS" \
     -H "Authorization: Bearer $PINATA_JWT" \
     -F "file=@$CHECKPOINT_PATH" \
     -F "pinataMetadata={\"name\":\"amcp-full-$AGENT_NAME-$TIMESTAMP\"}")
-  
-  CID=$(echo "$RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin).get('IpfsHash',''))" 2>/dev/null || echo '')
-  
-  if [ -n "$CID" ]; then
-    echo "✅ Pinned to IPFS!"
-    echo "   CID: $CID"
-    echo "   Gateway: https://gateway.pinata.cloud/ipfs/$CID"
+  PINATA_CID=$(echo "$response" | python3 -c "import sys,json; print(json.load(sys.stdin).get('IpfsHash',''))" 2>/dev/null || echo '')
+  if [ -n "$PINATA_CID" ]; then
+    echo "  Pinata: $PINATA_CID"
+    return 0
   else
-    echo "⚠️ Pinata error: $RESPONSE"
+    echo "⚠️ Pinata error: $response"
+    return 1
   fi
-else
-  echo "⚠️ No Pinata JWT configured"
+}
+
+# Pin to Solvr
+pin_to_solvr() {
+  if [ -x "$SCRIPT_DIR/pin-to-solvr.sh" ]; then
+    echo "Uploading to Solvr..."
+    SOLVR_CID=$("$SCRIPT_DIR/pin-to-solvr.sh" "$CHECKPOINT_PATH" "amcp-full-$AGENT_NAME-$TIMESTAMP" 2>&1) || {
+      echo "⚠️ Solvr pin failed: $SOLVR_CID"
+      SOLVR_CID=""
+      return 1
+    }
+    echo "  Solvr: $SOLVR_CID"
+    return 0
+  else
+    echo "⚠️ pin-to-solvr.sh not found at $SCRIPT_DIR/pin-to-solvr.sh"
+    return 1
+  fi
+}
+
+case "$PINNING_PROVIDER" in
+  solvr)
+    pin_to_solvr
+    CID="$SOLVR_CID"
+    ;;
+  both)
+    pin_to_pinata || true
+    pin_to_solvr || true
+    # Prefer Pinata CID (established), fall back to Solvr
+    CID="${PINATA_CID:-$SOLVR_CID}"
+    if [ -z "$PINATA_CID" ] && [ -z "$SOLVR_CID" ]; then
+      echo "⚠️ Both pinning providers failed"
+    elif [ -n "$PINATA_CID" ] && [ -n "$SOLVR_CID" ] && [ "$PINATA_CID" != "$SOLVR_CID" ]; then
+      echo "⚠️ CID mismatch: Pinata=$PINATA_CID Solvr=$SOLVR_CID (same content should produce same CID)"
+    fi
+    ;;
+  pinata|*)
+    pin_to_pinata
+    CID="$PINATA_CID"
+    ;;
+esac
+
+if [ -n "$CID" ]; then
+  echo "✅ Pinned to IPFS!"
+  echo "   CID: $CID"
 fi
 
 # ===========================================
@@ -477,18 +528,29 @@ echo ""
 echo "=== STAGE 5: Cleanup ==="
 
 # Update last checkpoint file
-cat > "$LAST_CHECKPOINT_FILE" << EOJSON
-{
-  "cid": "$CID",
-  "localPath": "$CHECKPOINT_PATH",
-  "timestamp": "$(date -Iseconds)",
-  "previousCID": "$PREVIOUS_CID",
-  "secretCount": $SECRET_COUNT,
-  "contentSize": "$TOTAL_SIZE",
-  "checkpointSize": "$CHECKPOINT_SIZE",
-  "type": "full"
+python3 -c "
+import json
+data = {
+    'cid': '''$CID''',
+    'localPath': '''$CHECKPOINT_PATH''',
+    'timestamp': '$(date -Iseconds)',
+    'previousCID': '''$PREVIOUS_CID''',
+    'secretCount': $SECRET_COUNT,
+    'contentSize': '''$TOTAL_SIZE''',
+    'checkpointSize': '''$CHECKPOINT_SIZE''',
+    'type': 'full',
+    'pinningProvider': '''$PINNING_PROVIDER'''
 }
-EOJSON
+pinata_cid = '''$PINATA_CID'''
+solvr_cid = '''$SOLVR_CID'''
+if pinata_cid:
+    data['pinataCid'] = pinata_cid
+if solvr_cid:
+    data['solvrCid'] = solvr_cid
+with open('$LAST_CHECKPOINT_FILE', 'w') as f:
+    json.dump(data, f, indent=2)
+    f.write('\n')
+"
 
 # Rotate old checkpoints
 echo "Rotating old checkpoints (keep $KEEP_CHECKPOINTS)..."
@@ -503,8 +565,7 @@ if [ "$NOTIFY" = true ]; then
     "$SCRIPT_DIR/notify.sh" "✅ [$AGENT_NAME] FULL checkpoint complete!
 📦 Size: $CHECKPOINT_SIZE ($TOTAL_SIZE content)
 🔐 Secrets: $SECRET_COUNT
-📍 CID: $CID
-🔗 https://gateway.pinata.cloud/ipfs/$CID"
+📍 CID: $CID (provider: $PINNING_PROVIDER)"
   else
     "$SCRIPT_DIR/notify.sh" "✅ [$AGENT_NAME] FULL checkpoint complete (local only)
 📦 Size: $CHECKPOINT_SIZE

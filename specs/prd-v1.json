@@ -62,7 +62,7 @@
       "Verify: proactive-amcp config set pinning.provider solvr works",
       "Verify: checkpoint with Solvr provider uploads to Solvr API"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "validation",
