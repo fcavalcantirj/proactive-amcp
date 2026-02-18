@@ -40,7 +40,7 @@
       "Option: --unpin-pinata to remove from Pinata after Solvr pin confirmed",
       "Verify: all historical checkpoints accessible via Solvr gateway"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "pinning",

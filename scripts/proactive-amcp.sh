@@ -8,6 +8,7 @@
 #   install          Non-interactive setup for fleet tools (e.g. openclaw-deploy)
 #   diagnose         Claude-powered health diagnostics with Solvr integration
 #   solvr-register   Auto-register child Solvr account on first boot
+#   migrate-pins     Transfer historical checkpoints from Pinata to Solvr
 
 set -euo pipefail
 
@@ -25,6 +26,7 @@ Commands:
   config           Manage ~/.amcp/config.json (set/get secrets and settings)
   diagnose         Claude-powered health diagnostics with Solvr integration
   solvr-register   Auto-register child Solvr account on first boot
+  migrate-pins     Transfer historical checkpoints from Pinata to Solvr
 
 Run '$(basename "$0") <command> --help' for details.
 EOF
@@ -51,6 +53,10 @@ case "${1:-}" in
   solvr-register)
     shift
     exec "$SCRIPT_DIR/solvr-register.sh" "$@"
+    ;;
+  migrate-pins)
+    shift
+    exec "$SCRIPT_DIR/migrate-pins.sh" "$@"
     ;;
   -h|--help|"")
     usage

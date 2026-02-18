@@ -290,3 +290,20 @@
   - bash -n syntax check passes
   - File size: 508 lines (under 800)
   - All 75 tests pass (no regressions)
+
+## Task: pinning — Add 'proactive-amcp migrate-pins' (DONE)
+- Created `scripts/migrate-pins.sh` (472 lines) — transfer historical checkpoints from Pinata to Solvr
+- Collects unique CIDs from `~/.amcp/checkpoints/*.json` and `last-checkpoint.json`
+- For each CID: checks if already pinned on Solvr via gateway HEAD request
+- If not pinned: POST `/v1/pins` with CID and name to Solvr API
+- Tracks progress in `~/.amcp/migration-status.json` (per-CID status + summary counts)
+- `--unpin-pinata` flag: removes from Pinata after Solvr pin confirmed (DELETE unpin API)
+- `--dry-run` flag: shows what would be migrated without making changes
+- Skips already-migrated CIDs (from status file) for idempotent re-runs
+- wait_for_pin() polls Solvr gateway with 5-minute timeout
+- Verification step at end: checks all CIDs accessible via Solvr gateway
+- Added `migrate-pins` subcommand to proactive-amcp.sh CLI dispatcher
+- Verification:
+  - bash -n syntax check passes on both scripts
+  - File sizes: migrate-pins.sh=472, proactive-amcp.sh=69 (under 800)
+  - All 6 PRD steps verified via structural grep
