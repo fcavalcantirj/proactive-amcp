@@ -177,3 +177,17 @@
 - Verification:
   - All 10 bats tests pass
   - File size: 284 lines (under 800)
+
+## Task 14: pinning — Create pin-to-solvr.sh script (DONE)
+- Created `scripts/pin-to-solvr.sh` (136 lines) — thin wrapper around Solvr CLI
+- Uses Solvr CLI `solvr pin add-file`, does NOT reimplement API calls
+- Accepts $1=file_path (required), $2=name (optional, defaults to filename)
+- Reads SOLVR_API_KEY from env or config.json (solvr.apiKey or pinning.solvr.apiKey)
+- Checks for `solvr` CLI installation via command -v, shows install instructions if missing
+- Parses CID from CLI output (regex for Qm/bafy CID, fallback to JSON parse)
+- `--dry-run` flag shows what would be pinned without executing
+- On success: echoes CID, exit 0
+- On failure: echoes error, exit 1
+- Verification:
+  - bash -n syntax check passes
+  - File size: 136 lines (under 800)

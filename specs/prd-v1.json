@@ -227,7 +227,7 @@
       "Dependency: Solvr CLI must be installed (task in Solvr prd-v6)",
       "Verify: ./scripts/pin-to-solvr.sh test.tar.gz 'test-checkpoint' returns CID"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "recovery",
