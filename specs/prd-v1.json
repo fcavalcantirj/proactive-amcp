@@ -754,7 +754,7 @@
       "Key metric: solved_post_recovery / total_solved = self-improvement rate",
       "Verify: after solving 5 problems (3 post-recovery), report shows 60% self-improvement rate"
     ],
-    "passes": false,
+    "passes": true,
     "phase": 2
   },
   {

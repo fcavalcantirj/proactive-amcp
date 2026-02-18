@@ -72,6 +72,10 @@ case "${1:-}" in
     ;;
   learning)
     shift
+    if [ "${1:-}" = "report" ]; then
+      shift
+      exec python3 "$SCRIPT_DIR/learning-report.py" "$@"
+    fi
     exec python3 "$SCRIPT_DIR/learning.py" learning "$@"
     ;;
   temporal-query)

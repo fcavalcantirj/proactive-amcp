@@ -570,3 +570,21 @@
 - Verification:
   - All 8 tests pass
   - 115 total tests pass, same 3 pre-existing solvr-pinning failures
+
+## Task: learning — Track and report learning metrics (index 46) (DONE)
+- Created `scripts/learning-report.py` (148 lines, under 150 limit) — generates human-readable learning report
+- Metrics computed from JSONL replay: total_problems, total_learnings, solve_rate, avg_attempts_to_solve
+- Self-improvement rate: solved_post_recovery / total_solved * 100 (from stats.json)
+- Breakdowns: problems_by_status (open/stuck/solved/abandoned), learnings_by_confidence (tentative/verified), problems_solved_by_source
+- CLI: `proactive-amcp learning report [--output FILE] [--learning-dir DIR] [--json]`
+- Markdown report format with ## Summary, ## Problems by Status, ## Learnings by Confidence, ## Problems Solved by Source
+- JSON output mode: `--json` for raw metrics as JSON object
+- --output flag writes to file instead of stdout
+- LEARNING_DIR env var overridable (same pattern as learning.py)
+- Routing added in proactive-amcp.sh: `learning report` dispatches to learning-report.py
+- Verification:
+  - python3 py_compile passes
+  - File size: 148 lines (under 150)
+  - Tested with 5 problems (3 solved, 1 open, 1 abandoned), correct solve rate 60%, self-improvement rate 66.7%
+  - Empty data produces valid report with zeroes and "(none)" sections
+  - CLI routing via proactive-amcp learning report --json works
