@@ -336,3 +336,19 @@
 - Agent guidance section: "If you are reading this during resurrection, you are currently between steps 1-7"
 - References LumenNox (Aclawdemy, "The Phenomenology of Forgetting") and ONTOLOGY-INTEGRATION-CONTEXT.md Part 4.5
 - Added Memory Architecture section to README.md linking to RECONSTRUCTION.md
+
+## Task: learning — Initialize learning storage (DONE)
+- Added setup_learning_storage() to init.sh (interactive) and install_learning_storage() to install.sh (non-interactive)
+- Creates memory/learning/ directory in workspace with:
+  - problems.jsonl — empty append-only log for Problem entities
+  - learnings.jsonl — empty append-only log for Learning entities
+  - stats.json — zeroed statistics (total_problems, total_solved, solved_post_recovery, total_learnings, last_updated)
+- Idempotent: skips if directory and stats.json already exist
+- full-checkpoint.sh: workspace rsync already includes memory/learning/ ; added log line confirming inclusion
+- resuscitate.sh: added JSONL validation after workspace restore
+  - Validates each line of problems.jsonl and learnings.jsonl is valid JSON
+  - Validates stats.json is valid JSON
+  - Logs warnings on corruption but does not block resurrection
+- Verification:
+  - bash -n syntax check passes on all 4 scripts
+  - File sizes: init.sh=505, install.sh=517, resuscitate.sh=546, full-checkpoint.sh=632 (all under 800)

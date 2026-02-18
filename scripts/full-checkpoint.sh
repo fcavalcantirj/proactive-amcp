@@ -434,6 +434,14 @@ cp "$IDENTITY_PATH" "$STAGING_DIR/amcp/identity.json" 2>/dev/null || true
 echo "Extracting config metadata..."
 extract_config_metadata
 
+# Log included optional directories
+if [ -d "$STAGING_DIR/workspace/memory/ontology" ]; then
+  echo "  Included ontology graph ($(find "$STAGING_DIR/workspace/memory/ontology" -name '*.jsonl' 2>/dev/null | wc -l) JSONL files)"
+fi
+if [ -d "$STAGING_DIR/workspace/memory/learning" ]; then
+  echo "  Included learning storage (problems + learnings)"
+fi
+
 # Calculate sizes
 echo ""
 echo "Staging directory contents:"

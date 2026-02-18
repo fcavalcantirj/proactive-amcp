@@ -535,7 +535,7 @@
       "Add learning validation to resuscitate.sh — verify JSONL format on restore, log warning on corruption",
       "Verify: fresh install creates memory/learning/ with empty stores, checkpoint includes learning data, resurrection restores it"
     ],
-    "passes": false,
+    "passes": true,
     "phase": 2
   },
   {

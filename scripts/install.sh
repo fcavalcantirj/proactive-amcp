@@ -394,6 +394,38 @@ install_checkpoint_cron() {
 }
 
 # ============================================================
+# Learning storage — create Problem/Learning entity stores
+# ============================================================
+
+install_learning_storage() {
+  local workspace
+  workspace=$(python3 -c "import json,os; d=json.load(open(os.path.expanduser('~/.openclaw/openclaw.json'))); print(d.get('agents',{}).get('defaults',{}).get('workspace','~/.openclaw/workspace'))" 2>/dev/null || echo "$HOME/.openclaw/workspace")
+  workspace="${workspace/#\~/$HOME}"
+  local learning_dir="$workspace/memory/learning"
+
+  if [ -d "$learning_dir" ] && [ -f "$learning_dir/stats.json" ]; then
+    log_ok "Learning storage already exists"
+    return 0
+  fi
+
+  mkdir -p "$learning_dir"
+  [ -f "$learning_dir/problems.jsonl" ] || touch "$learning_dir/problems.jsonl"
+  [ -f "$learning_dir/learnings.jsonl" ] || touch "$learning_dir/learnings.jsonl"
+  if [ ! -f "$learning_dir/stats.json" ]; then
+    cat > "$learning_dir/stats.json" <<'EOJSON'
+{
+  "total_problems": 0,
+  "total_solved": 0,
+  "solved_post_recovery": 0,
+  "total_learnings": 0,
+  "last_updated": null
+}
+EOJSON
+  fi
+  log_ok "Learning storage initialized at $learning_dir"
+}
+
+# ============================================================
 # Step 4: Solvr skill — install for Claude-powered diagnose
 # ============================================================
 
@@ -472,6 +504,7 @@ main() {
 
   install_identity
   install_config
+  install_learning_storage
   install_solvr_skill
   install_solvr_cli
 

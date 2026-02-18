@@ -375,6 +375,44 @@ try_rehydrate() {
     fi
   fi
 
+  # Validate learning storage JSONL format (if present)
+  local learning_dir="$CONTENT_DIR/memory/learning"
+  if [ -d "$learning_dir" ]; then
+    log "Validating learning storage..."
+    python3 -c "
+import json, os, sys
+learning_dir = '$learning_dir'
+for fname in ('problems.jsonl', 'learnings.jsonl'):
+    fpath = os.path.join(learning_dir, fname)
+    if not os.path.isfile(fpath):
+        continue
+    errors = 0
+    with open(fpath) as f:
+        for i, line in enumerate(f, 1):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                json.loads(line)
+            except json.JSONDecodeError:
+                errors += 1
+                if errors <= 3:
+                    print(f'WARN: {fname} line {i}: invalid JSON', file=sys.stderr)
+    if errors:
+        print(f'WARN: {fname} has {errors} invalid line(s)', file=sys.stderr)
+    else:
+        print(f'  {fname}: OK')
+# Validate stats.json
+stats_path = os.path.join(learning_dir, 'stats.json')
+if os.path.isfile(stats_path):
+    try:
+        json.load(open(stats_path))
+        print('  stats.json: OK')
+    except json.JSONDecodeError:
+        print('WARN: stats.json: invalid JSON', file=sys.stderr)
+" 2>&1 | tee -a "$RECOVERY_LOG" || echo "WARN: learning validation failed" | tee -a "$RECOVERY_LOG"
+  fi
+
   # Recreate virtual environments from manifest (if present)
   local venvs_manifest="$CONTENT_DIR/memory/venvs-manifest.json"
   if [ -x "$SCRIPT_DIR/recreate-venvs.sh" ]; then

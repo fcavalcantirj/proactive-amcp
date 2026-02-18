@@ -214,6 +214,49 @@ json.dump(d, sys.stdout, indent=2)
 }
 
 # ============================================================
+# Learning storage — create Problem/Learning entity stores
+# ============================================================
+
+setup_learning_storage() {
+  local workspace
+  workspace=$(python3 -c "import json,os; d=json.load(open(os.path.expanduser('~/.openclaw/openclaw.json'))); print(d.get('agents',{}).get('defaults',{}).get('workspace','~/.openclaw/workspace'))" 2>/dev/null || echo "$HOME/.openclaw/workspace")
+  workspace="${workspace/#\~/$HOME}"
+  local learning_dir="$workspace/memory/learning"
+
+  if [ -d "$learning_dir" ] && [ -f "$learning_dir/stats.json" ]; then
+    info "Learning storage already exists at $learning_dir"
+    return 0
+  fi
+
+  mkdir -p "$learning_dir"
+
+  # problems.jsonl — append-only log of Problem entities
+  if [ ! -f "$learning_dir/problems.jsonl" ]; then
+    touch "$learning_dir/problems.jsonl"
+  fi
+
+  # learnings.jsonl — append-only log of Learning entities
+  if [ ! -f "$learning_dir/learnings.jsonl" ]; then
+    touch "$learning_dir/learnings.jsonl"
+  fi
+
+  # stats.json — aggregated statistics
+  if [ ! -f "$learning_dir/stats.json" ]; then
+    cat > "$learning_dir/stats.json" <<'EOJSON'
+{
+  "total_problems": 0,
+  "total_solved": 0,
+  "solved_post_recovery": 0,
+  "total_learnings": 0,
+  "last_updated": null
+}
+EOJSON
+  fi
+
+  ok "Learning storage initialized at $learning_dir"
+}
+
+# ============================================================
 # Step 3: Watchdog service
 # ============================================================
 
@@ -451,6 +494,7 @@ main() {
 
   setup_identity
   setup_config
+  setup_learning_storage
   setup_watchdog
   setup_checkpoint
   print_summary
