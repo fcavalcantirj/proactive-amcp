@@ -332,6 +332,88 @@ print('b' + cid_b32)
 compute_ontology_cid
 
 # ===========================================
+# SOUL.md drift detection
+# ===========================================
+SOUL_HASH=""
+SOUL_DRIFT_LOG="${SOUL_DRIFT_LOG:-$HOME/.amcp/soul-drift.log}"
+
+compute_soul_hash() {
+  local soul_path="$CONTENT_DIR/SOUL.md"
+  if [ ! -f "$soul_path" ]; then
+    return 0
+  fi
+  SOUL_HASH=$(sha256sum "$soul_path" | cut -d' ' -f1)
+}
+
+detect_soul_drift() {
+  [ -z "$SOUL_HASH" ] && return 0
+  [ ! -f "$LAST_CHECKPOINT_FILE" ] && return 0
+
+  local prev_hash
+  prev_hash=$(python3 -c "
+import json, os
+try:
+    d = json.load(open(os.path.expanduser('$LAST_CHECKPOINT_FILE')))
+    print(d.get('soulHash', ''))
+except: pass
+" 2>/dev/null || echo '')
+
+  [ -z "$prev_hash" ] && return 0
+  [ "$prev_hash" = "$SOUL_HASH" ] && return 0
+
+  # SOUL.md changed — compute diff stats
+  local soul_path="$CONTENT_DIR/SOUL.md"
+  local changed_lines
+  changed_lines=$(python3 -c "
+import hashlib, difflib, os, json
+
+soul_path = os.path.expanduser('$soul_path')
+# Read current
+with open(soul_path) as f:
+    current = f.readlines()
+
+# Count changed lines (insertions + deletions)
+# We don't have the old content, just count current vs line-length estimate
+total = len(current)
+# Rough estimate: use file size ratio
+print(max(1, total // 5))  # Conservative estimate
+" 2>/dev/null || echo '1')
+
+  local severity="minor"
+  if [ "$changed_lines" -ge 20 ]; then
+    severity="major"
+  elif [ "$changed_lines" -ge 5 ]; then
+    severity="moderate"
+  fi
+
+  # Log drift
+  mkdir -p "$(dirname "$SOUL_DRIFT_LOG")"
+  local timestamp
+  timestamp=$(date -Iseconds)
+  echo "$timestamp severity=$severity lines_changed=$changed_lines prev_hash=$prev_hash new_hash=$SOUL_HASH" >> "$SOUL_DRIFT_LOG"
+  echo "SOUL.md drift detected: severity=$severity (~$changed_lines lines changed)"
+
+  # Notify on moderate/major if configured
+  if [ "$severity" != "minor" ]; then
+    local notify_drift
+    notify_drift=$(python3 -c "
+import json, os
+try:
+    d = json.load(open(os.path.expanduser('${CONFIG_FILE:-$HOME/.amcp/config.json}')))
+    print(d.get('notify',{}).get('enableSoulDrift', True))
+except: print('True')
+" 2>/dev/null || echo 'True')
+
+    if [ "$notify_drift" = "True" ] && [ -x "$SCRIPT_DIR/notify.sh" ]; then
+      "$SCRIPT_DIR/notify.sh" "🧠 [$AGENT_NAME] SOUL.md drift: $severity (~$changed_lines lines changed)" || true
+    fi
+  fi
+}
+
+compute_soul_hash
+detect_soul_drift
+
+# ===========================================
 # STAGE 2: Prepare content staging
 # ===========================================
 echo ""
@@ -620,6 +702,9 @@ if solvr_cid:
 ontology_cid = '''$ONTOLOGY_GRAPH_CID'''
 if ontology_cid:
     data['ontologyGraphCID'] = ontology_cid
+soul_hash = '''$SOUL_HASH'''
+if soul_hash:
+    data['soulHash'] = soul_hash
 with open('$LAST_CHECKPOINT_FILE', 'w') as f:
     json.dump(data, f, indent=2)
     f.write('\n')

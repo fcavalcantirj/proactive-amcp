@@ -483,3 +483,19 @@
 - Test 5: Invalid JSON manifest → exits non-zero (script has set -e)
 - Test 6: resuscitate.sh includes recreate-venvs.sh guard pattern
 - All 6 tests pass
+
+## Task: ontology — SOUL.md drift detection + integration tests (DONE)
+- Fixed full-checkpoint.sh to write soulHash to last-checkpoint.json (was computed but never stored)
+- Added `soul_hash` variable to the STAGE 5 python3 write block alongside ontologyGraphCID
+- Created `test/soul-drift.bats` (6 tests):
+  - Test 1: Initial checkpoint with SOUL.md stores soulHash in last-checkpoint.json, no drift alert
+  - Test 2: Minor SOUL.md change (3 lines added, estimate=1) logs severity=minor, no notification
+  - Test 3: Major SOUL.md change (120 lines, estimate=24) logs severity=major, triggers notification
+  - Test 4: No SOUL.md present → no soulHash in last-checkpoint.json, no error
+  - Test 5: SOUL.md unchanged across 3 checkpoints → no drift alerts logged
+  - Test 6: config.json notify.enableSoulDrift=false → drift logged but no notification sent
+- Verification:
+  - bash -n full-checkpoint.sh passes
+  - File size: 742 lines (under 800)
+  - All 6 soul-drift tests pass
+  - No regressions across full suite (84/87 pass, 3 pre-existing solvr-pinning failures)

@@ -583,7 +583,7 @@
       "Run: bats test/soul-drift.bats",
       "Verify: all 6 tests pass, notification guard works correctly"
     ],
-    "passes": false,
+    "passes": true,
     "phase": 2
   },
   {
@@ -726,7 +726,7 @@
       "Test: modify SOUL.md by 3 lines, run checkpoint, verify minor drift logged; modify by 25 lines, verify major drift triggers notification",
       "Verify: first checkpoint (no previous hash) does not trigger drift alert"
     ],
-    "passes": false,
+    "passes": true,
     "phase": 2
   },
   {
