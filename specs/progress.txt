@@ -515,3 +515,19 @@
 - Verification:
   - All 10 tests pass
   - No regressions (same 3 pre-existing solvr-pinning failures)
+
+## Task: ontology-evolution — Integration tests for memory evolution (DONE)
+- Created `test/memory-evolution.bats` (7 tests):
+  - Test 1: Similar entities get related_to bidirectional relations in graph.jsonl
+  - Test 2: Evolution log records entry with similarity_score >= 0.75
+  - Test 3: Unrelated entity (different domain) gets no relations added
+  - Test 4: EVOLUTION_THRESHOLD=0.95 prevents moderate-similarity matches
+  - Test 5: EVOLUTION_MAX_RELATIONS=1 limits to top-1 relation only (2 lines: forward+backward)
+  - Test 6: --dry-run shows "[DRY RUN]" without modifying files
+  - Test 7: Evolution chain — C->B->A triggers tracked in evolution.jsonl across runs
+- Test entity design: carefully tuned keyword overlap to produce scores above/below threshold
+  - Similar entities: ~0.88 combined (high keyword + levenshtein overlap)
+  - Unrelated entities: <0.3 combined (no keyword overlap)
+- Verification:
+  - All 7 tests pass
+  - No regressions (same 3 pre-existing solvr-pinning failures)

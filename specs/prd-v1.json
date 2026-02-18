@@ -659,7 +659,7 @@
       "Run: bats test/memory-evolution.bats",
       "Verify: all 7 tests pass, relation inference is deterministic and respects thresholds"
     ],
-    "passes": false,
+    "passes": true,
     "phase": 2
   },
   {
