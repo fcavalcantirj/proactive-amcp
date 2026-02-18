@@ -423,7 +423,7 @@
       "Verify: create Learning, human confirms, confidence=verified; create Learning, no confirmation for 7 days, warning logged",
       "Implementation: extend scripts/learning.py with verify_learning() and prompt logic"
     ],
-    "passes": false,
+    "passes": true,
     "phase": 2
   },
   {

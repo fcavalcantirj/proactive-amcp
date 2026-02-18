@@ -310,6 +310,10 @@ def verify_learning(lid, human_verified=True):
     }
     append_record(LEARNINGS_FILE, record)
 
+    stats = load_stats()
+    stats["verified_learnings"] = stats.get("verified_learnings", 0) + 1
+    save_stats(stats)
+
     states = replay_jsonl(LEARNINGS_FILE, lid)
     print(json.dumps(states.get(lid, {}), indent=2))
 
@@ -334,6 +338,37 @@ def list_learnings(confidence_filter=None, tag_filter=None):
 
     results.sort(key=lambda x: x.get("created", ""), reverse=True)
     print(json.dumps(results, indent=2))
+
+
+def check_unverified(days=7):
+    """Check for unverified learnings older than N days. Used by heartbeat."""
+    states = replay_jsonl(LEARNINGS_FILE)
+    cutoff = datetime.now(timezone.utc) - __import__("datetime").timedelta(days=days)
+    warnings = []
+
+    for lid, state in states.items():
+        if state.get("confidence") != "tentative":
+            continue
+        created = state.get("created", "")
+        try:
+            created_dt = datetime.fromisoformat(created)
+            if created_dt < cutoff:
+                warnings.append({
+                    "id": lid,
+                    "insight": state.get("insight", ""),
+                    "created": created,
+                    "days_old": (datetime.now(timezone.utc) - created_dt).days
+                })
+        except (ValueError, TypeError):
+            continue
+
+    if warnings:
+        print(f"WARNING: {len(warnings)} unverified learning(s) older than {days} days:",
+              file=sys.stderr)
+        for w in warnings:
+            print(f"  - {w['id']}: \"{w['insight'][:60]}\" ({w['days_old']}d old)",
+                  file=sys.stderr)
+    print(json.dumps(warnings, indent=2))
 
 
 # ============================================================
@@ -400,6 +435,10 @@ def build_parser():
     ll.add_argument("--confidence", choices=["tentative", "verified"], help="Filter by confidence")
     ll.add_argument("--tag", help="Filter by tag")
 
+    # learning check-unverified
+    lcu = learn_sub.add_parser("check-unverified", help="Check for stale unverified learnings")
+    lcu.add_argument("--days", type=int, default=7, help="Days threshold (default: 7)")
+
     return parser
 
 
@@ -434,6 +473,8 @@ def main():
             get_learning(args.id)
         elif args.action == "list":
             list_learnings(args.confidence, args.tag)
+        elif args.action == "check-unverified":
+            check_unverified(args.days)
 
 
 if __name__ == "__main__":

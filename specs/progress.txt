@@ -388,3 +388,13 @@
   - SKILL.md: 446 lines (under 800)
   - All 5 natural language patterns documented
   - All 3 command prefix patterns with examples
+
+## Task: learning — Human verification flow (DONE)
+- confidence=tentative is default for new Learnings (already implemented)
+- verify_learning() promotes confidence to verified, sets verified_at + human_verified
+- Added verified_learnings counter increment in stats.json on verify
+- Added check_unverified(days=7) function: finds tentative learnings older than N days, logs warnings
+- Added CLI: proactive-amcp learning check-unverified [--days N]
+- Verification:
+  - python3 py_compile passes
+  - File size: 481 lines (under 800)
