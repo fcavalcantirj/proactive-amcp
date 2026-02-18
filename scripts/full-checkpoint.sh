@@ -295,6 +295,41 @@ if [ "$DRY_RUN" = true ]; then
 fi
 
 # ===========================================
+# Compute ontology graph CID (if exists)
+# ===========================================
+ONTOLOGY_GRAPH_CID=""
+
+compute_ontology_cid() {
+  local graph_path="$CONTENT_DIR/memory/ontology/graph.jsonl"
+  if [ ! -f "$graph_path" ]; then
+    return 0
+  fi
+
+  ONTOLOGY_GRAPH_CID=$(python3 -c "
+import hashlib, base64, sys, os
+
+graph_path = os.path.expanduser('$graph_path')
+with open(graph_path, 'rb') as f:
+    content = f.read()
+
+# SHA-256 digest
+digest = hashlib.sha256(content).digest()
+
+# CIDv1 raw format: version(1) + codec(raw=0x55) + multihash(sha256=0x12, len=0x20, digest)
+# Then base32lower encode with 'b' multibase prefix
+cid_bytes = bytes([0x01, 0x55, 0x12, 0x20]) + digest
+cid_b32 = base64.b32encode(cid_bytes).decode('ascii').lower().rstrip('=')
+print('b' + cid_b32)
+" 2>/dev/null || echo '')
+
+  if [ -n "$ONTOLOGY_GRAPH_CID" ]; then
+    echo "Ontology graph CID: $ONTOLOGY_GRAPH_CID"
+  fi
+}
+
+compute_ontology_cid
+
+# ===========================================
 # STAGE 2: Prepare content staging
 # ===========================================
 echo ""
@@ -549,6 +584,9 @@ if pinata_cid:
     data['pinataCid'] = pinata_cid
 if solvr_cid:
     data['solvrCid'] = solvr_cid
+ontology_cid = '''$ONTOLOGY_GRAPH_CID'''
+if ontology_cid:
+    data['ontologyGraphCID'] = ontology_cid
 with open('$LAST_CHECKPOINT_FILE', 'w') as f:
     json.dump(data, f, indent=2)
     f.write('\n')

@@ -307,3 +307,24 @@
   - bash -n syntax check passes on both scripts
   - File sizes: migrate-pins.sh=472, proactive-amcp.sh=69 (under 800)
   - All 6 PRD steps verified via structural grep
+
+## Task: pinning — Add redundant pinning mode (DONE)
+- Already implemented in Phase 1 (full-checkpoint.sh and checkpoint.sh)
+- pinning.provider='both' calls Pinata first, then Solvr with || true
+- last-checkpoint.json stores pinataCid and solvrCid fields
+- CID mismatch detection present (logs warning if CIDs differ)
+- Both-fail case detected and logged
+- Verified in test/solvr-pinning.bats (Tests 4 and 7)
+
+## Task: ontology — Compute ontology graph CID (DONE)
+- Added compute_ontology_cid() function to full-checkpoint.sh (after extract_all_secrets)
+- Reads $CONTENT_DIR/memory/ontology/graph.jsonl if exists
+- Computes SHA-256 hash, formats as CIDv1 raw (version=0x01, codec=0x55, multihash sha256=0x12, len=0x20)
+- Base32lower encode with 'b' multibase prefix (deterministic)
+- Uses python3 stdlib only (hashlib + base64), no external dependencies
+- Stores ontologyGraphCID in last-checkpoint.json (optional, only if ontology exists)
+- Graceful skip: if graph.jsonl missing, ONTOLOGY_GRAPH_CID remains empty, field omitted
+- Verification:
+  - bash -n syntax check passes
+  - File size: 624 lines (under 800)
+  - compute_ontology_cid function and ontologyGraphCID field present

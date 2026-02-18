@@ -121,7 +121,7 @@
       "Verify: checkpoint with provider='both' uploads to both services",
       "Verify: one service failure doesn't block checkpoint"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "solvr",
@@ -162,7 +162,7 @@
       "Test: checkpoint with ontology stores CID in last-checkpoint.json, checkpoint without ontology omits field",
       "Verify: CID is deterministic — same graph content produces same CID across runs"
     ],
-    "passes": false,
+    "passes": true,
     "phase": 2
   },
   {
