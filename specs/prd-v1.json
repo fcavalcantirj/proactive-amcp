@@ -439,7 +439,7 @@
       "Add config toggle: config.json learning.resurrection.surfaceProblems (default: true)",
       "Verify: resurrect agent with 2 open Problems, first turn context includes Problem summary, agent does not auto-attempt"
     ],
-    "passes": false,
+    "passes": true,
     "phase": 2
   },
   {

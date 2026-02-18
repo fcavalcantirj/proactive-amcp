@@ -112,6 +112,35 @@ if bad:
 }
 warn_identity_secrets
 
+# Generate open problem summary for agent context (post-resurrection)
+surface_open_problems() {
+  # Check config toggle (default: true)
+  local enabled
+  enabled=$(python3 -c "
+import json, os
+p = os.path.expanduser('$HOME/.amcp/config.json')
+if os.path.isfile(p):
+    d = json.load(open(p))
+    print(d.get('learning',{}).get('resurrection',{}).get('surfaceProblems', True))
+else:
+    print(True)
+" 2>/dev/null || echo 'True')
+
+  if [ "$enabled" = "False" ] || [ "$enabled" = "false" ]; then
+    log "Problem surfacing disabled (config: learning.resurrection.surfaceProblems=false)"
+    return 0
+  fi
+
+  local summary_file="$HOME/.amcp/open-problems-summary.md"
+  if [ -f "$SCRIPT_DIR/generate-problem-summary.py" ]; then
+    log "Generating open problem summary..."
+    python3 "$SCRIPT_DIR/generate-problem-summary.py" --output "$summary_file" 2>&1 | tee -a "$RECOVERY_LOG" || true
+    if [ -f "$summary_file" ] && [ -s "$summary_file" ]; then
+      log "Open problems written to $summary_file"
+    fi
+  fi
+}
+
 # Acquire lock before doing anything
 acquire_lock
 
@@ -474,6 +503,8 @@ main() {
     # Write recovery summary for agent to post to Solvr
     echo "{\"method\":\"restart\",\"downtime\":$downtime,\"timestamp\":\"$(date -Iseconds)\"}" > "$HOME/.amcp/last-recovery.json"
 
+    surface_open_problems
+
     # Send email summary
     send_resurrection_email "success" "restart" "$downtime" "$RECOVERY_LOG"
     return 0
@@ -492,6 +523,8 @@ main() {
     [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "✅ [$AGENT_NAME] Alive! Downtime: ${downtime}s. Method: config fix"
 
     echo "{\"method\":\"config_fix\",\"downtime\":$downtime,\"timestamp\":\"$(date -Iseconds)\"}" > "$HOME/.amcp/last-recovery.json"
+
+    surface_open_problems
 
     # Send email summary
     send_resurrection_email "success" "config_fix" "$downtime" "$RECOVERY_LOG"
@@ -516,6 +549,8 @@ main() {
     [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "✅ [$AGENT_NAME] Alive! Downtime: ${downtime}s. Method: checkpoint"
 
     echo "{\"method\":\"rehydrate\",\"cid\":\"$cid\",\"downtime\":$downtime,\"timestamp\":\"$(date -Iseconds)\"}" > "$HOME/.amcp/last-recovery.json"
+
+    surface_open_problems
 
     # Send email summary
     send_resurrection_email "success" "rehydrate" "$downtime" "$RECOVERY_LOG"

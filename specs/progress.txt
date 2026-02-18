@@ -398,3 +398,17 @@
 - Verification:
   - python3 py_compile passes
   - File size: 481 lines (under 800)
+
+## Task: learning — Hybrid resurrection behavior (DONE)
+- Created `scripts/generate-problem-summary.py` (128 lines) — reads problems.jsonl, outputs markdown summary
+- Summary includes: problem ID, status, description, attempt count, created date
+- Instruction: "do NOT auto-attempt all at once"
+- Added `surface_open_problems()` to resuscitate.sh — calls generate-problem-summary.py after each recovery success
+- Writes summary to `~/.amcp/open-problems-summary.md` for agent context injection
+- Config toggle: `learning.resurrection.surfaceProblems` (default: true, checked by surface_open_problems)
+- Called at all 3 success points: restart, config_fix, rehydrate
+- Uses guard pattern: checks if generate-problem-summary.py exists before calling
+- Verification:
+  - bash -n resuscitate.sh passes, python3 compile passes
+  - File sizes: resuscitate.sh=581, generate-problem-summary.py=128 (under 800)
+  - surface_open_problems called at all 3 recovery success points
