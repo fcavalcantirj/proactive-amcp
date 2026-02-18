@@ -391,7 +391,7 @@
       "Example: I keep forgetting how to check AgentMail inbox creates Problem with description and source=skill",
       "Verify: natural language triggers route to proactive-amcp, correct entity type created"
     ],
-    "passes": false,
+    "passes": true,
     "phase": 2
   },
   {
@@ -406,7 +406,7 @@
       "Add prefix examples to skill SKILL.md frontmatter triggers",
       "Verify: saying /remember X in chat triggers Learning creation, /stuck Y creates Problem, /learned Z --solves ID creates Learning and closes Problem"
     ],
-    "passes": false,
+    "passes": true,
     "phase": 2
   },
   {

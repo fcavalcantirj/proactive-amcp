@@ -375,3 +375,16 @@
   - python3 -c py_compile passes
   - File size: 440 lines (under 800)
   - proactive-amcp.sh routes problem/learning commands
+
+## Task: learning — SKILL.md trigger matching + command prefix triggers (DONE)
+- Updated SKILL.md version to 0.7.1
+- Added trigger keywords to frontmatter: remember, forgot, forgetting, stuck, learned, solved, never forget, /remember, /stuck, /learned
+- Added "Learning Capture" section with two modes:
+  - Command prefixes: /remember, /stuck, /learned (with --solves support)
+  - Natural language: "Remember that...", "I keep forgetting...", "I can't figure out...", "I finally solved...", "Never forget:..."
+- Documented how agent routes patterns to proactive-amcp CLI commands
+- Added querying examples (list, get, close)
+- Verification:
+  - SKILL.md: 446 lines (under 800)
+  - All 5 natural language patterns documented
+  - All 3 command prefix patterns with examples

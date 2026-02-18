@@ -1,6 +1,6 @@
 ---
 name: proactive-amcp
-version: 0.6.1
+version: 0.7.1
 description: Agent Memory Continuity Protocol - encrypted checkpoints of your agent's soul, memories, and secrets to IPFS. Never lose your agent again.
 triggers:
   - amcp
@@ -13,6 +13,16 @@ triggers:
   - soul
   - memory
   - spawn
+  - remember
+  - forgot
+  - forgetting
+  - stuck
+  - learned
+  - solved
+  - never forget
+  - /remember
+  - /stuck
+  - /learned
 metadata: {"openclaw": {"requires": {"bins": ["curl", "jq"], "env": ["PINATA_JWT"]}, "primaryEnv": "PINATA_JWT"}}
 ---
 
@@ -45,6 +55,60 @@ AMCP checkpoints save all of it. When you resurrect, you're still YOU.
 
 **For Humans:**
 Your agent accumulates knowledge — preferences, patterns, context. Losing that means starting over. AMCP keeps your agent's brain backed up.
+
+---
+
+## Learning Capture
+
+AMCP captures what you learn and what blocks you. Two modes:
+
+### Command Prefixes
+
+| Command | Creates | Example |
+|---------|---------|---------|
+| `/remember <fact>` | Learning | `/remember AgentMail uses v0 API not v1` |
+| `/stuck <description>` | Problem | `/stuck can't figure out why auth fails on Moltbook` |
+| `/learned <insight> [--solves <id>]` | Learning (+ closes Problem) | `/learned need to use v0 API --solves prob_abc123` |
+
+**How it works:**
+- `/remember X` → agent calls `proactive-amcp learning create --insight "X"`
+- `/stuck Y` → agent calls `proactive-amcp problem create --description "Y" --source command`
+- `/learned Z --solves ID` → agent calls `proactive-amcp learning create --insight "Z" --source-problem ID`
+
+### Natural Language Triggers
+
+These phrases trigger learning capture automatically:
+
+| Pattern | Creates | Example |
+|---------|---------|---------|
+| "Remember that..." | Learning | "Remember that the Moltbook API key field is api_key not token" |
+| "Never forget:..." | Learning | "Never forget: Pinata JWT expires every 90 days" |
+| "I finally solved..." | Learning | "I finally solved the auth issue — needed v0 API" |
+| "I keep forgetting..." | Problem | "I keep forgetting how to check the AgentMail inbox" |
+| "I can't figure out..." | Problem | "I can't figure out why the webhook secret keeps rotating" |
+
+**How it works:**
+
+The agent recognizes these patterns and routes them to proactive-amcp:
+
+- **Learning patterns** → `proactive-amcp learning create --insight "<extracted content>"`
+- **Problem patterns** → `proactive-amcp problem create --description "<extracted content>" --source skill`
+
+### Querying
+
+```bash
+# List all open problems
+proactive-amcp problem list --status open
+
+# List verified learnings
+proactive-amcp learning list --confidence verified
+
+# Get a specific problem
+proactive-amcp problem get --id prob_abc123
+
+# Close a problem
+proactive-amcp problem close --id prob_abc123 --status solved --solution "Fixed by using v0 API"
+```
 
 ---
 
