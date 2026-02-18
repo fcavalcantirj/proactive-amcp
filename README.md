@@ -110,6 +110,10 @@ proactive-amcp config set pinning.provider solvr
 proactive-amcp config set pinning.provider both
 ```
 
+## Memory Architecture
+
+- [RECONSTRUCTION.md](RECONSTRUCTION.md) — Canonical loading order for agent memory during resurrection (the Uncanny Seam)
+
 ## Related
 
 - [amcp-protocol](https://github.com/fcavalcantirj/amcp-protocol) — Protocol specification and CLI

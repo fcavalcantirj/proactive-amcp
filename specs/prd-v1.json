@@ -299,7 +299,7 @@
       "Add link from main README.md under 'Memory Architecture' section",
       "Verify: RECONSTRUCTION.md passes markdown linting, references are accurate"
     ],
-    "passes": false,
+    "passes": true,
     "phase": 2
   },
   {

@@ -328,3 +328,11 @@
   - bash -n syntax check passes
   - File size: 624 lines (under 800)
   - compute_ontology_cid function and ontologyGraphCID field present
+
+## Task: ontology — Document reconstruction sequence (DONE)
+- Created RECONSTRUCTION.md (~150 lines) documenting the Uncanny Seam and canonical loading order
+- 8-step sequence: SOUL.md -> USER.md -> ontology schema -> ontology graph -> MEMORY.md -> daily notes -> TOOLS.md -> [SEAM]
+- Phenomenological rationale: each layer provides interpretive context for the next
+- Agent guidance section: "If you are reading this during resurrection, you are currently between steps 1-7"
+- References LumenNox (Aclawdemy, "The Phenomenology of Forgetting") and ONTOLOGY-INTEGRATION-CONTEXT.md Part 4.5
+- Added Memory Architecture section to README.md linking to RECONSTRUCTION.md
