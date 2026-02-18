@@ -359,7 +359,7 @@
       "CLI dispatcher: proactive-amcp learning create|verify|get|list",
       "Verify: create learning linked to problem, problem auto-closed, stats show solved_post_recovery incremented if applicable"
     ],
-    "passes": false,
+    "passes": true,
     "phase": 2
   },
   {
@@ -376,7 +376,7 @@
       "CLI dispatcher: proactive-amcp problem create|update|get|list|close",
       "Verify: create problem via CLI, list shows it as open, close it, list shows solved, stats updated"
     ],
-    "passes": false,
+    "passes": true,
     "phase": 2
   },
   {

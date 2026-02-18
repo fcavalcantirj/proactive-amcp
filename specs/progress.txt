@@ -352,3 +352,26 @@
 - Verification:
   - bash -n syntax check passes on all 4 scripts
   - File sizes: init.sh=505, install.sh=517, resuscitate.sh=546, full-checkpoint.sh=632 (all under 800)
+
+## Task: learning — Problem CRUD + Learning CRUD operations (DONE)
+- Created `scripts/learning.py` (440 lines) — Problem and Learning entity CRUD operations
+- Append-only JSONL storage: each operation appends a record, get/list replays the log
+- Problem operations: create_problem, update_problem, get_problem, list_problems, close_problem
+  - prob_{uuid8} ID generation
+  - Status: open, stuck, solved, abandoned
+  - Append-only: update appends op=update, close appends op=close
+  - stats.json: total_problems incremented on create, total_solved on close
+- Learning operations: create_learning, verify_learning, get_learning, list_learnings
+  - learn_{uuid8} ID generation
+  - Confidence: tentative (default), verified (after human confirmation)
+  - Tags support, source_problem link
+  - Auto-close linked problem when learning created with --source-problem
+  - stats.json: total_learnings incremented on create
+- CLI dispatcher: proactive-amcp problem create|update|get|list|close
+- CLI dispatcher: proactive-amcp learning create|verify|get|list
+- LEARNING_DIR env var overridable, defaults to $workspace/memory/learning
+- Functional tests verified: create -> list -> close cycle, learning -> auto-close problem, stats updated
+- Verification:
+  - python3 -c py_compile passes
+  - File size: 440 lines (under 800)
+  - proactive-amcp.sh routes problem/learning commands

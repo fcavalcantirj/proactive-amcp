@@ -9,6 +9,8 @@
 #   diagnose         Claude-powered health diagnostics with Solvr integration
 #   solvr-register   Auto-register child Solvr account on first boot
 #   migrate-pins     Transfer historical checkpoints from Pinata to Solvr
+#   problem          Problem CRUD: create, update, get, list, close
+#   learning         Learning CRUD: create, verify, get, list
 
 set -euo pipefail
 
@@ -27,6 +29,8 @@ Commands:
   diagnose         Claude-powered health diagnostics with Solvr integration
   solvr-register   Auto-register child Solvr account on first boot
   migrate-pins     Transfer historical checkpoints from Pinata to Solvr
+  problem          Problem CRUD: create, update, get, list, close
+  learning         Learning CRUD: create, verify, get, list
 
 Run '$(basename "$0") <command> --help' for details.
 EOF
@@ -57,6 +61,14 @@ case "${1:-}" in
   migrate-pins)
     shift
     exec "$SCRIPT_DIR/migrate-pins.sh" "$@"
+    ;;
+  problem)
+    shift
+    exec python3 "$SCRIPT_DIR/learning.py" problem "$@"
+    ;;
+  learning)
+    shift
+    exec python3 "$SCRIPT_DIR/learning.py" learning "$@"
     ;;
   -h|--help|"")
     usage
