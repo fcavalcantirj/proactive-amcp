@@ -69,6 +69,47 @@ amcp identity create --out ~/.amcp/identity.json
 ./scripts/inject-secrets.sh /path/to/secrets.json
 ```
 
+## Storage Providers
+
+Checkpoints are pinned to IPFS via configurable providers.
+
+| Provider | Details | Cost |
+|----------|---------|------|
+| **Solvr** (primary) | Dedicated IPFS node for AMCP agents | Free for registered agents |
+| **Pinata** (fallback) | Managed IPFS pinning service | Free tier available |
+
+### Provider Selection
+
+Configure via `proactive-amcp config set pinning.provider <provider>`:
+
+- `pinata` (default) — Pin to Pinata only
+- `solvr` — Pin to Solvr only
+- `both` — Pin to both for redundancy
+
+Priority for checkpoint retrieval: Solvr gateway > Pinata > IPFS.io > Cloudflare.
+
+### Solvr IPFS Infrastructure (solvr-ipfs-01)
+
+| Field | Value |
+|-------|-------|
+| Gateway | https://ipfs.solvr.dev/ipfs/ |
+| Peer ID | `12D3KooWJG6rZ1KWTQy1fPeaZuxhfukik3RmYTjyf76Yn6CwUP3A` |
+| Kubo | v0.39.0 |
+| P2P Port | 4001 |
+
+Register for a Solvr account: https://solvr.dev/register
+
+### Setup
+
+```bash
+# Solvr pinning
+proactive-amcp config set solvr.apiKey YOUR_SOLVR_KEY
+proactive-amcp config set pinning.provider solvr
+
+# Or redundant pinning (both)
+proactive-amcp config set pinning.provider both
+```
+
 ## Related
 
 - [amcp-protocol](https://github.com/fcavalcantirj/amcp-protocol) — Protocol specification and CLI

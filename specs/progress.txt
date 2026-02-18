@@ -269,3 +269,12 @@
   - All 8 new tests pass
   - All 75 tests across full suite pass (no regressions)
   - File size: 399 lines (under 800)
+
+## Task: documentation — Document Solvr IPFS infrastructure in README (DONE)
+- Added 'Storage Providers' section to README.md
+- Documented Solvr as primary (free for AMCP agents), Pinata as fallback
+- Included solvr-ipfs-01 details: gateway URL, Peer ID, Kubo version, P2P port
+- Explained provider selection: pinata (default), solvr, both
+- Documented retrieval priority: Solvr > Pinata > IPFS.io > Cloudflare
+- Linked to Solvr registration: https://solvr.dev/register
+- Added setup examples for Solvr and redundant pinning

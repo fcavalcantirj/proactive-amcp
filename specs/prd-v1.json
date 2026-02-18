@@ -273,7 +273,7 @@
       "Explain provider selection priority: SOLVR_API_KEY > PINATA_JWT",
       "Link to Solvr registration: https://solvr.dev/register"
     ],
-    "passes": false,
+    "passes": true,
     "server_info": {
       "name": "solvr-ipfs-01",
       "ip": "65.109.134.87",
