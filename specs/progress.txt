@@ -466,3 +466,20 @@
   - Functional test: entity v0.1 in checkpoint-1, v0.2 in checkpoint-2 → history shows both with timestamps
   - Time range query correctly filters by date
   - File sizes: temporal-queries.py=238, full-checkpoint.sh=657, proactive-amcp.sh=93 (all under 800)
+
+## Task: ontology — Include memory/ontology/ in full-checkpoint.sh (DONE)
+- Already implemented: workspace rsync in full-checkpoint.sh includes memory/ontology/ directory
+- Log line at L440-441 confirms ontology inclusion with JSONL file count
+- scan-secrets.sh does not exclude .jsonl files — ontology entities don't match secret patterns
+- resuscitate.sh restores memory/ontology/ via cp -r of extracted checkpoint content
+- No additional code changes needed — marked passes=true
+
+## Task: testing — Integration tests for venv recovery (DONE)
+- Created `test/venv-recovery.bats` (6 tests)
+- Test 1: All venvs functional → skips all (fast path)
+- Test 2: Venv missing → creates it with mock python3 -m venv
+- Test 3: Broken venv (pip fails) → recreates it
+- Test 4: No manifest file → exits 0 with "No venvs manifest" skip message
+- Test 5: Invalid JSON manifest → exits non-zero (script has set -e)
+- Test 6: resuscitate.sh includes recreate-venvs.sh guard pattern
+- All 6 tests pass

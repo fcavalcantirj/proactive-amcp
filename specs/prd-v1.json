@@ -520,7 +520,7 @@
       "Test: full-checkpoint with memory/ontology/graph.jsonl present includes it in $STAGING_DIR/workspace/memory/ontology/",
       "Verify: unpacking checkpoint restores memory/ontology/ directory structure"
     ],
-    "passes": false,
+    "passes": true,
     "phase": 2
   },
   {
@@ -552,7 +552,7 @@
       "Run: bats test/venv-recovery.bats",
       "Verify: all 6 tests pass, venv recovery is resilient to errors"
     ],
-    "passes": false,
+    "passes": true,
     "phase": 2
   },
   {
