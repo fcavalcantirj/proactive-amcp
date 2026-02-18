@@ -771,7 +771,7 @@
       "Test: define policy pruning Events >30d, run 'proactive-amcp prune --dry-run', verify it identifies correct entities; run without --dry-run, verify entities removed from graph.jsonl",
       "Verify: pruning never removes Person or Task entities with ttl: null, relation stubs preserve graph connectivity after prune"
     ],
-    "passes": false,
+    "passes": true,
     "phase": 2
   },
   {

@@ -588,3 +588,27 @@
   - Tested with 5 problems (3 solved, 1 open, 1 abandoned), correct solve rate 60%, self-improvement rate 66.7%
   - Empty data produces valid report with zeroes and "(none)" sections
   - CLI routing via proactive-amcp learning report --json works
+
+## Task: ontology — Typed pruning policy framework (index 47) (DONE)
+- Created `scripts/prune-ontology.py` (260 lines, under 300 limit) — typed pruning policies for ontology graph
+- Config schema: `pruning.policies` in ~/.amcp/config.json with per-entity-type rules
+  - Example: `{ "Event": { "ttl": "30d", "preserve_relations": true }, "Task": { "ttl": null, "prune_if": "status == 'done' AND updated < 90d" }, "Person": { "ttl": null } }`
+- TTL parsing: supports h (hours), d (days), w (weeks), m (months), y (years)
+- Conditional expressions: `field == 'value'`, `field != 'value'`, `field < TTL` (temporal)
+  - Conjunctions with AND (all clauses must match)
+- Pruning logic: parse JSONL → identify matching entities → remove + handle relations → atomic write (.pruned then rename)
+- prune_if takes priority over ttl: null — Tasks with `prune_if` can be pruned even with `ttl: null`
+- Entities with only `ttl: null` (no prune_if, e.g. Person) are never pruned
+- Relation preservation: if ANY policy has `preserve_relations: true`, relation stubs kept with `deleted_at` timestamp
+- `--dry-run` mode outputs JSON summary without modifying files
+- `--config` and `--graph` flags for path overrides
+- No policies configured → exits 0 with "no_policies" message
+- Added `prune` subcommand to proactive-amcp.sh CLI dispatcher
+- Verification:
+  - python3 py_compile passes
+  - File size: 260 lines (under 300)
+  - Tested: Event >30d pruned, Event <30d kept, Person (ttl:null) kept, Task done+old pruned, Task done+recent kept, Task open kept
+  - Relation stubs have deleted_at timestamp when preserve_relations=true
+  - Dry-run outputs correct summary
+  - CLI routing via `proactive-amcp prune --dry-run` works
+  - 115 tests pass, same 3 pre-existing solvr-pinning failures

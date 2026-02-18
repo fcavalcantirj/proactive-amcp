@@ -13,6 +13,7 @@
 #   learning         Learning CRUD: create, verify, get, list
 #   temporal-query   Cross-checkpoint entity history queries
 #   detect-failure   Scan text for failure patterns, auto-create Problems
+#   prune            Prune ontology graph by typed retention policies
 
 set -euo pipefail
 
@@ -35,6 +36,7 @@ Commands:
   learning         Learning CRUD: create, verify, get, list
   temporal-query   Cross-checkpoint entity history queries
   detect-failure   Scan text for failure patterns, auto-create Problems
+  prune            Prune ontology graph by typed retention policies
 
 Run '$(basename "$0") <command> --help' for details.
 EOF
@@ -85,6 +87,10 @@ case "${1:-}" in
   detect-failure)
     shift
     exec python3 "$SCRIPT_DIR/detect-failure.py" "$@"
+    ;;
+  prune)
+    shift
+    exec python3 "$SCRIPT_DIR/prune-ontology.py" "$@"
     ;;
   -h|--help|"")
     usage
