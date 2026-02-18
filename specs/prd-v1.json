@@ -709,7 +709,7 @@
       "Run: bats test/temporal-queries.bats",
       "Verify: all 8 tests pass, cross-checkpoint queries work, time-based filtering accurate"
     ],
-    "passes": false,
+    "passes": true,
     "phase": 2
   },
   {

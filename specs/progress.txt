@@ -556,3 +556,17 @@
 - Verification:
   - All 6 tests pass
   - No regressions (same 3 pre-existing solvr-pinning failures)
+
+## Task: temporal — Integration tests for temporal queries (DONE)
+- Created `test/temporal-queries.bats` (8 tests):
+  - Test 1: Two versions across checkpoints — query returns both
+  - Test 2: Time-range filter (start after checkpoint-1) returns only checkpoint-2
+  - Test 3: Full history ordered chronologically (first < second timestamp)
+  - Test 4: Unmodified entity shows single entry (build-index skips unchanged)
+  - Test 5: Non-existent entity returns "No history" message, exit 0
+  - Test 6: Missing temporal index degrades to current graph (checkpoint_cid="current")
+  - Test 7: No ontology graph → build-index reports "No graph", exits 0
+  - Test 8: Date-based snapshot query for 2026-02-15 returns correct version
+- Verification:
+  - All 8 tests pass
+  - 115 total tests pass, same 3 pre-existing solvr-pinning failures
