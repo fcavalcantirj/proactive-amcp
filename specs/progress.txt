@@ -411,4 +411,19 @@
 - Verification:
   - bash -n resuscitate.sh passes, python3 compile passes
   - File sizes: resuscitate.sh=581, generate-problem-summary.py=128 (under 800)
+
+## Task: ontology-evolution — Memory evolution engine (DONE)
+- Created `scripts/memory-evolution.sh` (279 lines) — orchestrates evolution: validate identity, read graph, compute similarity, add relations, log chain
+- Created `scripts/compute-entity-similarity.py` (185 lines) — semantic similarity using Levenshtein distance (0.4 weight) + keyword overlap (0.6 weight)
+- Evolution trigger: --entity-id for single entity, --all-new for all unevolved entities
+- Finds top-N (default 3) similar entities above threshold (default 0.75)
+- Adds bidirectional 'related_to' relations to graph.jsonl
+- Logs to ~/.amcp/memory/evolution.jsonl: {timestamp, trigger_entity_id, related_entity_id, similarity_score, relation_type, reasoning}
+- Integrated into full-checkpoint.sh after graph staging, before size calculation
+- --skip-evolution flag on full-checkpoint.sh to bypass
+- --dry-run shows what would be linked without modifying files
+- Environment: EVOLUTION_THRESHOLD (default: 0.75), EVOLUTION_MAX_RELATIONS (default: 3)
+- Verification:
+  - bash -n / python3 py_compile passes on all scripts
+  - File sizes: memory-evolution.sh=279, compute-entity-similarity.py=185, full-checkpoint.sh=647 (all under 800)
   - surface_open_problems called at all 3 recovery success points

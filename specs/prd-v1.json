@@ -455,7 +455,7 @@
       "Environment variable: EVOLUTION_THRESHOLD (default: 0.75), EVOLUTION_MAX_RELATIONS (default: 3)",
       "Verify: adding Task entity mentioning 'API design' triggers relation updates to existing entities with similar keywords, evolution.jsonl records chain"
     ],
-    "passes": false,
+    "passes": true,
     "phase": 2
   },
   {

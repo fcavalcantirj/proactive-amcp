@@ -19,12 +19,14 @@ AGENT_NAME="${AGENT_NAME:-ClaudiusThePirateEmperor}"
 DRY_RUN=false
 NOTIFY=false
 FORCE_CHECKPOINT=""
+SKIP_EVOLUTION=false
 
 for arg in "$@"; do
   case $arg in
     --dry-run) DRY_RUN=true ;;
     --notify) NOTIFY=true ;;
     --force)  FORCE_CHECKPOINT="force" ;;
+    --skip-evolution) SKIP_EVOLUTION=true ;;
   esac
 done
 
@@ -440,6 +442,19 @@ if [ -d "$STAGING_DIR/workspace/memory/ontology" ]; then
 fi
 if [ -d "$STAGING_DIR/workspace/memory/learning" ]; then
   echo "  Included learning storage (problems + learnings)"
+fi
+
+# Run memory evolution engine (if graph exists and not skipped)
+if [ "$SKIP_EVOLUTION" = false ] && [ -f "$CONTENT_DIR/memory/ontology/graph.jsonl" ] && [ -x "$SCRIPT_DIR/memory-evolution.sh" ]; then
+  echo ""
+  echo "Running memory evolution engine..."
+  if [ "$DRY_RUN" = true ]; then
+    "$SCRIPT_DIR/memory-evolution.sh" --all-new --graph "$CONTENT_DIR/memory/ontology/graph.jsonl" --dry-run || true
+  else
+    "$SCRIPT_DIR/memory-evolution.sh" --all-new --graph "$CONTENT_DIR/memory/ontology/graph.jsonl" || true
+  fi
+elif [ "$SKIP_EVOLUTION" = true ]; then
+  echo "  Skipping memory evolution (--skip-evolution)"
 fi
 
 # Calculate sizes
