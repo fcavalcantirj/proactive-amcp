@@ -1048,7 +1048,7 @@
       "Cache condensed errors in ~/.amcp/error-cache.json (avoid re-processing)",
       "Verify: error notifications are readable, under 100 chars"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "intelligence",

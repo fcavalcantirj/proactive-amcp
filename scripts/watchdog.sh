@@ -318,6 +318,21 @@ should_retry_resurrection() {
 }
 
 # ============================================================
+# Error condensing — use Groq to shorten error msgs in notifications
+# ============================================================
+condense_error_msg() {
+  local msg="$1"
+  # Only condense if condense-error.sh exists and message is long
+  if [ "${#msg}" -le 100 ] || [ ! -x "$SCRIPT_DIR/condense-error.sh" ]; then
+    echo "$msg"
+    return
+  fi
+  local condensed
+  condensed=$("$SCRIPT_DIR/condense-error.sh" "$msg" 2>/dev/null || true)
+  echo "${condensed:-$msg}"
+}
+
+# ============================================================
 # Fix routing — pick the right fix based on diagnosis
 # ============================================================
 try_fix_session() {
@@ -389,7 +404,9 @@ do_check() {
     if [ "$current_state" != "DEAD" ]; then
       echo "☠️ State: $current_state -> DEAD"
       update_state "DEAD" "$failures" "$errors"
-      [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "☠️ [$AGENT_NAME] DEAD! Errors: $errors. Starting recovery..."
+      local condensed_errors
+      condensed_errors=$(condense_error_msg "$errors")
+      [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "☠️ [$AGENT_NAME] DEAD! Errors: $condensed_errors. Starting recovery..."
       launch_resurrection
       return 2
     fi

@@ -915,3 +915,28 @@
     - Rate limit mentions (6 refs), console.groq.com upgrade (8 refs)
     - groq subcommand in CLI (4 refs), Solvr integration in init (4 refs)
   - All 126 existing tests pass (no regressions)
+
+## Task: intelligence — Groq-powered context condensing (Phase 3) (DONE)
+- Created `scripts/condense-error.sh` (342 lines) — condenses verbose error logs to ~100 char summaries
+- Three input modes: inline argument, --input FILE, --stdin
+- Calls Groq API with temperature=0, max_tokens=60 (fast, cheap)
+- System prompt: "You condense error logs. Output ONLY the condensed error, nothing else. Max 100 characters. Preserve the root cause."
+- Short-circuit: if input already <=100 chars, returns as-is (no API call)
+- Fallback: if no Groq key or API fails, truncates to 97 chars + "..."
+- Input truncated to 2000 chars before API (keep cost low for error logs)
+- Output enforced to <=100 chars (server-side + client-side truncation)
+- Cache in `~/.amcp/error-cache.json`:
+  - Key: sha256(first 500 chars)[:16]
+  - 7-day TTL per entry, max 200 entries (oldest evicted)
+  - --no-cache flag bypasses, --clear-cache clears entire cache
+- Token usage tracked in `~/.amcp/groq-usage.json` with source=condense-error
+- Integrated into watchdog.sh:
+  - Added `condense_error_msg()` helper: condenses if condense-error.sh exists and msg >100 chars
+  - DEAD notification uses condensed error: "☠️ [AGENT_NAME] DEAD! Errors: {condensed}. Starting recovery..."
+  - Guard pattern: only calls condense-error.sh if executable exists
+- Added `condense-error` subcommand to proactive-amcp.sh CLI dispatcher
+- Verification:
+  - bash -n passes on all 3 modified scripts (condense-error.sh, watchdog.sh, proactive-amcp.sh)
+  - File sizes: condense-error.sh=342, watchdog.sh=449, proactive-amcp.sh=189 (all under 800)
+  - Structural grep: Groq API URL (1), temperature 0 (1), condense prompt (1), cache refs (3), watchdog integration (2+3), CLI dispatch (4)
+  - All 126 tests pass (no regressions)
