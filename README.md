@@ -11,6 +11,7 @@ An [OpenClaw](https://github.com/openclaw/openclaw) skill that enforces the [AMC
 - **👁️ Watchdog**: Monitor agent health, detect death
 - **🔄 Resurrection**: Recover from checkpoint when agent dies
 - **🔑 Secrets Injection**: Restore API keys to proper config files
+- **🐍 Venv Auto-Recovery**: Rebuild Python virtual environments from manifest on resurrection
 - **⚡ Groq Intelligence** *(coming soon)*: Smart memory pruning, importance scoring
 
 ## Why IPFS?

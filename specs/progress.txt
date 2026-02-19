@@ -688,3 +688,19 @@
   - README.md: 164 lines (under 800)
   - All documented config keys match actual implementation in scripts/
   - Gateway priority matches resuscitate.sh fetch_from_gateways() order
+
+## Task: documentation — Document venv recovery in CLAUDE.md and README.md (index 25) (DONE)
+- Added Virtual Environment Recovery section to CLAUDE.md after Data Flows, before Pinning Providers
+- Documented recovery flow: resuscitate.sh → workspace restore → inject-secrets → recreate-venvs.sh → gateway restart
+- Documented manifest location: $CONTENT_DIR/memory/venvs-manifest.json (checkpointed with workspace)
+- Documented manifest schema: path (required), packages or requirements (not both), python, note
+- Instructions for adding new venvs to manifest
+- Troubleshooting table: pip failures, venv recreation fails, skip problematic venv, missing manifest
+- Updated Resurrection data flow in CLAUDE.md to include "recreate venvs" step
+- Updated README.md: added "Venv Auto-Recovery" to features list
+- No TOOLS.md in this repo — referenced manifest file directly instead
+- Verification:
+  - CLAUDE.md: 410 lines (under 800)
+  - README.md: 165 lines (under 800)
+  - Documented manifest schema matches recreate-venvs.sh implementation
+  - Recovery flow matches resuscitate.sh guard pattern at line 455

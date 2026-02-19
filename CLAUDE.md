@@ -61,7 +61,67 @@ progress.sh            Dev tool: count passed PRD requirements (27L)
 
 **Watchdog:** validate identity -> diagnose.sh (JSON findings) -> light fix (session-fix.sh + restart) or heavy fix (resuscitate.sh) -> update watchdog-state.json -> notify
 
-**Resurrection:** acquire lock -> Tier 1 restart gateway -> Tier 2 restore config backup -> Tier 3 fetch from IPFS, decrypt, inject secrets, restart -> Solvr search (read-only) -> email notification -> release lock
+**Resurrection:** acquire lock -> Tier 1 restart gateway -> Tier 2 restore config backup -> Tier 3 fetch from IPFS, decrypt, inject secrets, restart -> recreate venvs -> Solvr search (read-only) -> email notification -> release lock
+
+## Virtual Environment Recovery
+
+After workspace restore during resurrection, `resuscitate.sh` calls `recreate-venvs.sh` to rebuild Python virtual environments from a manifest.
+
+### Recovery Flow
+
+```
+resuscitate.sh (Tier 3 rehydrate)
+  → workspace restored from checkpoint
+  → inject-secrets.sh restores API keys
+  → recreate-venvs.sh "$CONTENT_DIR/memory/venvs-manifest.json"
+  → gateway restart
+```
+
+### Manifest (`memory/venvs-manifest.json`)
+
+Location: `$CONTENT_DIR/memory/venvs-manifest.json` (checkpointed with workspace)
+
+```json
+{
+  "description": "Virtual environments to recreate on resurrection",
+  "venvs": [
+    {
+      "path": "~/my-project",
+      "packages": ["requests", "flask"],
+      "python": "python3",
+      "note": "Web API project"
+    },
+    {
+      "path": "~/other-project",
+      "requirements": "requirements.txt",
+      "note": "Uses requirements file"
+    }
+  ]
+}
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `path` | yes | Base directory (supports `~`). Venv created at `<path>/.venv` |
+| `packages` | no | List of pip packages to install |
+| `requirements` | no | Path to requirements.txt (relative to `path`) |
+| `python` | no | Python binary (default: `python3`) |
+| `note` | no | Human-readable description |
+
+Use `packages` OR `requirements`, not both.
+
+### Adding a New Venv
+
+Edit `memory/venvs-manifest.json` in your workspace to add entries. It will be included in the next checkpoint automatically (workspace rsync includes `memory/`).
+
+### Troubleshooting
+
+| Problem | Solution |
+|---------|----------|
+| pip install fails for a package | Fix the manifest entry (wrong package name?). Venv failures don't block resurrection — logged as warning |
+| Venv recreation fails entirely | Check python3 is installed. Review `$RECOVERY_LOG` for details. Manually run: `python3 -m venv <path>/.venv` |
+| Want to skip a problematic venv | Remove or comment out the entry in `memory/venvs-manifest.json` |
+| Manifest missing | Script exits 0 gracefully — no venvs recreated, resurrection continues |
 
 ## Pinning Providers
 
