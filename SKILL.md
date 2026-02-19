@@ -23,7 +23,7 @@ triggers:
   - /remember
   - /stuck
   - /learned
-metadata: {"openclaw": {"requires": {"bins": ["curl", "jq"], "env": ["PINATA_JWT"]}, "primaryEnv": "PINATA_JWT"}}
+metadata: {"openclaw": {"requires": {"bins": ["curl", "jq", "python3"], "env": ["PINATA_JWT"]}, "optionalEnv": ["SOLVR_API_KEY", "AGENTMAIL_API_KEY", "GROQ_API_KEY"], "primaryEnv": "PINATA_JWT", "externalServices": ["api.pinata.cloud", "api.solvr.dev", "api.agentmail.to"], "fileAccess": ["~/.amcp/*", "~/.openclaw/workspace/*", "~/.openclaw/openclaw.json"], "securityNotes": "This skill reads/writes agent config and session files for backup/restore. Review scripts before enabling autonomous invocation."}}
 ---
 
 # Proactive-AMCP
@@ -477,4 +477,4 @@ Protocol spec: **https://github.com/fcavalcantirj/amcp-protocol**
 
 ---
 
-*Death is temporary. Your soul persists. 🏴‍☠️*
+*Death is temporary. Your soul persists. ⚓*
