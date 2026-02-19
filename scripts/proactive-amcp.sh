@@ -14,6 +14,7 @@
 #   temporal-query   Cross-checkpoint entity history queries
 #   detect-failure   Scan text for failure patterns, auto-create Problems
 #   prune            Prune ontology graph by typed retention policies
+#   memory-prune     Groq-powered memory file pruning (archive/condense/keep)
 #   validate-contract  Validate skill ontology contracts against graph.jsonl
 #   detect-conflicts   Detect cross-skill ontology contract conflicts
 
@@ -44,6 +45,7 @@ Commands:
   temporal-query   Cross-checkpoint entity history queries
   detect-failure   Scan text for failure patterns, auto-create Problems
   prune            Prune ontology graph by typed retention policies
+  memory-prune     Groq-powered memory file pruning (archive/condense/keep)
   validate-contract  Validate skill ontology contracts against graph.jsonl
   detect-conflicts   Detect cross-skill ontology contract conflicts
 
@@ -151,6 +153,10 @@ case "${1:-}" in
   prune)
     shift
     exec python3 "$SCRIPT_DIR/prune-ontology.py" "$@"
+    ;;
+  memory-prune)
+    shift
+    exec "$SCRIPT_DIR/memory-prune.sh" "$@"
     ;;
   validate-contract)
     shift

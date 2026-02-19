@@ -799,3 +799,23 @@
   - All 5 IPFS highlights present (content-addressed, distributed, immutable, fetch anywhere, free Solvr)
   - Visual diagram present in both ONBOARDING.md and README.md
   - Solvr free pinning prominently featured
+
+## Task: intelligence — Add Groq-powered memory pruning (Phase 3) (DONE)
+- Created `scripts/memory-prune.sh` (427 lines) — Groq-powered memory evaluation and pruning
+- Reads config: `groq.apiKey` from env (GROQ_API_KEY) or config.json, `groq.model` (default: openai/gpt-oss-20b)
+- Scans `memory/*.md` files (maxdepth 1, excludes subdirectories like ontology/, learning/, archive/)
+- Calls Groq API with strict JSON schema (`response_format.json_schema.strict: True`)
+- Schema: `{ importance_score, should_keep, condensed_version, reasoning, tags }`
+- Pruning thresholds: importance < 0.3 -> archive to memory/archive/, 0.3-0.7 -> condense inline, >= 0.7 -> keep
+- Archive: moves file to memory/archive/ (preserves, doesn't delete)
+- Condense: replaces file content with Groq-generated condensed_version
+- `--dry-run` flag: preview what would be pruned without modifying files
+- `--config FILE` and `--content-dir DIR` for path overrides
+- Token usage tracked in `~/.amcp/groq-usage.json` (cumulative + per-session, last 50 entries)
+- Request body written to temp file for safe curl (avoids shell escaping issues)
+- File content truncated to 8000 chars for API (stays within context window)
+- Added `memory-prune` subcommand to proactive-amcp.sh CLI dispatcher
+- Verification:
+  - bash -n syntax check passes on both scripts
+  - File sizes: memory-prune.sh=427, proactive-amcp.sh=177 (both under 800)
+  - All structural grep checks pass: groq.apiKey, groq.model, strict, importance_score, archive_dir, DRY_RUN, track_usage
