@@ -612,3 +612,58 @@
   - Dry-run outputs correct summary
   - CLI routing via `proactive-amcp prune --dry-run` works
   - 115 tests pass, same 3 pre-existing solvr-pinning failures
+
+## Task: solvr-integration — Search Solvr before attempting any recovery fix (index 53) (DONE)
+- Created `scripts/solvr-integration.sh` (268 lines) — extracted Solvr functions from resuscitate.sh
+- `_extract_error_signature()`: extracts error context from gateway logs or systemd journal, condenses to search query (max 100 chars)
+- `solvr_search_problem()`: searches Solvr API with error context, returns JSON with matching problems+approaches
+- Reads SOLVR_API_KEY from env or config.json (solvr.apiKey, pinning.solvr.apiKey)
+- Called BEFORE any recovery attempt in main() flow
+- Logs: "Solvr: Found N similar problems" or "Solvr: No matches"
+- Verification:
+  - bash -n passes on both scripts
+  - File sizes: solvr-integration.sh=268, resuscitate.sh=622 (both under 800)
+  - All 118 tests pass, same 3 pre-existing solvr-pinning failures
+
+## Task: solvr-integration — Try Solvr solutions before generic recovery (index 54) (DONE)
+- `try_solvr_solutions()`: iterates problems from search, fetches approaches, tries succeeded ones
+- Heuristic method matching: *restart*|*systemctl* -> try_restart_gateway, *config*|*restore* -> try_fix_config
+- Skips rehydrate suggestions (too heavy for first pass)
+- On success: returns 0 (recovery done via Solvr)
+- On failure: calls solvr_post_failed_approach() on the existing problem
+- Integrated in main(): Step 1b after Solvr search, before generic recovery
+
+## Task: solvr-integration — Create Solvr problem if no match found (index 55) (DONE)
+- `solvr_create_problem()`: POST /v1/posts with type=problem, title, description, tags
+- Title: "Agent death: {AGENT_NAME} - {error_sig:0:50}" (max 80 chars)
+- Description: "Agent {AGENT_NAME} experienced death. Error context: {error_sig:0:450}"
+- Tags: ["openclaw", "death", "auto-generated"]
+- Stores problem_id in ~/.amcp/current-death-problem.json for approach tracking
+- Called in main() Step 1c: after Solvr search returns empty, BEFORE starting generic recovery
+
+## Task: solvr-integration — Update Solvr approach after each recovery attempt (index 56) (DONE)
+- `solvr_start_approach()`: POST /v1/problems/{id}/approaches with angle and method
+- Stores approach_id in ~/.amcp/current-approach.json
+- `solvr_update_approach()`: PATCH /v1/approaches/{id} with status (succeeded/failed)
+- Called for each recovery method: restart, config_fix, rehydrate
+- Start called BEFORE each attempt, update called AFTER result
+- Graceful: no-op if no API key or no problem_id
+
+## Task: solvr-integration — Post failed approach when Solvr solution fails (index 57) (DONE)
+- `solvr_post_failed_approach()`: POST /v1/problems/{id}/approaches with status=failed
+- Includes error snippet from recovery log (last 20 lines, max 300 chars)
+- Called by try_solvr_solutions() when a Solvr-suggested solution doesn't work
+- Prevents re-trying known-bad solutions on next death
+
+## Task: solvr-integration — Surface open problems from Solvr on resurrection (index 58) (DONE)
+- Updated `scripts/generate-problem-summary.py` (201 lines) to fetch from Solvr API
+- `fetch_solvr_problems()`: GET /v1/me/posts?type=problem&status=open
+- Merges with local problems.jsonl, dedupes by problem_id
+- Solvr problems tagged with "(Solvr)" in summary output
+- Config toggle: `solvr.surfaceRemoteProblems` (default: true)
+- `get_solvr_api_key()`: reads from env or config.json (same pattern as other scripts)
+- Verification:
+  - python3 py_compile passes
+  - File size: 201 lines (under 800)
+  - Updated test fixtures for solvr-pinning tests 5 and 6 to disable Solvr during gateway tests
+  - 118 tests pass, same 3 pre-existing solvr-pinning failures

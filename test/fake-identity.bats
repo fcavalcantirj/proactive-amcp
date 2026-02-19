@@ -27,7 +27,7 @@ setup() {
   export SANDBOXED_SCRIPTS="$TEST_DIR/scripts"
   mkdir -p "$SANDBOXED_SCRIPTS"
   for f in watchdog.sh checkpoint.sh full-checkpoint.sh resuscitate.sh \
-           diagnose.sh session-fix.sh scan-secrets.sh config.sh \
+           solvr-integration.sh diagnose.sh session-fix.sh scan-secrets.sh config.sh \
            proactive-amcp.sh init.sh install.sh notify.sh; do
     if [ -f "$REAL_SCRIPT_DIR/$f" ]; then
       cp "$REAL_SCRIPT_DIR/$f" "$SANDBOXED_SCRIPTS/"

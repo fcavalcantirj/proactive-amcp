@@ -16,9 +16,23 @@ RECOVERY_LOG="$HOME/.amcp/recovery-$(date +%Y%m%d-%H%M%S).log"
 LOCK_FILE="$HOME/.amcp/resurrection.lock"
 GATEWAY_SETTLE_TIME="${GATEWAY_SETTLE_TIME:-5}"
 
-# Solvr config (READ-ONLY)
-SOLVR_API_KEY="${SOLVR_API_KEY:-}"
+# Solvr config
 SOLVR_BASE="https://api.solvr.dev/v1"
+CURRENT_DEATH_PROBLEM_FILE="$HOME/.amcp/current-death-problem.json"
+CURRENT_APPROACH_FILE="$HOME/.amcp/current-approach.json"
+
+# Resolve SOLVR_API_KEY from env or config.json
+if [ -z "${SOLVR_API_KEY:-}" ]; then
+  SOLVR_API_KEY=$(python3 -c "
+import json, os
+p = os.path.expanduser('$HOME/.amcp/config.json')
+if not os.path.isfile(p): exit()
+d = json.load(open(p))
+key = (d.get('solvr',{}).get('apiKey') or
+       d.get('pinning',{}).get('solvr',{}).get('apiKey') or '')
+if key: print(key)
+" 2>/dev/null || echo "")
+fi
 
 # Track temp files for cleanup
 TEMP_FILES=()
@@ -174,24 +188,11 @@ $(tail -50 "$log_file" 2>/dev/null || echo "Log not available")
   [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "$body" --email "$subject"
 }
 
-# Solvr SEARCH only (no POST)
-solvr_search() {
-  local query="$1"
-  if [ -n "$SOLVR_API_KEY" ]; then
-    local result
-    result=$(curl -s --max-time 10 "$SOLVR_BASE/search?q=$(echo "$query" | sed 's/ /+/g')" \
-      -H "Authorization: Bearer $SOLVR_API_KEY" 2>/dev/null || echo '{}')
-
-    # Log if we found solutions
-    local count=$(echo "$result" | jq '.data | length' 2>/dev/null || echo "0")
-    if [ "$count" != "0" ] && [ "$count" != "null" ]; then
-      log "Solvr: Found $count potential solutions"
-      echo "$result" | jq -r '.data[:3][] | "  - \(.title)"' 2>/dev/null || true
-    fi
-  else
-    log "Solvr: No API key, skipping search"
-  fi
-}
+# --- Solvr integration (sourced from solvr-integration.sh) ---
+# Provides: solvr_search_problem, try_solvr_solutions, solvr_create_problem,
+#           solvr_start_approach, solvr_update_approach, solvr_post_failed_approach
+# shellcheck source=solvr-integration.sh
+source "$SCRIPT_DIR/solvr-integration.sh"
 
 # Fetch checkpoint from IPFS gateways (tries multiple in priority order)
 fetch_from_gateways() {
@@ -486,11 +487,35 @@ main() {
     "$SCRIPT_DIR/notify.sh" "🔄 [$AGENT_NAME] Starting resurrection..."
   fi
 
-  # Step 1: Search Solvr for similar issues (READ-ONLY)
+  # Step 1: Search Solvr for similar problems
   log ""
   log "=== Step 1: Search Solvr for solutions ==="
-  solvr_search "agent death gateway crash openclaw"
-  solvr_search "checkpoint resurrection failed"
+  local solvr_result
+  solvr_result=$(solvr_search_problem)
+
+  # Step 1b: Try Solvr solutions before generic recovery
+  log ""
+  log "=== Step 1b: Try Solvr-suggested solutions ==="
+  if try_solvr_solutions "$solvr_result"; then
+    local end_time=$(date +%s)
+    local downtime=$((end_time - start_time))
+    log "✅ Recovery succeeded via Solvr solution (${downtime}s)"
+    [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "✅ [$AGENT_NAME] Alive! Downtime: ${downtime}s. Method: Solvr solution"
+
+    echo "{\"method\":\"solvr_solution\",\"downtime\":$downtime,\"timestamp\":\"$(date -Iseconds)\"}" > "$HOME/.amcp/last-recovery.json"
+
+    surface_open_problems
+    send_resurrection_email "success" "solvr_solution" "$downtime" "$RECOVERY_LOG"
+    return 0
+  fi
+  log "Solvr solutions exhausted or unavailable"
+
+  # Step 1c: Create Solvr problem if no match found (for tracking approaches)
+  local solvr_count
+  solvr_count=$(echo "$solvr_result" | jq '.data | length' 2>/dev/null || echo "0")
+  if [ "$solvr_count" = "0" ] || [ "$solvr_count" = "null" ]; then
+    solvr_create_problem
+  fi
 
   # Step 2: Try recovery hierarchy (lightweight first)
   log ""
@@ -500,8 +525,10 @@ main() {
   log ""
   log "--- Attempt 1: Restart gateway ---"
   [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "🔄 [$AGENT_NAME] Trying: restart gateway"
+  solvr_start_approach "restart" "Restart gateway via systemctl or direct"
 
   if try_restart_gateway; then
+    solvr_update_approach "succeeded"
     local end_time=$(date +%s)
     local downtime=$((end_time - start_time))
     log "✅ Recovery succeeded: restart gateway (${downtime}s)"
@@ -516,14 +543,17 @@ main() {
     send_resurrection_email "success" "restart" "$downtime" "$RECOVERY_LOG"
     return 0
   fi
+  solvr_update_approach "failed"
   log "❌ Restart gateway failed"
 
   # 2b: Fix config
   log ""
   log "--- Attempt 2: Fix config ---"
   [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "🔄 [$AGENT_NAME] Trying: fix config"
+  solvr_start_approach "config_fix" "Restore openclaw.json from config backup"
 
   if try_fix_config; then
+    solvr_update_approach "succeeded"
     local end_time=$(date +%s)
     local downtime=$((end_time - start_time))
     log "✅ Recovery succeeded: fix config (${downtime}s)"
@@ -537,6 +567,7 @@ main() {
     send_resurrection_email "success" "config_fix" "$downtime" "$RECOVERY_LOG"
     return 0
   fi
+  solvr_update_approach "failed"
   log "❌ Fix config failed"
 
   # 2c: Rehydrate from checkpoint
@@ -548,8 +579,10 @@ main() {
   log ""
   log "--- Attempt 3: Rehydrate from checkpoint ---"
   [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "🔄 [$AGENT_NAME] Trying: rehydrate from checkpoint ${cid:-local}"
+  solvr_start_approach "rehydrate" "Full rehydrate from IPFS checkpoint ${cid:-local}"
 
   if try_rehydrate "$cid"; then
+    solvr_update_approach "succeeded"
     local end_time=$(date +%s)
     local downtime=$((end_time - start_time))
     log "✅ Recovery succeeded: rehydrate (${downtime}s)"
@@ -563,6 +596,7 @@ main() {
     send_resurrection_email "success" "rehydrate" "$downtime" "$RECOVERY_LOG"
     return 0
   fi
+  solvr_update_approach "failed"
   log "❌ Rehydrate failed"
 
   # All recovery methods failed

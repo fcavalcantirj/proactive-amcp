@@ -19,7 +19,7 @@ setup() {
   # Sandbox scripts
   export SANDBOXED_SCRIPTS="$TEST_DIR/scripts"
   mkdir -p "$SANDBOXED_SCRIPTS"
-  for f in pin-to-solvr.sh full-checkpoint.sh checkpoint.sh scan-secrets.sh resuscitate.sh inject-secrets.sh; do
+  for f in pin-to-solvr.sh full-checkpoint.sh checkpoint.sh scan-secrets.sh resuscitate.sh solvr-integration.sh inject-secrets.sh; do
     if [ -f "$REAL_SCRIPT_DIR/$f" ]; then
       cp "$REAL_SCRIPT_DIR/$f" "$SANDBOXED_SCRIPTS/"
       chmod +x "$SANDBOXED_SCRIPTS/$f"
@@ -301,6 +301,16 @@ with open('$AMCP_DIR/config.json', 'w') as f:
 # ============================================================
 
 @test "resuscitate.sh tries Solvr gateway first when fetching by CID" {
+  export SOLVR_API_KEY=""
+  # Disable Solvr in config for this test (testing gateway order, not Solvr integration)
+  python3 -c "
+import json
+with open('$AMCP_DIR/config.json') as f:
+    d = json.load(f)
+d.pop('solvr', None)
+with open('$AMCP_DIR/config.json', 'w') as f:
+    json.dump(d, f)
+"
   # Create a mock last-checkpoint.json
   cat > "$AMCP_DIR/last-checkpoint.json" << 'EOLC'
 {
@@ -333,6 +343,16 @@ EOLC
 # ============================================================
 
 @test "resuscitate.sh --gateway flag overrides default order" {
+  export SOLVR_API_KEY=""
+  # Disable Solvr in config for this test (testing gateway order, not Solvr integration)
+  python3 -c "
+import json
+with open('$AMCP_DIR/config.json') as f:
+    d = json.load(f)
+d.pop('solvr', None)
+with open('$AMCP_DIR/config.json', 'w') as f:
+    json.dump(d, f)
+"
   cat > "$AMCP_DIR/last-checkpoint.json" << 'EOLC'
 {
   "cid": "QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG",

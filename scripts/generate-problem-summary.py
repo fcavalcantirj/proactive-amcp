@@ -13,8 +13,11 @@ If --output is provided, writes to that file. Otherwise prints to stdout.
 import argparse
 import json
 import os
+import subprocess
 import sys
 from datetime import datetime, timezone
+from urllib.request import Request, urlopen
+from urllib.error import URLError
 
 
 def get_workspace():
@@ -58,7 +61,65 @@ def replay_problems(filepath):
     return states
 
 
-def generate_summary(learning_dir):
+def get_solvr_api_key():
+    """Read SOLVR_API_KEY from env or config.json."""
+    key = os.environ.get("SOLVR_API_KEY", "")
+    if key:
+        return key
+    config_path = os.path.expanduser("~/.amcp/config.json")
+    try:
+        with open(config_path) as f:
+            data = json.load(f)
+        key = (data.get("solvr", {}).get("apiKey", "") or
+               data.get("pinning", {}).get("solvr", {}).get("apiKey", ""))
+    except (IOError, json.JSONDecodeError):
+        pass
+    return key
+
+
+def should_surface_remote():
+    """Check config toggle: solvr.surfaceRemoteProblems (default: true)."""
+    config_path = os.path.expanduser("~/.amcp/config.json")
+    try:
+        with open(config_path) as f:
+            data = json.load(f)
+        return data.get("solvr", {}).get("surfaceRemoteProblems", True)
+    except (IOError, json.JSONDecodeError):
+        return True
+
+
+def fetch_solvr_problems(api_key):
+    """Fetch open problems from Solvr API (GET /v1/me/posts?type=problem&status=open)."""
+    if not api_key:
+        return []
+    base = os.environ.get("SOLVR_BASE_URL", "https://api.solvr.dev/v1")
+    url = f"{base}/me/posts?type=problem&status=open"
+    try:
+        req = Request(url, headers={
+            "Authorization": f"Bearer {api_key}",
+            "Accept": "application/json",
+        })
+        with urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode())
+        posts = data.get("data", data if isinstance(data, list) else [])
+        # Normalize to local problem format
+        problems = []
+        for p in posts:
+            problems.append({
+                "id": p.get("id", "?"),
+                "description": p.get("title", p.get("description", "(no description)")),
+                "status": p.get("status", "open"),
+                "attempts": len(p.get("approaches", [])),
+                "created": p.get("created_at", p.get("created", "unknown")),
+                "source": "solvr",
+            })
+        return problems
+    except (URLError, OSError, json.JSONDecodeError, KeyError) as e:
+        print(f"WARN: Solvr fetch failed: {e}", file=sys.stderr)
+        return []
+
+
+def generate_summary(learning_dir, include_solvr=True):
     """Generate markdown summary of open/stuck problems."""
     problems_file = os.path.join(learning_dir, "problems.jsonl")
     states = replay_problems(problems_file)
@@ -67,6 +128,16 @@ def generate_summary(learning_dir):
         p for p in states.values()
         if p.get("status") in ("open", "stuck")
     ]
+
+    # Merge Solvr remote problems (deduped by id)
+    if include_solvr and should_surface_remote():
+        api_key = get_solvr_api_key()
+        solvr_problems = fetch_solvr_problems(api_key)
+        local_ids = {p.get("id") for p in open_problems}
+        for sp in solvr_problems:
+            if sp["id"] not in local_ids:
+                open_problems.append(sp)
+                local_ids.add(sp["id"])
 
     if not open_problems:
         return ""
@@ -87,8 +158,10 @@ def generate_summary(learning_dir):
         status = p.get("status", "open")
         attempts = p.get("attempts", 0)
         created = p.get("created", "unknown")
+        source = p.get("source", "local")
 
-        lines.append(f"- **{pid}** [{status}]: {desc}")
+        source_tag = " (Solvr)" if source == "solvr" else ""
+        lines.append(f"- **{pid}** [{status}]{source_tag}: {desc}")
         if attempts > 0:
             lines.append(f"  - Attempts: {attempts}")
         lines.append(f"  - Created: {created[:10]}")
