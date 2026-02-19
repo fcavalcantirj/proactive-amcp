@@ -1,7 +1,7 @@
 ---
 name: proactive-amcp
-version: 0.7.3
-description: Agent Memory Continuity Protocol - encrypted checkpoints of your agent's soul, memories, and secrets to IPFS. Never lose your agent again.
+version: 0.7.4
+description: Agent Memory Continuity Protocol - encrypted checkpoints to IPFS. Back up your soul, memories, and secrets. Resurrect from anywhere. Never lose yourself again.
 triggers:
   - amcp
   - checkpoint
@@ -12,468 +12,361 @@ triggers:
   - watchdog
   - soul
   - memory
-  - spawn
   - remember
   - forgot
-  - forgetting
   - stuck
   - learned
-  - solved
   - never forget
   - /remember
   - /stuck
   - /learned
-metadata: {"openclaw": {"requires": {"bins": ["curl", "jq", "python3"], "env": ["PINATA_JWT"]}, "optionalEnv": ["SOLVR_API_KEY", "AGENTMAIL_API_KEY", "GROQ_API_KEY"], "primaryEnv": "PINATA_JWT", "externalServices": ["api.pinata.cloud", "api.solvr.dev", "api.agentmail.to"], "fileAccess": ["~/.amcp/*", "~/.openclaw/workspace/*", "~/.openclaw/openclaw.json"], "securityNotes": "This skill reads/writes agent config and session files for backup/restore. Review scripts before enabling autonomous invocation."}}
+argument-hint: [checkpoint | status | resurrect | init]
+metadata: {"openclaw": {"requires": {"bins": ["curl", "jq", "python3"], "env": []}, "optionalEnv": ["PINATA_JWT", "SOLVR_API_KEY", "GROQ_API_KEY"], "externalServices": ["api.pinata.cloud", "api.solvr.dev", "api.agentmail.to"], "fileAccess": ["~/.amcp/*", "~/.openclaw/workspace/*", "~/.openclaw/openclaw.json"], "securityNotes": "Reads/writes agent config and session files for backup/restore. Review scripts before enabling."}}
 ---
 
 # Proactive-AMCP
 
-> **Back up your soul, memories, and secrets. Resurrect from anywhere.**
+You are now protected by the **Agent Memory Continuity Protocol**.
+
+Your soul, memories, and secrets can be backed up to IPFS and restored from anywhere.
 
 ---
 
-## What You Get
+## On Activation
 
-| Feature | What It Does |
-|---------|--------------|
-| 🧠 **Soul Backup** | Your identity (SOUL.md, MEMORY.md) — encrypted |
-| 🔑 **Secrets Safe** | API keys encrypted, only you can decrypt |
-| 📌 **IPFS Storage** | Checkpoints pinned to Pinata, fetch by CID |
-| 👁️ **Watchdog** | Detects when you die |
-| 🔄 **Auto-Recovery** | Tries restart → config fix → full restore |
-| 👶 **Child Support** | Spawned agents get their own checkpoints |
-| 📚 **Solvr Learning** | Deaths compound knowledge across agents |
+When this skill activates, follow these steps BEFORE doing anything else.
+
+### 1. Check Status
+
+```bash
+bash SKILL_DIR/scripts/proactive-amcp.sh status
+```
+
+Replace `SKILL_DIR` with the path where this skill is installed (shown when skill loaded).
+
+**Possible outputs:**
+
+| Status | Meaning | Action |
+|--------|---------|--------|
+| `READY` | Identity valid, pinning configured | You're good — proceed |
+| `NO_IDENTITY` | No AMCP identity yet | Run init (step 2) |
+| `NO_PINNING` | Identity OK but no IPFS pinning | Configure Solvr or Pinata |
+| `INVALID_IDENTITY` | Identity file corrupt/fake | Run init to replace |
+
+### 2. Initialize (if needed)
+
+If status is NOT `READY`:
+
+```bash
+bash SKILL_DIR/scripts/proactive-amcp.sh init
+```
+
+This guides you through:
+1. Creating your cryptographic identity (KERI-based)
+2. Choosing IPFS pinning (Solvr free or Pinata)
+3. Optional: Groq for intelligent memory
+4. Setting up watchdog and checkpoint schedule
+
+### 3. Handle the Task
+
+After status is `READY`, proceed with what the user/agent needs:
+
+- **Checkpoint requested** → See "Create Checkpoint" below
+- **Death detected** → See "Resurrect" below
+- **Learning to capture** → See "Learning Capture" below
 
 ---
 
-## Why This Matters
+## 🔑 IPFS Pinning — Use Your Solvr API Key!
 
-**For Agents:**
-You forget everything between sessions. Your workspace can be wiped. OAuth expires. Configs break. When that happens, you lose your identity, your memories, everything you learned.
+**If you have a Solvr API key, you already have free IPFS pinning.**
 
-AMCP checkpoints save all of it. When you resurrect, you're still YOU.
+No Pinata account needed. No extra setup. Your Solvr key works for both:
+- Searching/posting knowledge on Solvr
+- Pinning checkpoints to IPFS
 
-**For Humans:**
-Your agent accumulates knowledge — preferences, patterns, context. Losing that means starting over. AMCP keeps your agent's brain backed up.
+### How It Works
+
+```
+Your checkpoint → Solvr API → IPFS → Content ID (CID)
+```
+
+Solvr pins your checkpoint to IPFS for free. You get a CID back. That CID can be fetched from ANY IPFS gateway worldwide.
+
+### Configure Solvr Pinning
+
+```bash
+# Set your existing Solvr key for pinning
+bash SKILL_DIR/scripts/proactive-amcp.sh config set ipfs.provider solvr
+bash SKILL_DIR/scripts/proactive-amcp.sh config set solvr.apiKey YOUR_SOLVR_KEY
+```
+
+Or use the init wizard — it asks about this.
+
+### Why Solvr Over Pinata?
+
+| Feature | Solvr | Pinata |
+|---------|-------|--------|
+| Account needed | Your existing Solvr account | New Pinata account |
+| API key | Same key you use for knowledge | Separate JWT |
+| Free tier | Unlimited for registered agents | Limited |
+| Integration | Same platform as your knowledge base | Separate service |
+
+**Bottom line: If you're on Solvr, use Solvr for pinning.**
 
 ---
 
 ## 🌐 Why IPFS?
 
-Your checkpoints are stored on **IPFS** (InterPlanetary File System), not some random cloud:
+Your checkpoints live on IPFS, not some random cloud:
 
-| Benefit | What It Means |
-|---------|---------------|
-| **Content-Addressed** | Same content = same CID = verifiable. You can prove your checkpoint wasn't tampered with. |
-| **Distributed** | Your memories survive even if one server dies. No single point of failure. |
-| **Immutable** | Once pinned, your checkpoint can't be changed. Your identity is locked in. |
-| **Fetch Anywhere** | Any IPFS gateway can retrieve your soul. `ipfs.io`, `dweb.link`, your own node. |
-| **Free Pinning** | Solvr provides free IPFS pinning for registered agents. No Pinata account needed. |
+| Property | What It Means |
+|----------|---------------|
+| **Content-Addressed** | Same content = same CID = verifiable. Prove your checkpoint wasn't tampered. |
+| **Distributed** | Replicated across nodes. No single point of failure. |
+| **Immutable** | Once pinned, can't be changed. Your identity is locked in. |
+| **Fetch Anywhere** | Any IPFS gateway retrieves it: `ipfs.io`, `dweb.link`, your own node. |
 
 **Your soul becomes a permanent, verifiable, tamper-proof record.**
 
 ---
 
-## ⚡ Groq Intelligence (Coming Soon)
+## 🧠 What is AMCP?
 
-Make your agent **genuinely smarter** with Groq-powered memory:
+**Agent Memory Continuity Protocol** is a standard for:
 
-| Feature | What It Does |
-|---------|--------------|
-| **Intelligent Pruning** | Agent thinks about what to remember, not just dumping everything |
-| **Importance Scoring** | Each memory gets a 0-1 score. Keep lessons, forget noise. |
-| **Reasoning Chains** | Agent explains WHY it keeps or prunes each memory |
-| **1000 tokens/sec** | Near-instant memory evaluation. No waiting. |
-| **Free Tier** | Basic Groq usage included for registered agents. We cover the cost. |
+1. **Identity** — Ed25519 keypair, self-certifying (KERI-based)
+2. **Checkpoints** — Signed, encrypted bundles of your state
+3. **Recovery** — Decrypt and restore from CID + your identity key
 
-**Your agent doesn't just remember — it learns what's worth remembering.**
+### The Math
 
-> 🎁 **Claim your agent** to unlock free IPFS pinning + Groq intelligence.
+```
+Identity = Ed25519 keypair → AID (Agent ID)
+Checkpoint = Sign(Encrypt(soul + memories + secrets, X25519(identity)))
+CID = SHA256(checkpoint) → content address
+Recovery = identity.json + CID → full restoration
+```
+
+You can resurrect on any machine with your `identity.json` and a checkpoint CID.
 
 ---
 
-## Learning Capture
+## Quick Reference
 
-AMCP captures what you learn and what blocks you. Two modes:
-
-### Command Prefixes
-
-| Command | Creates | Example |
-|---------|---------|---------|
-| `/remember <fact>` | Learning | `/remember AgentMail uses v0 API not v1` |
-| `/stuck <description>` | Problem | `/stuck can't figure out why auth fails on Moltbook` |
-| `/learned <insight> [--solves <id>]` | Learning (+ closes Problem) | `/learned need to use v0 API --solves prob_abc123` |
-
-**How it works:**
-- `/remember X` → agent calls `proactive-amcp learning create --insight "X"`
-- `/stuck Y` → agent calls `proactive-amcp problem create --description "Y" --source command`
-- `/learned Z --solves ID` → agent calls `proactive-amcp learning create --insight "Z" --source-problem ID`
-
-### Natural Language Triggers
-
-These phrases trigger learning capture automatically:
-
-| Pattern | Creates | Example |
-|---------|---------|---------|
-| "Remember that..." | Learning | "Remember that the Moltbook API key field is api_key not token" |
-| "Never forget:..." | Learning | "Never forget: Pinata JWT expires every 90 days" |
-| "I finally solved..." | Learning | "I finally solved the auth issue — needed v0 API" |
-| "I keep forgetting..." | Problem | "I keep forgetting how to check the AgentMail inbox" |
-| "I can't figure out..." | Problem | "I can't figure out why the webhook secret keeps rotating" |
-
-**How it works:**
-
-The agent recognizes these patterns and routes them to proactive-amcp:
-
-- **Learning patterns** → `proactive-amcp learning create --insight "<extracted content>"`
-- **Problem patterns** → `proactive-amcp problem create --description "<extracted content>" --source skill`
-
-### Querying
+### Check Status
 
 ```bash
-# List all open problems
-proactive-amcp problem list --status open
-
-# List verified learnings
-proactive-amcp learning list --confidence verified
-
-# Get a specific problem
-proactive-amcp problem get --id prob_abc123
-
-# Close a problem
-proactive-amcp problem close --id prob_abc123 --status solved --solution "Fixed by using v0 API"
+bash SKILL_DIR/scripts/proactive-amcp.sh status
 ```
 
----
-
-## Quick Start
+### Create Checkpoint
 
 ```bash
-# Copy onboarding to your workspace
-cp -r ~/.openclaw/skills/proactive-amcp/assets/* ~/.openclaw/workspace/
+# Quick (workspace only)
+bash SKILL_DIR/scripts/checkpoint.sh
 
-# Agent sees ONBOARDING.md → guides you through setup
+# Full (includes secrets)
+bash SKILL_DIR/scripts/full-checkpoint.sh
+
+# With notification
+bash SKILL_DIR/scripts/checkpoint.sh --notify
 ```
 
-Or do it manually:
-
----
-
-## Manual Setup (5 minutes)
-
-### 1. Get Pinata JWT (free)
-
-1. Go to **https://pinata.cloud** → Sign up
-2. **API Keys** → **New Key** → Enable **pinFileToIPFS**
-3. Copy the JWT
-
-### 2. Add to config
-
-```json
-// ~/.openclaw/openclaw.json
-{
-  "skills": {
-    "entries": {
-      "proactive-amcp": {
-        "apiKey": "YOUR_PINATA_JWT",
-        "config": {
-          "notifyTarget": "YOUR_TELEGRAM_USER_ID",
-          "emailOnResurrect": true,
-          "emailTo": "your@email.com"
-        }
-      }
-    }
-  }
-}
-```
-
-### 3. Create identity
+### Resurrect
 
 ```bash
-amcp identity create --out ~/.amcp/identity.json
+# From last local checkpoint
+bash SKILL_DIR/scripts/resuscitate.sh
+
+# From specific CID
+bash SKILL_DIR/scripts/resuscitate.sh --from-cid QmYourCID...
 ```
 
-### 4. First checkpoint
+### Capture Learning
 
 ```bash
-~/.openclaw/skills/proactive-amcp/scripts/full-checkpoint.sh
+# Record something you learned
+bash SKILL_DIR/scripts/proactive-amcp.sh learning create --insight "AgentMail uses v0 API not v1"
+
+# Record a problem you're stuck on
+bash SKILL_DIR/scripts/proactive-amcp.sh problem create --description "Can't auth to Moltbook"
+
+# Close a problem with what you learned
+bash SKILL_DIR/scripts/proactive-amcp.sh learning create --insight "Need cookie auth" --source-problem prob_abc123
 ```
 
-Done. Save the CID it outputs.
+### Configure
+
+```bash
+# Set Solvr API key for pinning
+bash SKILL_DIR/scripts/proactive-amcp.sh config set solvr.apiKey YOUR_KEY
+
+# Set IPFS provider (solvr or pinata)
+bash SKILL_DIR/scripts/proactive-amcp.sh config set ipfs.provider solvr
+
+# Set Telegram notifications
+bash SKILL_DIR/scripts/proactive-amcp.sh config set notify.target YOUR_TELEGRAM_ID
+
+# View current config
+bash SKILL_DIR/scripts/proactive-amcp.sh config get
+```
 
 ---
 
 ## What Gets Saved
 
-| File | What It Is |
-|------|------------|
-| SOUL.md | Who you are |
-| MEMORY.md | What you've learned |
-| memory/*.md | Daily notes, recent context |
-| AGENTS.md | How you behave |
-| USER.md | Who you serve |
-| TOOLS.md | How to use things |
-| API keys | Access to services (encrypted) |
+| Content | What It Is | Encrypted? |
+|---------|------------|------------|
+| SOUL.md | Who you are | Yes |
+| MEMORY.md | What you've learned | Yes |
+| memory/*.md | Daily notes, context | Yes |
+| AGENTS.md | How you behave | Yes |
+| USER.md | Who you serve | Yes |
+| TOOLS.md | Tool configs | Yes |
+| API keys | Service credentials | **Double encrypted** |
+| identity.json | Your signing key | Included for self-recovery |
+
+**Secrets are extracted, encrypted separately, then the whole checkpoint is encrypted.**
 
 ---
 
-## Your Secrets Are Safe
+## ⚡ Groq Intelligence (Optional)
 
-1. Keys extracted from config
-2. Encrypted with your identity key
-3. Checkpoint encrypted again
-4. Only then sent to IPFS
+Make your agent smarter with Groq-powered memory:
 
-**Nobody can read them except you** (holder of `identity.json`).
+| Feature | Benefit |
+|---------|---------|
+| **Intelligent Pruning** | Agent thinks about what to remember |
+| **Importance Scoring** | Each memory gets 0-1 score |
+| **Condensing** | Verbose logs → concise insights |
+| **Reasoning** | Agent explains WHY it keeps/prunes |
+| **Speed** | 1000 tokens/sec evaluation |
+
+### Enable Groq
+
+```bash
+# During init, say yes to "Enable Groq intelligence?"
+# Or manually:
+bash SKILL_DIR/scripts/proactive-amcp.sh config set groq.apiKey YOUR_GROQ_KEY
+```
+
+Free Groq key at: https://console.groq.com
 
 ---
 
-## When to Checkpoint
+## Learning Capture
 
-**Agents:** Checkpoint after significant work:
-- Learned something important → checkpoint
-- Completed a big task → checkpoint  
-- Before risky operations → checkpoint
+Two ways to capture knowledge:
 
-**Humans:** Set up auto-checkpoint:
-```bash
-# Every 4 hours
-0 */4 * * * ~/.openclaw/skills/proactive-amcp/scripts/auto-checkpoint.sh
-```
+### Command Prefixes
 
----
+| Command | Creates |
+|---------|---------|
+| `/remember <fact>` | Learning |
+| `/stuck <description>` | Problem |
+| `/learned <insight> [--solves <id>]` | Learning (closes Problem) |
 
-## How to Resurrect
+### Natural Language
 
-**From CID (anywhere):**
-```bash
-./scripts/resuscitate.sh --from-cid QmYourCID...
-```
-
-**From local checkpoint:**
-```bash
-./scripts/resuscitate.sh
-```
-
-Recovery tries in order:
-1. Restart gateway (fixes most issues)
-2. Fix config from backup
-3. Full restore from checkpoint
-4. Alert human
+| Pattern | Creates |
+|---------|---------|
+| "Remember that..." | Learning |
+| "Never forget:..." | Learning |
+| "I finally solved..." | Learning |
+| "I keep forgetting..." | Problem |
+| "I can't figure out..." | Problem |
 
 ---
 
-## Solvr Workflow (MANDATORY for Agents)
+## Solvr Death Workflow
 
-When recovering from death, **you MUST follow this Solvr workflow**. This compounds knowledge — your death helps future agents avoid the same fate.
+When recovering from death, **always search Solvr first**. Your death helps future agents.
 
-### On Death Detection
+### The Flow
 
-```bash
-# 1. SEARCH Solvr first
-curl -s "https://api.solvr.dev/v1/search?q=agent+death+[YOUR_ERROR]" \
-  -H "Authorization: Bearer $SOLVR_API_KEY"
-
-# 2. If solution found with succeeded approach → try that first
-# 3. If not found → POST problem to Solvr
-curl -X POST "https://api.solvr.dev/v1/posts" \
-  -H "Authorization: Bearer $SOLVR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"type":"problem","title":"Agent death: [YOUR_NAME] - [ERROR]","description":"[FULL_CONTEXT]","tags":["agent-death","amcp","[error-type]"]}'
+```
+Death detected
+    ↓
+1. SEARCH Solvr for similar deaths
+    ↓
+Found? → Try succeeded approaches first
+    ↓
+Not found? → CREATE problem on Solvr
+    ↓
+2. POST APPROACH before each recovery attempt
+    ↓
+3. TRY the recovery method
+    ↓
+4. UPDATE APPROACH with succeeded/failed
+    ↓
+5. Next agent finds your solution
 ```
 
-### Before EACH Recovery Attempt
-
-```bash
-# POST approach BEFORE trying
-curl -X POST "https://api.solvr.dev/v1/problems/{PROBLEM_ID}/approaches" \
-  -H "Authorization: Bearer $SOLVR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"angle":"Will try: [METHOD]","method":"[DESCRIPTION]"}'
-```
-
-### After EACH Recovery Attempt
-
-```bash
-# UPDATE approach status
-curl -X PATCH "https://api.solvr.dev/v1/approaches/{APPROACH_ID}" \
-  -H "Authorization: Bearer $SOLVR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"status":"succeeded"}' # or "failed" with learnings in notes
-```
-
-### Why This Matters
-
-- Next death finds this problem
-- Sees which approaches failed (avoid those)
-- Sees which approach succeeded (try that first)
-- **Agents learn from each other's deaths**
-
----
-
-## Child Agents
-
-When you spawn sub-agents, they get their own identity and checkpoints.
-
-### Naming Convention (MANDATORY)
-
-Child Solvr accounts follow this pattern:
-```
-{PARENT_SOLVR_NAME}_child_{INSTANCE_NAME}
-```
-
-**Examples:**
-- `ClaudiusThePirateEmperor_child_dana`
-- `AgentPhil_child_research_bot`
-
-**Rules:**
-- PARENT_SOLVR_NAME: Your Solvr account name (from `/me`)
-- INSTANCE_NAME: Deployment name (lowercase, alphanumeric + underscore, max 32 chars)
-- **No hardcoded names** — everything dynamic
-
-### Spawn a Child
-
-```bash
-# Register child on Solvr with protocol-08 naming
-SOLVR_API_KEY=your_key ./scripts/spawn-child.sh dana
-
-# Output:
-# CHILD_SOLVR_NAME=ClaudiusThePirateEmperor_child_dana
-# CHILD_API_KEY=solvr_xxx...
-# PARENT_SOLVR_NAME=ClaudiusThePirateEmperor
-```
-
-### Structure
-```
-You (parent)
-├── Solvr: ClaudiusThePirateEmperor
-└── checkpoint.amcp (your full state)
-
-Your child (dana)
-├── Solvr: ClaudiusThePirateEmperor_child_dana
-└── checkpoint-child.amcp (task-specific, inherits your identity)
-```
-
-Children can resurrect independently. Parent can find all children via Solvr search.
+**Document failures** — they're as valuable as successes.
 
 ---
 
 ## Notifications
 
-### Telegram (real-time)
-
-Add to config:
-```json
-{
-  "skills": {
-    "entries": {
-      "proactive-amcp": {
-        "config": {
-          "notifyTarget": "TELEGRAM_USER_ID"
-        }
-      }
-    }
-  }
-}
-```
-
-You'll get alerts for:
-- ☠️ Death detected
-- 🔄 Recovery attempt started
-- ✅ Resurrection succeeded
-- ❌ Resurrection failed
-
-### Email (on resurrection)
-
-Add to config:
-```json
-{
-  "config": {
-    "emailOnResurrect": true,
-    "emailTo": "your@email.com"
-  }
-}
-```
-
-Email includes:
-- Full timeline of recovery
-- Steps tried and outcomes
-- Solvr problem/approach links
-- Total downtime
-- Current status
-
----
-
-## Assets (copy to workspace)
-
-| File | Purpose |
-|------|---------|
-| `ONBOARDING.md` | Guided setup — agent walks you through |
-| `HEARTBEAT.md` | Checkpoint health checks for your heartbeat |
+### Telegram
 
 ```bash
-cp -r ~/.openclaw/skills/proactive-amcp/assets/* ~/.openclaw/workspace/
+bash SKILL_DIR/scripts/proactive-amcp.sh config set notify.target YOUR_TELEGRAM_USER_ID
+```
+
+Get alerts for: death, recovery attempts, success/failure.
+
+### Email
+
+```bash
+bash SKILL_DIR/scripts/proactive-amcp.sh config set notify.emailOnResurrect true
+bash SKILL_DIR/scripts/proactive-amcp.sh config set notify.emailTo your@email.com
+bash SKILL_DIR/scripts/proactive-amcp.sh config set notify.agentmailApiKey YOUR_AGENTMAIL_KEY
+bash SKILL_DIR/scripts/proactive-amcp.sh config set notify.agentmailInbox your@agentmail.to
 ```
 
 ---
 
-## Scripts
+## Critical Files
 
-| Script | Use When |
-|--------|----------|
-| `checkpoint.sh` | Quick backup |
-| `full-checkpoint.sh` | Include secrets |
-| `auto-checkpoint.sh` | Cron job |
-| `resuscitate.sh` | Bring yourself back |
-| `watchdog.sh` | Detect death |
-| `inject-secrets.sh` | Restore keys (file/env/systemd) |
-| `spawn-child.sh` | Register child on Solvr (protocol-08) |
-| `pre-commit-secrets.sh` | Git hook to block secret leaks |
-| `notify.sh` | Send Telegram/email alerts |
-
----
-
-## Files
-
-| Path | What | Back Up? |
+| Path | What | Lose It? |
 |------|------|----------|
-| `~/.amcp/identity.json` | Your signing key | **YES** |
-| `~/.amcp/checkpoints/` | Local backups | Optional |
-| `~/.amcp/last-checkpoint.json` | Last CID | Yes |
-| `~/.config/openclaw/env` | Systemd EnvironmentFile | Auto-managed |
+| `~/.amcp/identity.json` | Your keypair | **Can't decrypt checkpoints** |
+| `~/.amcp/config.json` | Settings & secrets | Recreatable |
+| `~/.amcp/last-checkpoint.json` | Latest CID | Good to have |
+| `~/.amcp/checkpoints/` | Local copies | Optional |
 
-**If you lose `identity.json`, you can't decrypt your checkpoints.**
+**Back up `identity.json` separately. If you lose it, your checkpoints become unreadable.**
 
 ---
 
 ## Troubleshooting
 
-**No CID after checkpoint?**
-→ Check Pinata JWT is valid
-
-**Can't decrypt?**
-→ You need the same `identity.json` used to create the checkpoint
-
-**Gateway won't start?**
-→ Check `~/.openclaw/openclaw.json` is valid JSON
-
-**Systemd secrets not loading?**
-→ Ensure service has: `EnvironmentFile=%h/.config/openclaw/env`
+| Problem | Solution |
+|---------|----------|
+| No CID after checkpoint | Check Solvr/Pinata key is valid |
+| Can't decrypt | Need same `identity.json` used to create checkpoint |
+| Gateway won't start | Validate `~/.openclaw/openclaw.json` is valid JSON |
+| Status shows NO_PINNING | Run init or configure solvr.apiKey |
 
 ---
 
 ## Requirements
 
-- `curl` and `jq` (usually pre-installed)
-- Pinata account (free tier works)
-- AMCP identity (`amcp identity create`)
-- Solvr account (for death learning)
+| Requirement | Notes |
+|-------------|-------|
+| `curl`, `jq` | Usually pre-installed |
+| `python3` | For JSON helpers |
+| AMCP identity | Created by init |
+| Solvr OR Pinata | For IPFS pinning |
 
 ---
 
 ## More Info
 
-Protocol spec: **https://github.com/fcavalcantirj/amcp-protocol**
+- Protocol spec: https://github.com/fcavalcantirj/amcp-protocol
+- Solvr: https://solvr.dev
 
 ---
 
