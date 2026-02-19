@@ -1153,3 +1153,30 @@
   - All 10 functional tests pass: list_default, add_groq, add_ollama, duplicate_update, set_consensus, validation_rejects, show, remove_by_type, remove_by_index, routing_via_config_sh
   - Structural grep: evaluators (55), type/model/weight/apiKey (94 total), consensus keys (40 total), list/add/remove (6), routing (3), default groq (4)
   - All 126 existing tests pass (no regressions)
+
+## Task: P4-INF-01 — Create openclaw.plugin.json manifest (DONE)
+- Created `openclaw.plugin.json` (159 lines) — OpenClaw plugin manifest with configSchema
+- Plugin metadata: id=proactive-amcp, name="Proactive AMCP", version=1.0.0
+- configSchema (JSON Schema, additionalProperties: false):
+  - `enabled` (boolean, default: true) — master switch for plugin layer
+  - `autoCheckpoint` (boolean, default: true) — auto-checkpoint on lifecycle events
+  - `checkpointIntervalMs` (number, default: 0, min: 0) — time-based checkpoint interval
+  - `contextThreshold` (number, default: 70, min: 0, max: 100) — context % trigger for checkpoints
+  - `ipfsPinningService` (enum: pinata, solvr, local, default: solvr) — IPFS provider selection
+  - `encryptionKeyPath` (string, default: ~/.amcp/identity.json) — KERI identity file path
+  - `checkpointCooldownMs` (number, default: 300000) — cooldown between checkpoints
+  - `memoryIntegrity` (object) — enabled, promptInjectionScan, autoRestore
+  - `identity` (object) — autoInject, verifyOnStart
+  - `resurrection` (object) — autoDetect, injectRecoveryPrompt
+- uiHints for all 14 config options with label + help text
+- Declared services: amcp-context-monitor, amcp-memory-monitor
+- Declared hooks: gateway_start, gateway_stop, session_start, session_end, before_compaction, before_agent_start
+- Declared CLI namespace: amcp (commands: status, checkpoint, resurrect, identity, history, verify)
+- Verification:
+  - Valid JSON (python3 json.load passes)
+  - All 5 PRD steps verified:
+    1. id='proactive-amcp', version, description present
+    2. autoCheckpoint (boolean), checkpointIntervalMs (number), contextThreshold (number 0-100) present
+    3. ipfsPinningService enum (pinata, solvr, local), encryptionKeyPath (string) present
+    4. uiHints for all config options with labels
+    5. JSON schema validates correctly
