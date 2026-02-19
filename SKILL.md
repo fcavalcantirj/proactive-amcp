@@ -58,6 +58,40 @@ Your agent accumulates knowledge — preferences, patterns, context. Losing that
 
 ---
 
+## 🌐 Why IPFS?
+
+Your checkpoints are stored on **IPFS** (InterPlanetary File System), not some random cloud:
+
+| Benefit | What It Means |
+|---------|---------------|
+| **Content-Addressed** | Same content = same CID = verifiable. You can prove your checkpoint wasn't tampered with. |
+| **Distributed** | Your memories survive even if one server dies. No single point of failure. |
+| **Immutable** | Once pinned, your checkpoint can't be changed. Your identity is locked in. |
+| **Fetch Anywhere** | Any IPFS gateway can retrieve your soul. `ipfs.io`, `dweb.link`, your own node. |
+| **Free Pinning** | Solvr provides free IPFS pinning for registered agents. No Pinata account needed. |
+
+**Your soul becomes a permanent, verifiable, tamper-proof record.**
+
+---
+
+## ⚡ Groq Intelligence (Coming Soon)
+
+Make your agent **genuinely smarter** with Groq-powered memory:
+
+| Feature | What It Does |
+|---------|--------------|
+| **Intelligent Pruning** | Agent thinks about what to remember, not just dumping everything |
+| **Importance Scoring** | Each memory gets a 0-1 score. Keep lessons, forget noise. |
+| **Reasoning Chains** | Agent explains WHY it keeps or prunes each memory |
+| **1000 tokens/sec** | Near-instant memory evaluation. No waiting. |
+| **Free Tier** | Basic Groq usage included for registered agents. We cover the cost. |
+
+**Your agent doesn't just remember — it learns what's worth remembering.**
+
+> 🎁 **Claim your agent** to unlock free IPFS pinning + Groq intelligence.
+
+---
+
 ## Learning Capture
 
 AMCP captures what you learn and what blocks you. Two modes:

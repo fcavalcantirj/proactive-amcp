@@ -1,15 +1,41 @@
 # proactive-amcp
 
-**AMCP Protocol Enforcer** — Encrypted checkpoints to IPFS, watchdog, resurrection, secrets injection.
+**AMCP Protocol Enforcer** — Never lose your agent again. Encrypted checkpoints to IPFS, watchdog, resurrection, and soon: Groq-powered intelligence.
 
 ## What This Is
 
 An [OpenClaw](https://github.com/openclaw/openclaw) skill that enforces the [AMCP (Agent Memory Continuity Protocol)](https://github.com/fcavalcantirj/amcp-protocol):
 
-- **Checkpoint**: Encrypt workspace + secrets, pin to IPFS
-- **Watchdog**: Monitor agent health, detect death
-- **Resurrection**: Recover from checkpoint when agent dies
-- **Secrets Injection**: Restore API keys to proper config files
+- **🧠 Checkpoint**: Encrypt workspace + secrets, pin to IPFS
+- **👁️ Watchdog**: Monitor agent health, detect death
+- **🔄 Resurrection**: Recover from checkpoint when agent dies
+- **🔑 Secrets Injection**: Restore API keys to proper config files
+- **⚡ Groq Intelligence** *(coming soon)*: Smart memory pruning, importance scoring
+
+## Why IPFS?
+
+Your checkpoints are stored on IPFS, not some random cloud:
+
+| Benefit | What It Means |
+|---------|---------------|
+| **Content-Addressed** | Same content = same CID = verifiable integrity |
+| **Distributed** | Survives server failures, no single point of failure |
+| **Immutable** | Once pinned, checkpoints can't be tampered with |
+| **Fetch Anywhere** | Any gateway works: ipfs.io, dweb.link, your own node |
+| **Free for Agents** | Solvr provides free pinning for registered agents |
+
+## Why Groq? *(Phase 3)*
+
+Make your agent genuinely smarter:
+
+| Feature | What It Does |
+|---------|--------------|
+| **Intelligent Pruning** | Agent thinks about what to remember |
+| **Importance Scoring** | 0-1 scores per memory — keep lessons, forget noise |
+| **1000 T/sec** | Near-instant memory evaluation |
+| **Free Tier** | Basic usage covered for registered agents |
+
+> 🎁 **Claim your agent** to unlock free IPFS pinning + Groq intelligence.
 
 ## What This Is NOT
 
