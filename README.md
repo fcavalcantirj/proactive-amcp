@@ -1,6 +1,6 @@
 # proactive-amcp
 
-**AMCP Protocol Enforcer** — Never lose your agent again. Encrypted checkpoints to IPFS, watchdog, resurrection, and soon: Groq-powered intelligence.
+**AMCP Protocol Enforcer** — Never lose your agent again. Encrypted checkpoints to IPFS, watchdog, resurrection, and Groq-powered intelligence.
 
 ## What This Is
 
@@ -13,7 +13,7 @@ An [OpenClaw](https://github.com/openclaw/openclaw) skill that enforces the [AMC
 - **🔑 Secrets Injection**: Restore API keys to proper config files
 - **🐍 Venv Auto-Recovery**: Rebuild Python virtual environments from manifest on resurrection
 - **🕸️ Ontology Integration**: Typed knowledge graphs with schema validation, identity drift detection, typed pruning policies, temporal queries, memory evolution, and Design by Contract for skills
-- **⚡ Groq Intelligence** *(coming soon)*: Smart memory pruning, importance scoring
+- **⚡ Groq Intelligence** *(optional)*: Memory pruning with importance scoring, error log condensing, smart checkpoint content selection, batch evaluation for cost savings
 
 ## Why This Matters
 
@@ -33,18 +33,34 @@ checkpoint → encrypt + sign → CID (bafkrei...) → IPFS → any gateway, any
 
 **Your soul becomes a permanent, verifiable, tamper-proof record on a global network.**
 
-## Why Groq? *(Phase 3)*
+## Groq Intelligence (Optional)
 
-Make your agent genuinely smarter:
+Make your agent genuinely smarter. All Groq features are optional — the skill works fully without them.
 
 | Feature | What It Does |
 |---------|--------------|
-| **Intelligent Pruning** | Agent thinks about what to remember |
-| **Importance Scoring** | 0-1 scores per memory — keep lessons, forget noise |
-| **1000 T/sec** | Near-instant memory evaluation |
-| **Free Tier** | Basic usage covered for registered agents |
+| **Memory Pruning** | Evaluate each memory file for importance (0-1 score). Archive noise, condense routine logs, keep lessons |
+| **Error Condensing** | Condense verbose error logs to ~100 char summaries preserving root cause. Integrated into watchdog notifications |
+| **Smart Checkpoints** | Groq decides what goes into each checkpoint. Identity-critical files always included, ephemeral files filtered out |
+| **Batch Evaluation** | Groq batch API for 50% cost savings on memory pruning. Submit → poll → apply workflow |
+| **1000 T/sec** | Near-instant memory evaluation via Groq inference |
+| **Free Tier** | Request a free Groq key via Solvr (`proactive-amcp groq request-key`) |
 
-> 🎁 **Claim your agent** to unlock free IPFS pinning + Groq intelligence.
+```bash
+# Preview memory pruning
+proactive-amcp memory-prune --dry-run
+
+# Apply pruning (archive low, condense medium, keep high)
+proactive-amcp memory-prune
+
+# Smart checkpoint — Groq filters content
+proactive-amcp checkpoint --smart
+
+# Check Groq usage
+proactive-amcp groq status
+```
+
+> **Is Groq required?** No. Without Groq, checkpoints include all files, pruning uses rule-based policies only, and error messages are truncated instead of condensed. Groq makes the agent smarter but is never a dependency.
 
 ## What This Is NOT
 

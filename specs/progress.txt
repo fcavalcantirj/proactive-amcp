@@ -979,3 +979,25 @@
     - Groq strict JSON schema (3 refs)
     - Token usage tracking (3 refs)
     - Excluded files removed from staging (4 refs)
+
+## Task: documentation — Document Groq intelligence features in CLAUDE.md and README.md (DONE)
+- Added "## Groq Intelligence (Optional)" section to CLAUDE.md (~90 lines) after Pinning Providers
+- Documented all 5 Groq features: memory pruning, error condensing, smart checkpoints, batch evaluation, key management
+- Documented config options: groq.apiKey, groq.model, groq.source with table
+- Documented CLI commands with examples: memory-prune (--dry-run, --batch), condense-error (--input, --stdin), checkpoint --smart, groq status/request-key
+- Documented scoring tiers (critical/high/medium/low), caching behavior, fallback behavior
+- Added 5 Groq scripts to File Map: memory-prune.sh, memory-prune-batch.sh, condense-error.sh, smart-checkpoint-filter.sh, groq-status.sh
+- Updated Data Flows: checkpoint flow includes smart filtering, watchdog flow includes error condensing
+- Added Groq config keys to Config and State Files section (groq.apiKey, groq.model, groq.source)
+- Added Groq state files: groq-usage.json, error-cache.json, batch-jobs.json
+- Added Groq external service to External Services section
+- Updated README.md: features list updated from "coming soon" to "optional" with full feature description
+- Replaced "Why Groq? (Phase 3)" section with present-tense "Groq Intelligence (Optional)" including feature table, CLI examples, and FAQ
+- Added FAQ: "Is Groq required? No..." in both CLAUDE.md and README.md
+- Verification:
+  - CLAUDE.md: 611 lines (under 800)
+  - README.md: 189 lines (under 800)
+  - All 5 Groq features documented with examples (memory-prune, condense-error, smart checkpoints, batch, groq status)
+  - groq.apiKey, groq.model, groq.source config keys documented
+  - memory-prune command reference with --dry-run, --batch flags
+  - FAQ present in both files

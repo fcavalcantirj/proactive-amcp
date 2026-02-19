@@ -1077,7 +1077,7 @@
       "Add FAQ: Is Groq required? (No, but makes agent smarter)",
       "Verify: all Groq features documented with examples"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "onboarding",

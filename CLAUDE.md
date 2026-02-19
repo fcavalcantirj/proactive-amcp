@@ -65,6 +65,11 @@ scripts/
   validate-skill-contract.sh + .py  Design by Contract validation for skills (90L + 211L)
   detect-contract-conflicts.sh + .py  Cross-skill conflict detection (48L + 241L)
   recreate-venvs.sh    Rebuild Python venvs from manifest on resurrection
+  memory-prune.sh      Groq-powered memory file pruning: archive/condense/keep (442L)
+  memory-prune-batch.sh  Batch API pruning for 50% cost savings (621L)
+  condense-error.sh    Groq-powered error log condensing to ~100 chars (346L)
+  smart-checkpoint-filter.sh  Groq-powered checkpoint content selection (431L)
+  groq-status.sh       Groq key management: status + Solvr key request (427L)
 
 test/
   test_helper.sh       Fixtures, mocks, setup/teardown (263L)
@@ -126,9 +131,9 @@ See [docs/ONTOLOGY-INTEGRATION-CONTEXT.md](docs/ONTOLOGY-INTEGRATION-CONTEXT.md)
 
 ## Data Flows
 
-**Checkpoint:** validate identity -> extract secrets from config files -> scan for cleartext (reject unless --force) -> run memory evolution (infer relations) -> build temporal index -> amcp CLI creates encrypted checkpoint -> pin to IPFS (Pinata, Solvr, or both per `pinning.provider`) -> compute ontology CID -> detect SOUL drift -> save CID + ontologyGraphCID + soulHash to last-checkpoint.json -> rotate old -> notify
+**Checkpoint:** validate identity -> extract secrets from config files -> scan for cleartext (reject unless --force) -> run memory evolution (infer relations) -> build temporal index -> [if --smart: Groq filters checkpoint content] -> amcp CLI creates encrypted checkpoint -> pin to IPFS (Pinata, Solvr, or both per `pinning.provider`) -> compute ontology CID -> detect SOUL drift -> save CID + ontologyGraphCID + soulHash to last-checkpoint.json -> rotate old -> notify
 
-**Watchdog:** validate identity -> diagnose.sh (JSON findings) -> light fix (session-fix.sh + restart) or heavy fix (resuscitate.sh) -> update watchdog-state.json -> notify
+**Watchdog:** validate identity -> diagnose.sh (JSON findings) -> light fix (session-fix.sh + restart) or heavy fix (resuscitate.sh) -> update watchdog-state.json -> [if Groq: condense error for notification] -> notify
 
 **Resurrection:** acquire lock -> search Solvr for similar problems -> try Solvr solutions -> Tier 1 restart gateway -> Tier 2 restore config backup -> Tier 3 fetch from IPFS (Solvr > Pinata > IPFS.io > Cloudflare), decrypt, inject secrets, validate learning data, validate ontology, recreate venvs, restart -> surface open problems -> update Solvr approaches -> email notification -> release lock
 
@@ -258,6 +263,104 @@ proactive-amcp config set pinning.provider both
 proactive-amcp install --solvr-api-key YOUR_KEY --pinning-provider solvr
 ```
 
+## Groq Intelligence (Optional)
+
+Groq-powered features for smarter memory management. All Groq features are optional — the skill works fully without them. Groq adds reasoning-based evaluation at ~1000 tokens/sec.
+
+**Is Groq required?** No. Without Groq, checkpoints include all files, pruning uses rule-based policies only, and error messages are truncated instead of condensed. Groq makes the agent smarter but is never a dependency.
+
+### Config Options
+
+| Config Key | Type | Default | Description |
+|------------|------|---------|-------------|
+| `groq.apiKey` | string | — | Groq API key (required for all Groq features) |
+| `groq.model` | string | `openai/gpt-oss-20b` | Model for evaluations |
+| `groq.source` | string | — | Key provenance: `solvr` (free tier) or `manual` (own key) |
+
+Get a free key via Solvr (`proactive-amcp groq request-key`) or your own at https://console.groq.com.
+
+### Memory Pruning (`memory-prune.sh`)
+
+Evaluates each `memory/*.md` file for importance using Groq reasoning with strict JSON schema output.
+
+**Scoring tiers:**
+- `0.9-1.0` (Critical) — Core identity, failure lessons, user preferences → keep
+- `0.7-0.9` (High) — Architectural decisions, project context → keep
+- `0.3-0.7` (Medium) — Routine logs, status updates → condense inline
+- `< 0.3` (Low) — Debug output, scratch notes → archive to `memory/archive/`
+
+**Schema:** Each evaluation returns `{ importance_score, should_keep, condensed_version, reasoning, tags }` via `response_format.json_schema.strict: true`. Full schema at `docs/groq-memory-schema.json`.
+
+```bash
+# Preview what would be pruned
+proactive-amcp memory-prune --dry-run
+
+# Apply pruning (archive low, condense medium, keep high)
+proactive-amcp memory-prune
+
+# Batch mode — 50% cost savings via Groq batch API
+proactive-amcp memory-prune --batch --submit   # Prepare + upload JSONL
+proactive-amcp memory-prune --batch --poll     # Check job status
+proactive-amcp memory-prune --batch --apply    # Download results + apply
+```
+
+Flags: `--dry-run`, `--batch`, `--config FILE`, `--content-dir DIR`
+
+### Error Condensing (`condense-error.sh`)
+
+Condenses verbose error logs to ~100 character summaries preserving root cause. Integrated into watchdog.sh for death notifications.
+
+```bash
+# Inline
+proactive-amcp condense-error "long error message..."
+
+# From file or stdin
+proactive-amcp condense-error --input /path/to/logfile
+echo "error log" | proactive-amcp condense-error --stdin
+```
+
+**Caching:** Results cached in `~/.amcp/error-cache.json` (7-day TTL, max 200 entries, SHA-256 keyed). Use `--no-cache` to bypass or `--clear-cache` to reset.
+
+**Fallback:** If no Groq key or API fails, truncates to 97 chars + `...`. Short messages (<=100 chars) returned as-is without API call.
+
+### Smart Checkpoint Filtering (`smart-checkpoint-filter.sh`)
+
+Groq evaluates each memory file for "checkpoint worthiness" before inclusion. Identity-critical files (SOUL.md, USER.md, AGENTS.md, MEMORY.md, TOOLS.md) always included without evaluation.
+
+```bash
+# Create checkpoint with smart filtering
+proactive-amcp checkpoint --smart
+
+# Full checkpoint with smart filtering
+full-checkpoint.sh --smart
+```
+
+**Thresholds:** Files below `SMART_THRESHOLD` (default 0.3) excluded. Files >50KB included by default (too expensive to evaluate). Empty files always excluded. Filter manifest saved as `amcp/smart-filter-manifest.json` in checkpoint for audit.
+
+### Groq Key Management (`groq-status.sh`)
+
+```bash
+# Check status and usage
+proactive-amcp groq status [--json]
+
+# Request free key from Solvr (if you have a Solvr account)
+proactive-amcp groq request-key
+```
+
+Solvr-sourced keys are rate-limited but free. Upgrade path: get your own key at https://console.groq.com.
+
+### Token Usage Tracking
+
+All Groq features track token usage in `~/.amcp/groq-usage.json` (cumulative totals + per-session history, last 50 entries). Each entry tagged with source (`memory-prune`, `condense-error`, `smart-filter`, `batch`).
+
+### State Files
+
+| File | Purpose |
+|------|---------|
+| `~/.amcp/groq-usage.json` | Token usage tracking (total, by model, session history) |
+| `~/.amcp/error-cache.json` | Condensed error cache (7-day TTL, max 200 entries) |
+| `~/.amcp/batch-jobs.json` | Batch job tracking (submit/poll/apply workflow) |
+
 ## Config and State Files
 
 **~/.amcp/config.json** (0600) — Primary config, managed via `config.sh set/get`
@@ -267,6 +370,9 @@ proactive-amcp install --solvr-api-key YOUR_KEY --pinning-provider solvr
 - `pinning.solvr.baseUrl` — Solvr API endpoint (default: `https://api.solvr.dev`)
 - `solvr.apiKey` — Solvr API key (also used for pinning if `pinning.solvr.apiKey` not set)
 - `solvr.parentName` — Parent Solvr name for child registration
+- `groq.apiKey` — Groq API key for intelligence features
+- `groq.model` — Groq model (default: `openai/gpt-oss-20b`)
+- `groq.source` — Key provenance: `solvr` or `manual`
 - `notify.target` — Telegram user ID
 - `notify.emailOnResurrect`, `notify.emailTo`, `notify.agentmailApiKey`, `notify.agentmailInbox`
 - `watchdog.interval` — seconds (default 120)
@@ -326,7 +432,8 @@ All have defaults, all overridable:
 ## External Services
 
 - **Pinata** (https://api.pinata.cloud) — IPFS pinning, checkpoint upload/download
-- **Solvr** (https://api.solvr.dev/v1) — Child agent registration, solution search (read-only in resuscitate)
+- **Solvr** (https://api.solvr.dev/v1) — Child agent registration, solution search, Groq key distribution
+- **Groq** (https://api.groq.com/openai/v1) — Memory pruning, error condensing, smart checkpoint filtering (optional)
 - **OpenClaw Gateway** (localhost:3141/8080/18789) — Health checks
 - **AgentMail** — Resurrection email notifications
 
