@@ -61,11 +61,13 @@ EOF
 done
 
 # ============================================================
-# Resolve API keys from env or config.json
+# Resolve API keys from config.json ONLY (no env fallback)
+# SECURITY: Agent must use its own keys, never inherit from env.
 # ============================================================
 resolve_api_keys() {
-  # Solvr API key
-  if [ -z "${SOLVR_API_KEY:-}" ] && [ -f "$CONFIG_FILE" ]; then
+  # Solvr API key (config only, no env)
+  SOLVR_API_KEY=""
+  if [ -f "$CONFIG_FILE" ]; then
     SOLVR_API_KEY=$(python3 -c "
 import json, os
 p = os.path.expanduser('$CONFIG_FILE')
@@ -78,7 +80,8 @@ print(key)
   fi
 
   if [ -z "${SOLVR_API_KEY:-}" ]; then
-    echo "ERROR: No Solvr API key found" >&2
+    echo "ERROR: No Solvr API key in ~/.amcp/config.json" >&2
+    echo "Agent must have its own Solvr API key configured." >&2
     echo "Set via: proactive-amcp config set solvr.apiKey <key>" >&2
     exit 1
   fi

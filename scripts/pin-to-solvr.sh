@@ -3,9 +3,12 @@
 # Usage: ./pin-to-solvr.sh <file_path> [name]
 #
 # Uses curl to call Solvr's /v1/add endpoint directly.
-# Reads SOLVR_API_KEY from config.json, storage.solvr, or environment.
+# Reads SOLVR_API_KEY from ~/.amcp/config.json ONLY (no env fallback).
 #
-# Updated 2026-02-18: Direct API call instead of CLI dependency
+# SECURITY: Agent must use its own Solvr key, never inherit from environment.
+#           This prevents accidental use of human's API key.
+#
+# Updated 2026-02-19: No env fallback for security
 
 set -euo pipefail
 
@@ -37,9 +40,14 @@ Options:
   --dry-run   Show what would be pinned without actually pinning
   -h, --help  Show this help
 
+Config (~/.amcp/config.json):
+  storage.solvr.apiKey   Agent's Solvr API key (required)
+
 Environment:
-  SOLVR_API_KEY   Solvr API key (or set via config)
   SOLVR_API_URL   API base URL (default: https://api.solvr.dev/v1)
+
+NOTE: This script only uses keys from config, NOT from environment.
+      Agent must have its own Solvr API key configured.
 EOF
       exit 0
       ;;
@@ -71,12 +79,12 @@ if [ -z "$PIN_NAME" ]; then
 fi
 
 # ============================================================
-# Resolve SOLVR_API_KEY from env or config.json
-# Priority: env > storage.solvr.apiKey > solvr.apiKey > pinning.solvr.apiKey
+# Resolve SOLVR_API_KEY from config.json ONLY (no env fallback)
+# SECURITY: Agent must use its own key, never inherit from env.
 # ============================================================
-if [ -z "${SOLVR_API_KEY:-}" ]; then
-  if [ -f "$CONFIG_FILE" ]; then
-    SOLVR_API_KEY=$(python3 -c "
+SOLVR_API_KEY=""
+if [ -f "$CONFIG_FILE" ]; then
+  SOLVR_API_KEY=$(python3 -c "
 import json, os
 p = os.path.expanduser('$CONFIG_FILE')
 d = json.load(open(p))
@@ -86,13 +94,12 @@ key = (d.get('storage',{}).get('solvr',{}).get('apiKey') or
        d.get('pinning',{}).get('solvr',{}).get('apiKey') or '')
 print(key)
 " 2>/dev/null || echo '')
-  fi
 fi
 
 if [ -z "${SOLVR_API_KEY:-}" ]; then
-  echo "ERROR: No Solvr API key found" >&2
+  echo "ERROR: No Solvr API key in ~/.amcp/config.json" >&2
+  echo "Agent must have its own Solvr API key configured." >&2
   echo "Set via: proactive-amcp config set storage.solvr.apiKey <key>" >&2
-  echo "  or: export SOLVR_API_KEY=<key>" >&2
   exit 1
 fi
 
