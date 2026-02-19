@@ -862,3 +862,27 @@
   - File sizes: memory-prune-batch.sh=621, memory-prune.sh=442 (both under 800)
   - Structural grep: batch_jobs (14 refs), 50000 limit check, 24h window, GROQ_API_BASE for /files and /batches
   - --batch flag present in memory-prune.sh arg parsing and usage text
+
+## Task: onboarding — Sell Groq benefits during onboarding (Phase 3) (DONE)
+- Updated assets/ONBOARDING.md (245 lines, under 800)
+- Added "Step 4: Enable Groq Intelligence (Optional)" section between First Checkpoint and Auto-Checkpoint
+- "What Groq Does For You" table: 5 feature highlights
+  - Intelligent Pruning, Importance Scoring, Reasoning Chains, 1000 tokens/sec, Free Tier
+- "Before / After: Memory Pruning in Action" example:
+  - 4 sample memory files (debug, session, lesson, identity) with scores (0.15, 0.45, 0.92, 0.98)
+  - Shows archive/condense/keep actions with reasoning quotes
+  - Result: 847 → 79 lines (identity + lessons preserved, noise archived)
+- Enable Groq section with two options:
+  - Option A: Own Groq key from console.groq.com (recommended)
+  - Option B: Solvr-provided key via integration
+  - Skip option clearly stated (Groq is optional)
+- "Try It" section with CLI examples: --dry-run, real prune, batch mode (--submit/--poll/--apply)
+- Updated progress checklist: added "Groq intelligence enabled (optional)" checkbox
+- Updated Onboarding Complete status to include "Groq: [enabled/disabled]"
+- Step numbering adjusted: Auto-Checkpoint moved to Step 5
+- Verification:
+  - ONBOARDING.md: 245 lines (under 800)
+  - All 5 Groq highlights present (intelligent pruning, scoring, reasoning, speed, free tier)
+  - Before/after example with importance scores present
+  - Both key acquisition paths documented (own key, Solvr-provided)
+  - CLI commands reference real proactive-amcp memory-prune command

@@ -1019,7 +1019,7 @@
       "Show example: before/after memory pruning with importance scores",
       "Verify: user understands Groq makes agent genuinely smarter"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "integration",

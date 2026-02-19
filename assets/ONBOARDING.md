@@ -11,6 +11,7 @@
 - [ ] IPFS pinning configured (Solvr or Pinata)
 - [ ] AMCP identity created
 - [ ] First checkpoint verified
+- [ ] Groq intelligence enabled (optional)
 - [ ] Auto-checkpoint scheduled (optional)
 
 ---
@@ -141,7 +142,79 @@ Agent runs:
 
 ---
 
-## Step 4: Auto-Checkpoint (Optional)
+## Step 4: Enable Groq Intelligence (Optional)
+
+**Want your agent to think about what it remembers?**
+
+Groq-powered intelligence makes your agent genuinely smarter — not just saving everything, but reasoning about what matters.
+
+### What Groq Does For You
+
+| Feature | What It Means |
+|---------|---------------|
+| **Intelligent Pruning** | Your agent evaluates each memory and decides: keep, condense, or archive. No more memory bloat. |
+| **Importance Scoring** | Every memory gets a 0–1 score. Core identity and hard-won lessons score high. Debug logs score low. |
+| **Reasoning Chains** | The agent explains *why* it keeps or prunes each memory — you can audit every decision. |
+| **1000 tokens/second** | Groq's inference speed means memory evaluation is near-instant, even for large memory stores. |
+| **Free Tier** | Basic usage is covered for registered agents. No credit card required. |
+
+### Before / After: Memory Pruning in Action
+
+**Before** (raw memory files — 847 lines, 34KB):
+
+```
+memory/2026-02-14-debug.md    — 200 lines of curl debug output
+memory/2026-02-15-session.md  — 180 lines of routine status updates
+memory/2026-02-16-lesson.md   — 45 lines: "AgentMail uses v0 API, not v1"
+memory/2026-02-17-identity.md — 22 lines: core principles update
+```
+
+**After** Groq evaluation:
+
+| File | Score | Action | Reasoning |
+|------|-------|--------|-----------|
+| `debug.md` | 0.15 | Archive | "Debug output with no actionable insights. Curl traces are reproducible." |
+| `session.md` | 0.45 | Condense | "Routine status. Condensed 180→12 lines: kept 3 deployment decisions." |
+| `lesson.md` | 0.92 | Keep | "Hard-won API lesson. Losing this would cause repeated v1 failures." |
+| `identity.md` | 0.98 | Keep | "Core identity update. Critical for agent continuity." |
+
+**Result:** 847 lines → 79 lines. Identity and lessons preserved. Noise archived.
+
+### Enable Groq
+
+**Option A: Use your own Groq key (recommended)**
+
+1. Get a free key at https://console.groq.com
+2. Configure it:
+
+```bash
+proactive-amcp config set groq.apiKey YOUR_GROQ_KEY
+```
+
+**Option B: Use Solvr-provided key**
+
+If you registered with Solvr, you may have access to Groq through Solvr's integration. Check with `proactive-amcp config get groq.apiKey` — if a key is already set via Solvr registration, you're good.
+
+**Skip?** That's fine — Groq is optional. Your checkpoints work without it. Memory files are saved as-is without pruning.
+
+### Try It
+
+```bash
+# Preview what would be pruned (no changes made)
+proactive-amcp memory-prune --dry-run
+
+# Run pruning for real
+proactive-amcp memory-prune
+
+# Use batch API for large memory stores (50% cheaper, async)
+proactive-amcp memory-prune --batch --submit
+proactive-amcp memory-prune --batch --poll
+proactive-amcp memory-prune --batch --apply
+```
+
+---
+
+## Step 5: Auto-Checkpoint (Optional)
 
 **Want automatic backups?**
 >
@@ -165,6 +238,7 @@ State: complete
 Pinning: solvr | pinata | both
 Identity: ~/.amcp/identity.json
 First CID: bafkrei...
+Groq: [enabled/disabled]
 Auto-checkpoint: [yes/no]
 ```
 
