@@ -1098,3 +1098,32 @@
   - All 6 functional tests pass: list_evaluator_types, load_evaluator, current_evaluator_type, metadata fields, empty file fast path, offline fallback
   - Structural grep: _adapter_evaluate (4), _adapter_metadata (4), llama3.2 (3), offline handling (6), EvaluationResponse fields (24)
   - All 126 existing tests pass (no regressions)
+
+## Task: P3-EVAL-06 — Implement ConsensusEvaluator adapter (DONE)
+- Created `scripts/lib/evaluators/consensus.sh` (528 lines) — multi-judge evaluation orchestrator per PROTOCOL.md Section 6.2
+- Implements `_adapter_evaluate()` returning EvaluationResponse augmented with consensus metadata
+- Implements `_adapter_metadata()` returning EvaluatorMetadata with evaluator count, types, strategy info
+- Loads configured evaluators from `evaluators[]` array in config.json
+- Runs each evaluator in subshell isolation (reset load guards, fresh source of adapter)
+- Prevents infinite recursion: skips consensus evaluator type in evaluator list
+- Four consensus strategies implemented:
+  - `weighted_average` (default): weighted score + weighted keep vote (>0.5 = keep)
+  - `majority`: simple majority of keep votes, unweighted score average
+  - `unanimous`: all evaluators must agree on keep/discard
+  - `quorum`: configurable threshold fraction must agree (default 0.66)
+- Disagreement detection: normalized standard deviation of scores (0-1), flags consensusReached=false if above threshold
+- Tie breaking: `keep` (default, safe), `discard`, or `escalate` (no consensus)
+- Config options: consensus.strategy, consensus.minJudges, consensus.quorumThreshold, consensus.tieBreaker, consensus.disagreementThreshold
+- Environment overrides: CONSENSUS_STRATEGY, CONSENSUS_MIN_JUDGES
+- Minimum judges enforcement: if fewer than minJudges respond, returns safe default (score=50, keep=true)
+- Falls back to single groq evaluator if no evaluators configured
+- ConsensusResult includes: finalScore, finalKeep, individualResults, consensusReached, disagreementLevel
+- EvaluationResponse output includes `consensus` metadata block with strategy, judges counts, individual scores
+- Aggregation: combined reasons (top 3), merged categories, averaged confidence and suggestedTTL
+- Uses environment variables for Python heredoc args (avoids shell/heredoc arg parsing issues)
+- Verification:
+  - bash -n syntax check passes
+  - File size: 528 lines (under 800)
+  - All 12 functional tests pass: load_evaluator, current_evaluator_type, metadata, empty file, weighted_average, majority_keep, majority_tie_discard, unanimous_agree, unanimous_disagree, quorum_met, quorum_discard, high_disagreement
+  - Structural grep: _adapter_evaluate (3), _adapter_metadata (2), weighted_average (4), majority (1), unanimous (1), quorum (1), finalScore (3), disagreementLevel (4), minJudges (4), quorumThreshold (2)
+  - All 126 existing tests pass (no regressions)
