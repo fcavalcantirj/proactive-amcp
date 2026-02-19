@@ -1074,3 +1074,27 @@
   - All 7 functional tests pass: list_evaluator_types, load_evaluator, current_evaluator_type, metadata fields, _adapter_evaluate type, empty file fast path, normalize_score
   - Structural grep: _adapter_evaluate (2), _adapter_metadata (2), gpt-oss-20b (2), strict True (1), EvaluationResponse (7), suggestedTTL (9), 429 rate limit (3), confidence (10), categories (11)
   - All 126 existing tests pass (no regressions)
+
+## Task: P3-EVAL-05 — Implement OllamaEvaluator adapter (DONE)
+- Created `scripts/lib/evaluators/ollama.sh` (395 lines) — Ollama as local LLM evaluator per PROTOCOL.md
+- Implements `_adapter_evaluate()` returning full EvaluationResponse: score (0-100), keep, reason, confidence, categories, suggestedTTL
+- Implements `_adapter_metadata()` returning EvaluatorMetadata: id, name, version, model, capabilities, status, endpoint
+- Uses Ollama /api/chat endpoint with `format: "json"` for structured output
+- Default model: llama3.2 (configurable via OLLAMA_MODEL env, evaluators[].model, or ollama.model config)
+- Default endpoint: http://localhost:11434 (configurable via OLLAMA_API_URL env, evaluators[].url, or ollama.url config)
+- Graceful offline handling: _ollama_check_health() probes server before evaluation
+  - If Ollama not running: returns score=50, keep=true, categories=["offline"] (never loses data)
+  - Includes helpful error messages: "Start with: ollama serve", "Pull with: ollama pull <model>"
+- Response parsing: robust JSON extraction with regex fallback for markdown-fenced responses
+  - Normalizes 0-1 float scores to 0-100 integer, handles string booleans, clamps all fields
+- API call with retry: 1 retry on 500/502/503, immediate fail on 404 (model not found) and 000 (unreachable)
+- Configurable timeout: OLLAMA_TIMEOUT env (default 120s, local models can be slow)
+- Request body: stream=false, temperature=0.1, num_predict=256 (concise structured output)
+- Guard against double-source: _OLLAMA_ADAPTER_LOADED flag
+- Integrates with base evaluator.sh: load_evaluator("ollama") sources adapter, verifies _adapter_evaluate/_adapter_metadata defined
+- Verification:
+  - bash -n syntax check passes
+  - File size: 395 lines (under 800)
+  - All 6 functional tests pass: list_evaluator_types, load_evaluator, current_evaluator_type, metadata fields, empty file fast path, offline fallback
+  - Structural grep: _adapter_evaluate (4), _adapter_metadata (4), llama3.2 (3), offline handling (6), EvaluationResponse fields (24)
+  - All 126 existing tests pass (no regressions)

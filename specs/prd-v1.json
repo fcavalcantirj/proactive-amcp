@@ -1652,7 +1652,7 @@
       "Return evaluation per interface spec",
       "Verify: Ollama adapter works offline"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "P3-EVAL-06",
