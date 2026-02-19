@@ -1283,3 +1283,39 @@
 - Verification:
   - npm test passes: 38 tests (11 existing + 27 new), 2 test files, 0 failures
   - File size: 270 lines (under 800)
+
+## Task: P4-CTX-01 — Implement context % tracking monitor (DONE)
+- Created `src/monitors/context-monitor.ts` (97 lines) — real context monitor implementation
+- Interfaces with OpenClaw session API via `SessionApi.getContextUsage()` to get token counts
+- Computes context % as `(usedTokens / maxTokens) * 100`, rounded to 2 decimal places
+- Stores readings as JSONL in `.amcp/context-history.jsonl` (configurable via `historyPath`)
+- Each reading: `{ timestamp, usedTokens, maxTokens, contextPercent }`
+- Polls every 30 seconds via `setInterval`, with initial poll on `start()`
+- Emits `amcp:checkpoint:requested` with `trigger: "context_threshold"` when threshold exceeded
+- Exports `start()`, `stop()`, `status()` as `PluginService` interface
+- `status()` returns `{ running, details: { lastReading, pollIntervalMs, thresholdPercent } }`
+- `start()` is idempotent — calling twice does not create duplicate timers
+- Graceful error handling: session API failures logged, never crash the monitor
+- Added types to `src/types.ts`: `ContextReading`, `SessionApi`, `ContextMonitorDeps`
+- Updated `src/index.ts`: imports real `createContextMonitor`, provides `SessionApi` from gateway or default
+- Gateway can provide `sessionApi` and `amcpHistoryPath` via extended `PluginApi`
+- Installed `@types/node` devDependency for Node.js API type declarations
+- Re-exported `createContextMonitor` from index.ts for direct imports
+- Created `src/monitors/context-monitor.test.ts` (12 tests):
+  - Exports start/stop/status functions
+  - Logs context % on start (initial poll)
+  - Stores readings in context-history.jsonl (valid JSONL)
+  - Computes context % correctly (37.5% = 75000/200000)
+  - Handles zero maxTokens gracefully (0%)
+  - Emits checkpoint event when threshold exceeded
+  - Does NOT emit when below threshold
+  - Polls every 30 seconds after start (fake timers)
+  - Status reflects running state and last reading
+  - Handles session API errors gracefully (logs, no crash)
+  - Appends multiple readings to JSONL file
+  - Start is idempotent (no double-poll)
+- Verification:
+  - npm run build passes (tsc, zero errors)
+  - npm run lint passes (tsc --noEmit)
+  - npm test passes: 50 tests (11 + 27 + 12), 3 test files, 0 failures
+  - File sizes: context-monitor.ts=97, types.ts=134, index.ts=222 (all under 800)

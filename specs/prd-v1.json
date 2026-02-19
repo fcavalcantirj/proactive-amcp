@@ -1177,7 +1177,7 @@
       "Export start(), stop(), status() functions",
       "Verify: monitor logs context % every 30 seconds"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "P4-CTX-02",

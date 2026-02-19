@@ -107,3 +107,24 @@ export interface AmcpIdentity {
   created: string;
   kel?: unknown[];
 }
+
+// --- Context Monitor ---
+
+export interface ContextReading {
+  timestamp: string;
+  usedTokens: number;
+  maxTokens: number;
+  contextPercent: number;
+}
+
+export interface SessionApi {
+  getContextUsage(): Promise<{ usedTokens: number; maxTokens: number }>;
+}
+
+export interface ContextMonitorDeps {
+  config: AmcpPluginConfig;
+  logger: PluginLogger;
+  emit: (event: string, data?: Record<string, unknown>) => void;
+  sessionApi: SessionApi;
+  historyPath: string;
+}

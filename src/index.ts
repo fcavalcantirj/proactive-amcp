@@ -7,12 +7,16 @@
  *   - Skill (bash): checkpoint creation, secrets, resurrection logic
  */
 
+import { join } from "node:path";
+import { homedir } from "node:os";
+import { createContextMonitor } from "./monitors/context-monitor.js";
 import type {
   AmcpPlugin,
   AmcpPluginConfig,
   PluginApi,
   PluginService,
   LifecycleEvent,
+  SessionApi,
 } from "./types.js";
 
 const PLUGIN_ID = "proactive-amcp";
@@ -67,26 +71,19 @@ function resolveConfig(
 }
 
 /**
- * Placeholder context monitor service.
- * Tracks session context usage and triggers checkpoints at threshold.
+ * Build a default SessionApi that returns zero usage.
+ * The gateway may provide a real implementation via api.sessionApi.
  */
-function createContextMonitor(
-  _config: AmcpPluginConfig,
-  logger: { info: (msg: string) => void },
-): PluginService {
+function defaultSessionApi(): SessionApi {
   return {
-    name: "amcp-context-monitor",
-    async start() {
-      logger.info("amcp-context-monitor: started");
-    },
-    async stop() {
-      logger.info("amcp-context-monitor: stopped");
-    },
-    async status() {
-      return { running: true, details: { service: "amcp-context-monitor" } };
+    async getContextUsage() {
+      return { usedTokens: 0, maxTokens: 0 };
     },
   };
 }
+
+/** Default path for context history JSONL file. */
+const DEFAULT_HISTORY_PATH = join(homedir(), ".amcp", "context-history.jsonl");
 
 /**
  * Placeholder memory monitor service.
@@ -180,8 +177,20 @@ async function register(api: PluginApi): Promise<void> {
 
   api.logger.info(`amcp: initializing plugin v${PLUGIN_VERSION}`);
 
-  // Register services
-  const contextMonitor = createContextMonitor(config, api.logger);
+  // Register services — gateway may extend PluginApi with sessionApi/amcpHistoryPath
+  const apiExt = api as unknown as Record<string, unknown>;
+  const sessionApi: SessionApi =
+    (apiExt.sessionApi as SessionApi) ?? defaultSessionApi();
+  const historyPath =
+    (apiExt.amcpHistoryPath as string) ?? DEFAULT_HISTORY_PATH;
+
+  const contextMonitor = createContextMonitor({
+    config,
+    logger: api.logger,
+    emit: api.emit.bind(api),
+    sessionApi,
+    historyPath,
+  });
   const memoryMonitor = createMemoryMonitor(config, api.logger);
   api.registerService(contextMonitor);
   api.registerService(memoryMonitor);
@@ -207,4 +216,5 @@ const plugin: AmcpPlugin = {
 export default plugin;
 
 export { register, resolveConfig, DEFAULT_CONFIG, PLUGIN_ID, PLUGIN_VERSION };
+export { createContextMonitor } from "./monitors/context-monitor.js";
 export type * from "./types.js";
