@@ -1119,7 +1119,7 @@
       "Update package.json with build scripts and TypeScript dependencies",
       "Verify: npm run build produces dist/"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "P4-INF-03",

@@ -2,13 +2,25 @@
   "name": "proactive-amcp",
   "version": "0.7.4",
   "description": "AMCP skill — encrypted agent checkpoints to IPFS, watchdog health monitoring, multi-tier resurrection",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "bin": {
     "proactive-amcp": "./scripts/proactive-amcp.sh"
   },
   "files": [
-    "scripts/"
+    "scripts/",
+    "dist/",
+    "openclaw.plugin.json"
   ],
-  "scripts": {},
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run build"
+  },
   "keywords": [
     "amcp",
     "agent-checkpoint",
@@ -29,5 +41,9 @@
   "os": [
     "linux"
   ],
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  },
   "dependencies": {}
 }

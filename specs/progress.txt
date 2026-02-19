@@ -1180,3 +1180,36 @@
     3. ipfsPinningService enum (pinata, solvr, local), encryptionKeyPath (string) present
     4. uiHints for all config options with labels
     5. JSON schema validates correctly
+
+## Task: P4-INF-02 — Initialize TypeScript project in src/ (DONE)
+- Created `src/index.ts` (209 lines) — plugin entry point with register() function
+  - Exports default plugin object with id, name, version, description, register
+  - resolveConfig() merges user config with defaults (handles nested objects)
+  - createContextMonitor() and createMemoryMonitor() placeholder services
+  - registerHooks() for gateway_start, gateway_stop, session_end, before_compaction
+  - registerCliCommands() for status, checkpoint, resurrect, identity, history, verify
+  - Plugin disabled path: skips all registration when config.enabled=false
+  - autoCheckpoint=false path: skips hook registration
+- Created `src/types.ts` (101 lines) — TypeScript type definitions
+  - AmcpPluginConfig with all fields matching openclaw.plugin.json configSchema
+  - PluginApi interface: config, logger, registerService, registerHook, registerCommand, emit
+  - PluginService interface: name, start, stop, status
+  - LifecycleEvent, CliCommand, AmcpPlugin interfaces
+  - CheckpointMeta, AmcpIdentity types for future use
+- Created `tsconfig.json` — ES2022, NodeNext modules, strict mode, declaration + sourceMap output
+- Created `vitest.config.ts` — vitest with v8 coverage provider, src/**/*.test.ts pattern
+- Created `src/index.test.ts` (131 lines) — 11 vitest tests
+  - Plugin metadata (id, name, version, register function)
+  - resolveConfig: defaults, overrides, nested merging (memoryIntegrity, identity, resurrection)
+  - register: services registered, hooks registered, commands registered, disabled path, autoCheckpoint=false path
+- Updated `package.json`:
+  - Added "type": "module", "main": "dist/index.js", "types": "dist/index.d.ts"
+  - Scripts: build (tsc), test (vitest run), lint (tsc --noEmit), clean, prepublishOnly
+  - devDependencies: typescript ^5.7.0, vitest ^3.0.0
+  - files: scripts/, dist/, openclaw.plugin.json
+- Updated `.gitignore`: added node_modules/, dist/
+- Verification:
+  - `npm run build` produces dist/ with index.js, types.js, declarations, source maps
+  - `npm run lint` (tsc --noEmit) passes with no errors
+  - `npm test` passes all 11 tests
+  - File sizes: index.ts=209, types.ts=101, index.test.ts=131 (all under 800)
