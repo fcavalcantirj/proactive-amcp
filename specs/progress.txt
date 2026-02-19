@@ -667,3 +667,24 @@
   - File size: 201 lines (under 800)
   - Updated test fixtures for solvr-pinning tests 5 and 6 to disable Solvr during gateway tests
   - 118 tests pass, same 3 pre-existing solvr-pinning failures
+
+## Task: documentation — Document Solvr pinning option in CLAUDE.md and README.md (index 18) (DONE)
+- Added 'Pinning Providers' section to CLAUDE.md under Configuration (before Config and State Files)
+- Documented all config options: pinning.provider, pinning.solvr.apiKey, pinning.solvr.baseUrl, pinata.jwt
+- Provider trade-offs table: Solvr (agent-native, free) vs Pinata (established, paid tiers)
+- Documented 'both' mode: pin to Pinata first then Solvr, tolerates individual failures, CID mismatch warning
+- Retrieval priority: Solvr > Pinata > IPFS.io > Cloudflare, with --gateway override
+- Troubleshooting table: Solvr pin fails, Pinata pin fails, both fail, CID mismatch
+- Solvr pinning API reference: POST /v1/pins, GET /v1/pins?cid=, gateway URL, CLI command
+- Setup examples: solvr-only, pinata-only, both, fleet install
+- Updated Data Flows in CLAUDE.md: checkpoint pins to "Pinata, Solvr, or both per pinning.provider"
+- Updated Storage Backends in CLAUDE.md: "Pinata or Solvr for writes (configurable)"
+- Updated Config and State Files: added pinning.provider, pinning.solvr.apiKey, pinning.solvr.baseUrl
+- Updated README.md: added "Multiple IPFS Pinning Providers" to features list
+- Updated README.md Requirements: IPFS pinning key = Pinata JWT or Solvr apiKey or both
+- Added Troubleshooting section to README.md with fallback instructions
+- Verification:
+  - CLAUDE.md: 350 lines (under 800)
+  - README.md: 164 lines (under 800)
+  - All documented config keys match actual implementation in scripts/
+  - Gateway priority matches resuscitate.sh fetch_from_gateways() order

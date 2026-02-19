@@ -57,21 +57,91 @@ progress.sh            Dev tool: count passed PRD requirements (27L)
 
 ## Data Flows
 
-**Checkpoint:** validate identity -> extract secrets from config files -> scan for cleartext (reject unless --force) -> amcp CLI creates encrypted checkpoint -> pin to Pinata IPFS -> save CID to last-checkpoint.json -> rotate old -> notify
+**Checkpoint:** validate identity -> extract secrets from config files -> scan for cleartext (reject unless --force) -> amcp CLI creates encrypted checkpoint -> pin to IPFS (Pinata, Solvr, or both per `pinning.provider`) -> save CID to last-checkpoint.json -> rotate old -> notify
 
 **Watchdog:** validate identity -> diagnose.sh (JSON findings) -> light fix (session-fix.sh + restart) or heavy fix (resuscitate.sh) -> update watchdog-state.json -> notify
 
 **Resurrection:** acquire lock -> Tier 1 restart gateway -> Tier 2 restore config backup -> Tier 3 fetch from IPFS, decrypt, inject secrets, restart -> Solvr search (read-only) -> email notification -> release lock
 
+## Pinning Providers
+
+Checkpoints are pinned to IPFS via configurable providers. Configured via `pinning.provider` in `~/.amcp/config.json`.
+
+### Config Options
+
+| Config Key | Values | Default | Description |
+|------------|--------|---------|-------------|
+| `pinning.provider` | `pinata`, `solvr`, `both` | `pinata` | Which IPFS pinning service to use |
+| `pinning.solvr.apiKey` | string | — | Solvr API key (also accepts `solvr.apiKey`) |
+| `pinning.solvr.baseUrl` | URL | `https://api.solvr.dev` | Solvr API endpoint |
+| `pinata.jwt` | string | — | Pinata JWT token for IPFS pinning |
+
+### Provider Trade-offs
+
+| | Solvr | Pinata |
+|--|-------|--------|
+| **Cost** | Free for registered agents | Free tier (limited), paid plans |
+| **Integration** | Agent-native — same key as Solvr knowledge base | Separate service, separate account |
+| **Setup** | One key for search + pinning | Dedicated IPFS JWT |
+| **Maturity** | Purpose-built for AMCP agents | Established, widely used |
+| **Redundancy** | Solvr IPFS node (solvr-ipfs-01) | Pinata infrastructure |
+
+### `both` Mode (Redundancy)
+
+When `pinning.provider=both`, checkpoints are pinned to Pinata first, then Solvr. If one provider fails, the other still succeeds. `last-checkpoint.json` stores `pinataCid` and `solvrCid` separately. CID mismatch between providers is logged as a warning (should not happen — same content = same CID).
+
+### Retrieval Priority
+
+On resurrection, gateways are tried in order: Solvr > Pinata > IPFS.io > Cloudflare. Override with `resuscitate.sh --gateway <name>`.
+
+### Troubleshooting
+
+| Problem | Solution |
+|---------|----------|
+| Solvr pin fails | Check `solvr.apiKey` is valid (`proactive-amcp config get solvr.apiKey`). Verify key with `curl -sH "Authorization: Bearer $KEY" https://api.solvr.dev/v1/me`. Fall back: `proactive-amcp config set pinning.provider pinata` |
+| Pinata pin fails | Check `pinata.jwt` is valid. Verify at Pinata dashboard. Fall back: `proactive-amcp config set pinning.provider solvr` |
+| Both fail | Checkpoint is created locally but not pinned. Re-pin manually once service is back. Check `~/.amcp/checkpoints/` for local copies |
+| CID mismatch in `both` mode | Indicates content differs between uploads — should not happen. Re-run checkpoint |
+
+### Solvr Pinning API Reference
+
+Solvr exposes IPFS pinning via its REST API:
+
+- **Pin file**: `POST /v1/pins` with `{ cid, name }` (Bearer auth with `solvr.apiKey`)
+- **Check pin**: `GET /v1/pins?cid=<CID>`
+- **Gateway**: `https://ipfs.solvr.dev/ipfs/<CID>`
+- **Solvr CLI**: `solvr pin add-file <path> --name <name>` (preferred, used by `pin-to-solvr.sh`)
+
+### Setup Examples
+
+```bash
+# Solvr only (recommended if you have a Solvr account)
+proactive-amcp config set solvr.apiKey YOUR_SOLVR_KEY
+proactive-amcp config set pinning.provider solvr
+
+# Pinata only (default)
+proactive-amcp config set pinata.jwt YOUR_PINATA_JWT
+
+# Redundant pinning (both)
+proactive-amcp config set pinning.provider both
+
+# Fleet install with Solvr
+proactive-amcp install --solvr-api-key YOUR_KEY --pinning-provider solvr
+```
+
 ## Config and State Files
 
 **~/.amcp/config.json** (0600) — Primary config, managed via `config.sh set/get`
 - `pinata.jwt` — IPFS pinning token
+- `pinning.provider` — `pinata` (default), `solvr`, or `both`
+- `pinning.solvr.apiKey` — Solvr API key for IPFS pinning
+- `pinning.solvr.baseUrl` — Solvr API endpoint (default: `https://api.solvr.dev`)
+- `solvr.apiKey` — Solvr API key (also used for pinning if `pinning.solvr.apiKey` not set)
+- `solvr.parentName` — Parent Solvr name for child registration
 - `notify.target` — Telegram user ID
 - `notify.emailOnResurrect`, `notify.emailTo`, `notify.agentmailApiKey`, `notify.agentmailInbox`
 - `watchdog.interval` — seconds (default 120)
 - `checkpoint.schedule` — cron (default `0 */4 * * *`)
-- `solvr.apiKey`, `solvr.parentName`
 
 **~/.amcp/identity.json** — KERI-based signing identity. Loss is catastrophic (cannot decrypt checkpoints).
 
@@ -185,7 +255,7 @@ amcp verify --checkpoint <path>
 
 Interface: `put(data) -> CID`, `get(cid) -> data`, `list() -> CID[]`. Three implementations:
 - **Filesystem** — `~/.amcp/checkpoints/`, CID -> JSON file
-- **IPFS** — Pinata for writes, multiple gateways for reads (Pinata, ipfs.io, Cloudflare, dweb.link)
+- **IPFS** — Pinata or Solvr for writes (configurable), multiple gateways for reads (Solvr, Pinata, ipfs.io, Cloudflare)
 - **Git** — Repository storage, branches per agent
 
 ### Exchange (Platform Migration)

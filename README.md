@@ -7,6 +7,7 @@
 An [OpenClaw](https://github.com/openclaw/openclaw) skill that enforces the [AMCP (Agent Memory Continuity Protocol)](https://github.com/fcavalcantirj/amcp-protocol):
 
 - **🧠 Checkpoint**: Encrypt workspace + secrets, pin to IPFS
+- **📌 Multiple IPFS Pinning Providers**: Solvr (free for agents), Pinata, or both for redundancy
 - **👁️ Watchdog**: Monitor agent health, detect death
 - **🔄 Resurrection**: Recover from checkpoint when agent dies
 - **🔑 Secrets Injection**: Restore API keys to proper config files
@@ -46,7 +47,7 @@ Make your agent genuinely smarter:
 ## Requirements
 
 - `curl`, `jq` — API calls and JSON parsing
-- `PINATA_JWT` — IPFS pinning service API key
+- IPFS pinning key — `PINATA_JWT` (Pinata) or `solvr.apiKey` (Solvr) or both
 - `~/.amcp/identity.json` — AMCP signing identity
 
 ## Install
@@ -135,6 +136,15 @@ proactive-amcp config set pinning.provider solvr
 # Or redundant pinning (both)
 proactive-amcp config set pinning.provider both
 ```
+
+## Troubleshooting
+
+| Problem | Solution |
+|---------|----------|
+| Solvr pin fails | Verify key: `proactive-amcp config get solvr.apiKey`. Fallback: `proactive-amcp config set pinning.provider pinata` |
+| Pinata pin fails | Check JWT at Pinata dashboard. Fallback: `proactive-amcp config set pinning.provider solvr` |
+| Both providers fail | Checkpoint saved locally in `~/.amcp/checkpoints/`. Re-pin when service recovers |
+| Can't fetch checkpoint | Try different gateway: `resuscitate.sh --gateway pinata` or `--gateway ipfs.io` |
 
 ## Memory Architecture
 

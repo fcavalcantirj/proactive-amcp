@@ -285,7 +285,7 @@
       "Reference Solvr API docs for pinning endpoints",
       "Verify: documentation complete and accurate"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "ontology",
