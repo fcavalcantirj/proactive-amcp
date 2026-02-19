@@ -746,3 +746,33 @@
 - Verification:
   - All 8 tests pass
   - File size: 209 lines (under 800)
+
+## Task: documentation — Update CLAUDE.md and README.md with ontology integration features (Phase 3) (DONE)
+- Updated CLAUDE.md Architecture section (line 11-29): added three-layer memory model table (Ontology/AMCP/Phenomenological)
+  - Each layer with purpose, storage, and example
+  - Reference to RECONSTRUCTION.md for phenomenological layer
+- Added Ontology section to CLAUDE.md (~50 lines, lines 85-125):
+  - Graph format (JSONL entities + relations with all field names)
+  - Validation (validate-ontology.py: schema, integrity, acyclic blocks)
+  - CID computation (SHA-256 → CIDv1 raw, multibase prefix 'b')
+  - SOUL.md drift detection (severity thresholds, soul-drift.log, config toggle)
+  - Memory evolution (Zettelkasten-style, A-MEM reference, threshold + max_relations)
+  - Typed pruning (TTL, prune_if, preserve_relations, atomic write)
+  - Temporal queries (3-level storage, build-index/history/query)
+  - Contract validation (Design by Contract, preconditions/postconditions, conflict detection)
+  - Reference to docs/ONTOLOGY-INTEGRATION-CONTEXT.md
+- Updated File Map to include 17 additional scripts (ontology, learning, Solvr, pinning, contract)
+- Updated Data Flows:
+  - Checkpoint: added memory evolution, temporal index build, ontology CID, SOUL drift
+  - Resurrection: added Solvr search, learning/ontology validation, venv recreation, problem surfacing
+- Added ontology environment variables: EVOLUTION_THRESHOLD, EVOLUTION_MAX_RELATIONS, TEMPORAL_INDEX_PATH, LEARNING_DIR
+- Documented pruning.policies config schema with JSON example, TTL syntax, prune_if syntax
+- Added additional config keys: pruning.policies, learning.*, solvr.surfaceRemoteProblems, notify.enableSoulDrift
+- Updated README.md: added "Ontology Integration" to features list with full description
+- Updated README.md Memory Architecture: added ONTOLOGY-INTEGRATION-CONTEXT.md reference
+- Verification:
+  - CLAUDE.md: 505 lines (under 800)
+  - README.md: 168 lines (under 800)
+  - All referenced files verified to exist: RECONSTRUCTION.md, docs/ONTOLOGY-INTEGRATION-CONTEXT.md, docs/ontology-contract.schema.json
+  - All 17 scripts in File Map verified to exist
+  - No broken internal links

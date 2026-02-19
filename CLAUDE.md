@@ -12,9 +12,21 @@ OpenClaw skill (v0.7.1) implementing the AMCP (Agent Memory Continuity Protocol)
 
 CLI tool + systemd/cron services. Not an API server.
 
-Entry point is `scripts/proactive-amcp.sh` which dispatches to subcommands: `init`, `config`, `install`, `solvr-register`.
+Entry point is `scripts/proactive-amcp.sh` which dispatches to subcommands: `init`, `config`, `install`, `solvr-register`, `prune`, `validate-contract`, `detect-conflicts`, `temporal-query`, `problem`, `learning`, and more.
 
 All core scripts validate the AMCP identity (`~/.amcp/identity.json`) before operating. Fake sha256-style identities from openclaw-deploy are rejected.
+
+### Three-Layer Memory Model
+
+Agent memory is structured in three complementary layers:
+
+| Layer | Purpose | Storage | Example |
+|-------|---------|---------|---------|
+| **Ontology** (structured) | Typed knowledge graph with entities and relations | `memory/ontology/graph.jsonl` | Person, Task, Project entities with typed relations |
+| **AMCP** (verified) | Signed, encrypted, content-addressed checkpoints | IPFS (Pinata/Solvr) | Full agent state snapshots with CID integrity |
+| **Phenomenological** (curated) | Human-readable memory files loaded in sequence | `SOUL.md`, `MEMORY.md`, daily notes | Identity, preferences, lessons learned |
+
+The ontology layer provides structured, queryable knowledge. The AMCP layer ensures verifiable persistence. The phenomenological layer (see [RECONSTRUCTION.md](RECONSTRUCTION.md)) defines the canonical loading order during resurrection — the sequence matters because each layer provides interpretive context for the next.
 
 ## File Map
 
@@ -38,6 +50,21 @@ scripts/
   pre-commit-secrets.sh  Git hook to block secret commits (95L)
   solvr-register.sh    Auto-register child Solvr account, protocol-08 naming (409L)
   spawn-child.sh       Simpler child agent registration wrapper (232L)
+  pin-to-solvr.sh      Thin wrapper around Solvr CLI for IPFS pinning (136L)
+  migrate-pins.sh      Transfer historical checkpoints from Pinata to Solvr (472L)
+  solvr-integration.sh Solvr search/approach functions for resurrection (268L)
+  learning.py          Problem + Learning CRUD, append-only JSONL storage (440L)
+  learning-report.py   Human-readable learning metrics report (148L)
+  detect-failure.py    Scan agent text for failure patterns, auto-create Problems (206L)
+  generate-problem-summary.py  Surface open problems on resurrection (201L)
+  validate-ontology.py Schema validation for JSONL ontology graphs (195L)
+  prune-ontology.py    Typed pruning policies per entity type (260L)
+  memory-evolution.sh  Zettelkasten-style dynamic entity relation inference (279L)
+  compute-entity-similarity.py  Levenshtein + keyword overlap similarity scorer (185L)
+  temporal-queries.py  Cross-checkpoint entity history and temporal index (238L)
+  validate-skill-contract.sh + .py  Design by Contract validation for skills (90L + 211L)
+  detect-contract-conflicts.sh + .py  Cross-skill conflict detection (48L + 241L)
+  recreate-venvs.sh    Rebuild Python venvs from manifest on resurrection
 
 test/
   test_helper.sh       Fixtures, mocks, setup/teardown (263L)
@@ -55,13 +82,55 @@ ralph-continuous.sh    Dev tool: batch processing with API recovery (300L)
 progress.sh            Dev tool: count passed PRD requirements (27L)
 ```
 
+## Ontology
+
+Typed knowledge graph stored as append-only JSONL at `$CONTENT_DIR/memory/ontology/graph.jsonl`.
+
+### Graph Format
+
+Each line is a JSON object with `type` field (`entity` or `relation`):
+
+**Entities:** `{ "id": "...", "type": "entity", "entity_type": "Person|Task|Project|Event|Document|Account", "properties": { "name": "", ... }, "created": "ISO-8601", "updated": "ISO-8601" }`
+
+**Relations:** `{ "type": "relation", "from_id": "entity_1", "relation_type": "related_to|blocks|depends_on|mentions|has_owner", "to_id": "entity_2", "properties": {} }`
+
+### Validation (`validate-ontology.py`)
+
+Schema rules: valid JSON per line, required fields present (id, type, properties for entities; from_id, relation_type, to_id for relations), relation integrity (referenced IDs exist), acyclic 'blocks' relations (DFS cycle detection). Called during resurrection — warnings logged, never blocks recovery.
+
+### CID Computation (`full-checkpoint.sh`)
+
+SHA-256 of `graph.jsonl` formatted as CIDv1 raw (multibase prefix `b`, codec 0x55, multihash sha256). Stored in `last-checkpoint.json` as `ontologyGraphCID`. Deterministic — same content always produces the same CID. Uses python3 stdlib only.
+
+### SOUL.md Drift Detection (`full-checkpoint.sh`)
+
+Computes sha256 of SOUL.md on each checkpoint, compares to previous `soulHash` in `last-checkpoint.json`. Severity: <5 lines = minor (log only), 5-20 = moderate (log + optional notify), >20 = major (log + notify). Logged to `~/.amcp/soul-drift.log`. Controlled by `notify.enableSoulDrift` config toggle.
+
+### Memory Evolution (`memory-evolution.sh`)
+
+Zettelkasten-style dynamic linking (A-MEM, NeurIPS 2025). When new entities are added, computes semantic similarity (Levenshtein + keyword overlap via `compute-entity-similarity.py`) against existing entities. Adds bidirectional `related_to` relations for matches above threshold. Runs during checkpoint before CID computation. Configurable via `EVOLUTION_THRESHOLD` (default 0.75) and `EVOLUTION_MAX_RELATIONS` (default 3).
+
+### Typed Pruning (`prune-ontology.py`)
+
+Per-entity-type retention policies defined in `pruning.policies` config. Supports TTL (e.g., `30d`, `90d`, `1y`) and conditional expressions (`status == 'done' AND updated < 90d`). Entities with `ttl: null` and no `prune_if` are never pruned (e.g., Person). Atomic write (`.pruned` + rename). Optional relation stub preservation with `deleted_at` timestamp.
+
+### Temporal Queries (`temporal-queries.py`)
+
+Cross-checkpoint entity history. 3-level storage: live graph, checkpoint snapshots, temporal index (`~/.amcp/memory/temporal-index.jsonl`). Commands: `build-index` (run during checkpoint), `history <entity_id>`, `query <entity_id> --start/--end`. Version detection via SHA-256 hash of entity properties.
+
+### Contract Validation (`validate-skill-contract.sh`)
+
+Design by Contract for skills. Skills declare `ontologyContract` in `skill.json` with `reads`, `writes`, `preconditions`, `postconditions`. Validation checks preconditions against `graph.jsonl` on skill load. `detect-contract-conflicts.sh` finds incompatible postconditions across loaded skills. Backward compatible — skills without contracts are skipped.
+
+See [docs/ONTOLOGY-INTEGRATION-CONTEXT.md](docs/ONTOLOGY-INTEGRATION-CONTEXT.md) for research context and design rationale.
+
 ## Data Flows
 
-**Checkpoint:** validate identity -> extract secrets from config files -> scan for cleartext (reject unless --force) -> amcp CLI creates encrypted checkpoint -> pin to IPFS (Pinata, Solvr, or both per `pinning.provider`) -> save CID to last-checkpoint.json -> rotate old -> notify
+**Checkpoint:** validate identity -> extract secrets from config files -> scan for cleartext (reject unless --force) -> run memory evolution (infer relations) -> build temporal index -> amcp CLI creates encrypted checkpoint -> pin to IPFS (Pinata, Solvr, or both per `pinning.provider`) -> compute ontology CID -> detect SOUL drift -> save CID + ontologyGraphCID + soulHash to last-checkpoint.json -> rotate old -> notify
 
 **Watchdog:** validate identity -> diagnose.sh (JSON findings) -> light fix (session-fix.sh + restart) or heavy fix (resuscitate.sh) -> update watchdog-state.json -> notify
 
-**Resurrection:** acquire lock -> Tier 1 restart gateway -> Tier 2 restore config backup -> Tier 3 fetch from IPFS, decrypt, inject secrets, restart -> recreate venvs -> Solvr search (read-only) -> email notification -> release lock
+**Resurrection:** acquire lock -> search Solvr for similar problems -> try Solvr solutions -> Tier 1 restart gateway -> Tier 2 restore config backup -> Tier 3 fetch from IPFS (Solvr > Pinata > IPFS.io > Cloudflare), decrypt, inject secrets, validate learning data, validate ontology, recreate venvs, restart -> surface open problems -> update Solvr approaches -> email notification -> release lock
 
 ## Virtual Environment Recovery
 
@@ -203,6 +272,27 @@ proactive-amcp install --solvr-api-key YOUR_KEY --pinning-provider solvr
 - `watchdog.interval` — seconds (default 120)
 - `checkpoint.schedule` — cron (default `0 */4 * * *`)
 
+- `pruning.policies` — Per-entity-type retention rules for ontology pruning (see below)
+- `learning.resurrection.surfaceProblems` — Surface open problems on resurrection (default: true)
+- `learning.selfDetect.enabled` — Auto-detect failures and create Problems (default: true)
+- `learning.selfDetect.debounceHours` — Hours between duplicate self-detections (default: 24)
+- `solvr.surfaceRemoteProblems` — Include Solvr problems in resurrection context (default: true)
+- `notify.enableSoulDrift` — Notify on SOUL.md drift (default: true)
+
+**pruning.policies** schema (in `~/.amcp/config.json`):
+```json
+{
+  "pruning": {
+    "policies": {
+      "Event": { "ttl": "30d", "preserve_relations": true },
+      "Task": { "ttl": null, "prune_if": "status == 'done' AND updated < 90d" },
+      "Person": { "ttl": null }
+    }
+  }
+}
+```
+TTL supports: `h` (hours), `d` (days), `w` (weeks), `m` (months), `y` (years). `prune_if` supports `==`, `!=`, `<` (temporal) with `AND` conjunctions. Entities with only `ttl: null` (no `prune_if`) are never pruned. Run: `proactive-amcp prune [--dry-run] [--config PATH] [--graph PATH]`.
+
 **~/.amcp/identity.json** — KERI-based signing identity. Loss is catastrophic (cannot decrypt checkpoints).
 
 **~/.amcp/watchdog-state.json** — Runtime: state (HEALTHY/DEGRADED/DEAD), consecutiveFailures, retryDelay, resurrectionPid
@@ -228,6 +318,10 @@ All have defaults, all overridable:
 | RETRY_DELAY_INITIAL | 300 | watchdog |
 | RETRY_DELAY_MAX | 1800 | watchdog |
 | SESSION_DIR | ~/.openclaw/agents/main/sessions | diagnose, session-fix |
+| EVOLUTION_THRESHOLD | 0.75 | memory-evolution, compute-entity-similarity |
+| EVOLUTION_MAX_RELATIONS | 3 | memory-evolution, compute-entity-similarity |
+| TEMPORAL_INDEX_PATH | ~/.amcp/memory/temporal-index.jsonl | temporal-queries |
+| LEARNING_DIR | $CONTENT_DIR/memory/learning | learning, detect-failure, generate-problem-summary |
 
 ## External Services
 

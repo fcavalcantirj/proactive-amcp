@@ -12,6 +12,7 @@ An [OpenClaw](https://github.com/openclaw/openclaw) skill that enforces the [AMC
 - **🔄 Resurrection**: Recover from checkpoint when agent dies
 - **🔑 Secrets Injection**: Restore API keys to proper config files
 - **🐍 Venv Auto-Recovery**: Rebuild Python virtual environments from manifest on resurrection
+- **🕸️ Ontology Integration**: Typed knowledge graphs with schema validation, identity drift detection, typed pruning policies, temporal queries, memory evolution, and Design by Contract for skills
 - **⚡ Groq Intelligence** *(coming soon)*: Smart memory pruning, importance scoring
 
 ## Why IPFS?
@@ -150,6 +151,7 @@ proactive-amcp config set pinning.provider both
 ## Memory Architecture
 
 - [RECONSTRUCTION.md](RECONSTRUCTION.md) — Canonical loading order for agent memory during resurrection (the Uncanny Seam)
+- [docs/ONTOLOGY-INTEGRATION-CONTEXT.md](docs/ONTOLOGY-INTEGRATION-CONTEXT.md) — Research synthesis: three-layer memory model (ontology + AMCP + phenomenological), entity types, academic references (AriGraph, Zep/Graphiti, A-MEM)
 
 ## Related
 
