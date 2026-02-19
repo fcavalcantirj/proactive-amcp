@@ -1249,3 +1249,37 @@
   - No __pycache__ files in pack output
   - bash -n passes on all scripts/*.sh
   - CI workflow: 74 lines (under 800)
+
+## Task: P4-INF-05 — Write integration tests for plugin + OpenClaw integration (DONE)
+- Created `src/integration.test.ts` (270 lines) — 27 integration tests across 5 test suites
+- **Plugin registration tests** (5 tests):
+  - Registers exactly 2 services (amcp-context-monitor, amcp-memory-monitor)
+  - Registers 4 lifecycle hooks (gateway_start, gateway_stop, session_end, before_compaction)
+  - Registers 6 CLI commands under amcp namespace (status, checkpoint, resurrect, identity, history, verify)
+  - Logs initialization and success messages
+  - Plugin default export matches AmcpPlugin contract (id, name, version, description, register)
+- **Lifecycle hooks tests** (7 tests):
+  - gateway_start hook emits amcp:checkpoint:requested with trigger
+  - gateway_stop hook emits checkpoint requested event
+  - session_end hook emits checkpoint requested event
+  - before_compaction hook emits HIGH-PRIORITY checkpoint event
+  - Hooks log their trigger reason
+  - No hooks registered when autoCheckpoint=false
+  - Services still registered when autoCheckpoint=false
+- **CLI commands tests** (9 tests):
+  - Each of 6 commands (status, checkpoint, resurrect, identity, history, verify) executes without error
+  - Command handlers log invocation with args
+  - Command handlers log invocation without args (shows "no args")
+  - All commands have descriptions (length > 5)
+- **Service lifecycle tests** (3 tests):
+  - Context monitor starts, reports status (running=true), and stops
+  - Memory monitor starts, reports status, and stops
+  - Services log start and stop events
+- **Config variation tests** (3 tests):
+  - Disabled plugin registers nothing (0 services, 0 hooks, 0 commands)
+  - Custom config values respected (services/hooks/commands still register)
+  - register() callable via plugin.register() or standalone import
+- Mock PluginApi tracks all registrations (services, hooks, commands, emissions, logs)
+- Verification:
+  - npm test passes: 38 tests (11 existing + 27 new), 2 test files, 0 failures
+  - File size: 270 lines (under 800)

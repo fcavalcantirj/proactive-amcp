@@ -1162,7 +1162,7 @@
       "Test CLI commands execute",
       "Verify: npm test passes all integration tests"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "P4-CTX-01",
