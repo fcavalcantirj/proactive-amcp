@@ -1034,7 +1034,7 @@
       "Add proactive-amcp groq status — shows usage, limits, source",
       "Verify: claimed agent can use Groq without separate signup"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "intelligence",

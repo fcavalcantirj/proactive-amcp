@@ -886,3 +886,32 @@
   - Before/after example with importance scores present
   - Both key acquisition paths documented (own key, Solvr-provided)
   - CLI commands reference real proactive-amcp memory-prune command
+
+## Task: integration — Groq key distribution via Solvr (Phase 3) (DONE)
+- Created `scripts/groq-status.sh` (427 lines) — Groq intelligence management: status + key request
+- `request-key` subcommand: requests Groq API key from Solvr via POST /v1/agents/{id}/integrations/groq
+  - Gets agent ID from Solvr /v1/me, then POST to integrations endpoint
+  - Parses returned key from response (api_key, apiKey, key, groq_api_key fields)
+  - Stores in config: groq.apiKey (the key), groq.source=solvr (provenance tracking)
+  - Handles existing keys: warns if manual key exists (don't downgrade), skips if solvr key exists
+  - Graceful error handling: 401/403 (auth), 404 (not available), 429 (rate limit), 000 (unreachable)
+- `status` subcommand: shows usage, limits, source
+  - Text mode: formatted status with redacted key, usage stats from groq-usage.json, rate limit info
+  - JSON mode (--json): machine-readable output with configured, source, model, usage, limits
+  - Shows upgrade path for solvr-sourced keys: "Want more? Get your own key at console.groq.com"
+- Updated `scripts/init.sh` (677 lines): Groq section now offers Solvr key distribution
+  - If solvr.apiKey exists in config: offers "Request free key from Solvr?" (option A) vs "Provide your own" (option B)
+  - Calls groq-status.sh request-key for Solvr flow, reads stored key back into config
+  - Falls back to manual key input if Solvr request fails
+  - If no Solvr account: manual key input only (same as before)
+  - groq.source tracked as "solvr" or "manual" in all paths
+- Added `groq` subcommand to proactive-amcp.sh CLI dispatcher (routes to groq-status.sh)
+- Verification:
+  - bash -n passes on all 3 modified scripts
+  - File sizes: groq-status.sh=427, proactive-amcp.sh=183, init.sh=677 (all under 800)
+  - All 6 PRD steps verified via structural grep:
+    - POST /v1/agents/{id}/integrations/groq (2 refs)
+    - groq.apiKey storage (10 refs), groq.source=solvr (3 refs)
+    - Rate limit mentions (6 refs), console.groq.com upgrade (8 refs)
+    - groq subcommand in CLI (4 refs), Solvr integration in init (4 refs)
+  - All 126 existing tests pass (no regressions)

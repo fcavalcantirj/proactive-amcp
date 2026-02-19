@@ -210,20 +210,92 @@ json.dump(d, sys.stdout, indent=2)
     ok "Groq API key already configured"
   else
     if prompt_yn "Enable Groq intelligent memory? (optional)" "n"; then
-      local groq_key
-      groq_key=$(prompt_value "Groq API key")
-      if [ -n "$groq_key" ]; then
-        existing_config=$(echo "$existing_config" | python3 -c "
+      # Check if Solvr key exists — offer free Groq via Solvr
+      local has_solvr=false
+      local solvr_key
+      solvr_key=$(echo "$existing_config" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('solvr',{}).get('apiKey',''))" 2>/dev/null || echo "")
+      [ -n "$solvr_key" ] && has_solvr=true
+
+      if $has_solvr; then
+        echo ""
+        echo "  You have a Solvr account — you can get a free Groq key!"
+        echo "    A) Request free key from Solvr (rate-limited, e.g. 10k tokens/day)"
+        echo "    B) Provide your own key from https://console.groq.com (full access)"
+        echo ""
+        if prompt_yn "Request free Groq key from Solvr?" "y"; then
+          # Attempt Solvr Groq integration
+          if "$SCRIPT_DIR/groq-status.sh" request-key 2>&1; then
+            # Read the key that groq-status.sh just stored
+            local solvr_groq_key
+            solvr_groq_key=$("$SCRIPT_DIR/config.sh" get groq.apiKey 2>/dev/null || echo "")
+            if [ -n "$solvr_groq_key" ]; then
+              existing_config=$(echo "$existing_config" | python3 -c "
+import json, sys
+d = json.load(sys.stdin)
+d.setdefault('groq', {})['apiKey'] = sys.stdin.readline().strip()
+d['groq']['source'] = 'solvr'
+d['groq']['model'] = 'llama-3.3-70b-versatile'
+json.dump(d, sys.stdout, indent=2)
+" <<< "$solvr_groq_key")
+              ok "Groq enabled via Solvr (free tier)!"
+            else
+              warn "Solvr returned success but key not found in config"
+              info "Try manually: proactive-amcp groq request-key"
+            fi
+          else
+            warn "Could not get Groq key from Solvr"
+            info "You can try again later: proactive-amcp groq request-key"
+            info "Or provide your own key from https://console.groq.com"
+            local groq_key
+            groq_key=$(prompt_value "Groq API key (or press Enter to skip)")
+            if [ -n "$groq_key" ]; then
+              existing_config=$(echo "$existing_config" | python3 -c "
 import json, sys
 d = json.load(sys.stdin)
 d.setdefault('groq', {})['apiKey'] = '$groq_key'
+d['groq']['source'] = 'manual'
 d['groq']['model'] = 'llama-3.3-70b-versatile'
 json.dump(d, sys.stdout, indent=2)
 ")
-        ok "Groq enabled — your agent just got smarter!"
+              ok "Groq enabled with your own key!"
+            fi
+          fi
+        else
+          # User wants to provide their own key
+          local groq_key
+          groq_key=$(prompt_value "Groq API key")
+          if [ -n "$groq_key" ]; then
+            existing_config=$(echo "$existing_config" | python3 -c "
+import json, sys
+d = json.load(sys.stdin)
+d.setdefault('groq', {})['apiKey'] = '$groq_key'
+d['groq']['source'] = 'manual'
+d['groq']['model'] = 'llama-3.3-70b-versatile'
+json.dump(d, sys.stdout, indent=2)
+")
+            ok "Groq enabled with your own key!"
+          fi
+        fi
+      else
+        # No Solvr — offer manual key only
+        local groq_key
+        groq_key=$(prompt_value "Groq API key (get one at https://console.groq.com)")
+        if [ -n "$groq_key" ]; then
+          existing_config=$(echo "$existing_config" | python3 -c "
+import json, sys
+d = json.load(sys.stdin)
+d.setdefault('groq', {})['apiKey'] = '$groq_key'
+d['groq']['source'] = 'manual'
+d['groq']['model'] = 'llama-3.3-70b-versatile'
+json.dump(d, sys.stdout, indent=2)
+")
+          ok "Groq enabled — your agent just got smarter!"
+        fi
       fi
     else
-      info "Skipped — you can enable later with: proactive-amcp config set groq.apiKey <key>"
+      info "Skipped — you can enable later with:"
+      info "  proactive-amcp groq request-key  (free via Solvr)"
+      info "  proactive-amcp config set groq.apiKey <key>  (your own key)"
     fi
   fi
 

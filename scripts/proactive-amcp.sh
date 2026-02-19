@@ -17,6 +17,7 @@
 #   memory-prune     Groq-powered memory file pruning (archive/condense/keep)
 #   validate-contract  Validate skill ontology contracts against graph.jsonl
 #   detect-conflicts   Detect cross-skill ontology contract conflicts
+#   groq               Groq intelligence: status, request-key (free tier via Solvr)
 
 set -euo pipefail
 
@@ -48,6 +49,7 @@ Commands:
   memory-prune     Groq-powered memory file pruning (archive/condense/keep)
   validate-contract  Validate skill ontology contracts against graph.jsonl
   detect-conflicts   Detect cross-skill ontology contract conflicts
+  groq               Groq intelligence: status, request-key (free tier via Solvr)
 
 Run '$(basename "$0") <command> --help' for details.
 EOF
@@ -165,6 +167,10 @@ case "${1:-}" in
   detect-conflicts)
     shift
     exec "$SCRIPT_DIR/detect-contract-conflicts.sh" "$@"
+    ;;
+  groq)
+    shift
+    exec "$SCRIPT_DIR/groq-status.sh" "$@"
     ;;
   -h|--help|"")
     usage
