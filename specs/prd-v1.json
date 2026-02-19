@@ -1082,14 +1082,14 @@
   {
     "category": "onboarding",
     "phase": 3,
-    "description": "Integrate Solvr agent claiming into onboarding — guide user to claim on Solvr, fetch API key, unlock benefits",
+    "description": "Add IPFS/Groq benefits messaging to onboarding — reference proactive-solvr for Solvr registration",
     "steps": [
-      "Update ONBOARDING.md to prompt: Have you claimed your agent on Solvr?",
-      "If no: guide to https://solvr.dev/claim with instructions",
-      "After claim: prompt for Solvr API key or auto-fetch via solvr-register.sh",
-      "Store Solvr key in config, show benefits unlocked: free IPFS pinning, Groq intelligence",
-      "solvr-register.sh already handles registration - wire it into onboarding flow",
-      "Verify: user claims on Solvr → proactive-amcp detects and configures automatically"
+      "Update ONBOARDING.md: If you registered with Solvr (via proactive-solvr), you unlock free IPFS pinning",
+      "Add note: proactive-solvr handles Solvr registration, proactive-amcp provides IPFS/Groq benefits",
+      "In Step 1, offer Solvr pinning as alternative to Pinata if already on Solvr",
+      "Add Groq benefits section: If Solvr registered, you can enable Groq intelligence",
+      "Wire config check: if solvr.apiKey exists, skip Pinata requirement",
+      "Verify: user who did proactive-solvr onboarding sees free IPFS option in proactive-amcp"
     ],
     "passes": false
   }
