@@ -1127,3 +1127,29 @@
   - All 12 functional tests pass: load_evaluator, current_evaluator_type, metadata, empty file, weighted_average, majority_keep, majority_tie_discard, unanimous_agree, unanimous_disagree, quorum_met, quorum_discard, high_disagreement
   - Structural grep: _adapter_evaluate (3), _adapter_metadata (2), weighted_average (4), majority (1), unanimous (1), quorum (1), finalScore (3), disagreementLevel (4), minJudges (4), quorumThreshold (2)
   - All 126 existing tests pass (no regressions)
+
+## Task: P3-EVAL-07 — Add evaluator configuration to ~/.amcp/config.json (DONE)
+- Created `scripts/config-evaluators.sh` (468 lines) — manage evaluators array and consensus config
+- Subcommands: list, add, remove, set-consensus, show
+- `add <type> [--model M] [--weight W] [--api-key K]`: adds evaluator to config.json evaluators array
+  - Known types: groq, ollama, openai, anthropic (custom types allowed with warning)
+  - Duplicate type detection: updates existing entry instead of creating duplicate
+  - Weight validation: must be 0.0-1.0
+- `remove <type|index>`: removes evaluator by type name or array index
+- `set-consensus <key> <value>`: sets consensus config with validation
+  - strategy: weighted_average | majority | unanimous | quorum
+  - minJudges: positive integer
+  - quorumThreshold, disagreementThreshold: 0.0-1.0
+  - tieBreaker: keep | discard | escalate
+- `list`: shows configured evaluators with type, model, weight, apiKey status
+- `show`: combined view of evaluators + consensus config with defaults annotated
+- Default behavior: no evaluators configured = single groq evaluator (displayed in list/show)
+- Updated `scripts/config.sh`: added `evaluators` subcommand routing to config-evaluators.sh
+- Updated config.sh usage text to mention evaluators subcommand
+- All Python blocks use environment variables for safe data passing (no shell injection)
+- Verification:
+  - bash -n syntax check passes on both scripts
+  - File sizes: config-evaluators.sh=468, config.sh=278 (both under 800)
+  - All 10 functional tests pass: list_default, add_groq, add_ollama, duplicate_update, set_consensus, validation_rejects, show, remove_by_type, remove_by_index, routing_via_config_sh
+  - Structural grep: evaluators (55), type/model/weight/apiKey (94 total), consensus keys (40 total), list/add/remove (6), routing (3), default groq (4)
+  - All 126 existing tests pass (no regressions)

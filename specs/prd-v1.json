@@ -1686,6 +1686,6 @@
       "Add 'proactive-amcp config evaluators' command to list/add/remove",
       "Verify: config supports multi-evaluator setup"
     ],
-    "passes": false
+    "passes": true
   }
 ]

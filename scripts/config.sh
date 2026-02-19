@@ -18,6 +18,7 @@ proactive-amcp config — Manage ~/.amcp/config.json
 Usage:
   config set <key> <value>   Set a config value using dot-path notation
   config get [key]           Get a config value (or print all, redacted)
+  config evaluators          Manage evaluator array (list/add/remove/show)
 
 Examples:
   config set pinata.jwt eyJhbGciOi...
@@ -253,6 +254,8 @@ if found:
 SUBCOMMAND="${1:-}"
 shift || true
 
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0" 2>/dev/null || realpath "$0" 2>/dev/null || echo "$0")")" && pwd)"
+
 case "$SUBCOMMAND" in
   set)
     warn_identity_secrets
@@ -261,6 +264,9 @@ case "$SUBCOMMAND" in
   get)
     warn_identity_secrets
     config_get "$@"
+    ;;
+  evaluators)
+    exec "$SCRIPT_DIR/config-evaluators.sh" "$@"
     ;;
   -h|--help|"")
     usage
