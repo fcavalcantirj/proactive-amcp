@@ -1134,7 +1134,7 @@
       "Register CLI commands under 'amcp' namespace",
       "Verify: plugin loads without errors when installed"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "P4-INF-04",

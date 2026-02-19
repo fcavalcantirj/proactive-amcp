@@ -1213,3 +1213,17 @@
   - `npm run lint` (tsc --noEmit) passes with no errors
   - `npm test` passes all 11 tests
   - File sizes: index.ts=209, types.ts=101, index.test.ts=131 (all under 800)
+
+## Task: P4-INF-03 — Implement register() function with OpenClaw plugin API (DONE)
+- Already implemented in P4-INF-02 (src/index.ts:173-196) — marking as passes=true
+- Default plugin object exported at line 198-205 with id, name, version, description, register
+- register(api: PluginApi) receives PluginApi, resolves config, registers all components
+- Placeholder services: amcp-context-monitor (line 186), amcp-memory-monitor (line 187) via api.registerService()
+- Lifecycle hooks: gateway_start, gateway_stop, session_end, before_compaction (lines 122-143) via api.registerHook()
+- CLI commands: status, checkpoint, resurrect, identity, history, verify (lines 149-168) via api.registerCommand("amcp", ...)
+- Plugin disabled path: early return when config.enabled=false (line 176-179)
+- autoCheckpoint=false path: skips hook registration (line 120)
+- Verification:
+  - `npm run build` succeeds (dist/ output confirmed)
+  - Structural grep confirms: export default plugin, register(api: PluginApi), registerService (2), registerHook("gateway_start"|"session_end"), registerCommand("amcp")
+  - File size: index.ts=209 lines (under 800)
