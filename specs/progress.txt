@@ -704,3 +704,31 @@
   - README.md: 165 lines (under 800)
   - Documented manifest schema matches recreate-venvs.sh implementation
   - Recovery flow matches resuscitate.sh guard pattern at line 455
+
+## Task: contract — Implement ontology contract validation (index 39) (DONE)
+- Created `docs/ontology-contract.schema.json` (70 lines) — JSON schema for SkillOntologyContract
+  - Schema: skill_name, version, ontology: { reads, writes, preconditions, postconditions }
+  - Includes 2 example contracts (task-manager, knowledge-base)
+- Created `scripts/validate-skill-contract.sh` (90 lines) + `scripts/validate-skill-contract.py` (211 lines)
+  - Loads ontologyContract from skill.json or direct --contract file
+  - Checks reads: required entity types must exist in graph
+  - Checks preconditions: "exists", "==", "!=", "is valid enum" conditions
+  - Precondition on empty entity type: trivially holds (no entities to violate)
+  - Backward compatible: no skill.json or no ontologyContract = SKIP (exit 0)
+  - --json flag for JSON output, --graph and --skills-dir overrides
+- Created `scripts/detect-contract-conflicts.sh` (48 lines) + `scripts/detect-contract-conflicts.py` (241 lines)
+  - Scans all skills in skills directory for ontologyContract declarations
+  - Detects equality_vs_inequality conflicts (A says ==v, B says !=v)
+  - Detects contradictory_equality conflicts (A says ==v1, B says ==v2)
+  - Reports compatible read/write pairs (informational)
+  - --json flag for JSON output, --skills-dir override
+- Added `validate-contract` and `detect-conflicts` subcommands to proactive-amcp.sh
+- Verification:
+  - bash -n passes on all 3 bash scripts
+  - python3 py_compile passes on both .py files
+  - Test: precondition satisfied → PASS (exit 0)
+  - Test: missing property → FAIL with specific entity ID and error
+  - Test: no skill.json → SKIP (backward compatible, exit 0)
+  - Test: conflicting postconditions detected (== vs !=)
+  - Test: JSON output works for both commands
+  - File sizes: schema=70, validate.sh=90, validate.py=211, detect.sh=48, detect.py=241, cli=171 (all under 800)

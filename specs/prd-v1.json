@@ -473,7 +473,7 @@
       "Integration: call validate-skill-contract.sh from OpenClaw skill loader (if proactive-amcp plugin enabled)",
       "Verify: skill declaring 'precondition: Task.assignee exists' fails to load if some Tasks lack assignee, conflict between skill-A postcondition 'Task.status = done' and skill-B postcondition 'Task.status != done' detected"
     ],
-    "passes": false,
+    "passes": true,
     "phase": 3
   },
   {

@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SkillOntologyContract",
+  "description": "Design by Contract schema for OpenClaw skill ontology declarations. Skills declare which entity types they read/write and conditions they expect/guarantee.",
+  "type": "object",
+  "required": ["skill_name", "version", "ontology"],
+  "properties": {
+    "skill_name": {
+      "type": "string",
+      "description": "Skill identifier matching the skill directory name"
+    },
+    "version": {
+      "type": "string",
+      "description": "Contract version (semver)",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "ontology": {
+      "type": "object",
+      "required": ["reads", "writes"],
+      "properties": {
+        "reads": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Entity types this skill reads from the ontology graph"
+        },
+        "writes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Entity types this skill creates or modifies in the ontology graph"
+        },
+        "preconditions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Conditions that must hold in graph.jsonl before skill can operate. Format: 'EntityType.property exists' or 'EntityType.property == value'",
+          "default": []
+        },
+        "postconditions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Conditions guaranteed after skill execution. Format: 'EntityType.property is valid enum' or 'EntityType.property != value'",
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "skill_name": "task-manager",
+      "version": "1.0.0",
+      "ontology": {
+        "reads": ["Task", "Person"],
+        "writes": ["Task", "Action"],
+        "preconditions": ["Task.assignee exists"],
+        "postconditions": ["Task.status is valid enum"]
+      }
+    },
+    {
+      "skill_name": "knowledge-base",
+      "version": "1.0.0",
+      "ontology": {
+        "reads": ["Topic", "Learning"],
+        "writes": ["Topic", "Learning", "Relation"],
+        "preconditions": [],
+        "postconditions": ["Learning.confidence is valid enum"]
+      }
+    }
+  ]
+}

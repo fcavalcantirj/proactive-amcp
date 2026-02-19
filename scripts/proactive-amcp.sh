@@ -14,6 +14,8 @@
 #   temporal-query   Cross-checkpoint entity history queries
 #   detect-failure   Scan text for failure patterns, auto-create Problems
 #   prune            Prune ontology graph by typed retention policies
+#   validate-contract  Validate skill ontology contracts against graph.jsonl
+#   detect-conflicts   Detect cross-skill ontology contract conflicts
 
 set -euo pipefail
 
@@ -42,6 +44,8 @@ Commands:
   temporal-query   Cross-checkpoint entity history queries
   detect-failure   Scan text for failure patterns, auto-create Problems
   prune            Prune ontology graph by typed retention policies
+  validate-contract  Validate skill ontology contracts against graph.jsonl
+  detect-conflicts   Detect cross-skill ontology contract conflicts
 
 Run '$(basename "$0") <command> --help' for details.
 EOF
@@ -147,6 +151,14 @@ case "${1:-}" in
   prune)
     shift
     exec python3 "$SCRIPT_DIR/prune-ontology.py" "$@"
+    ;;
+  validate-contract)
+    shift
+    exec "$SCRIPT_DIR/validate-skill-contract.sh" "$@"
+    ;;
+  detect-conflicts)
+    shift
+    exec "$SCRIPT_DIR/detect-contract-conflicts.sh" "$@"
     ;;
   -h|--help|"")
     usage
