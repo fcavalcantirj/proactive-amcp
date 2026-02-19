@@ -620,7 +620,7 @@
       "Run: bats test/skill-contract.bats",
       "Verify: all 8 tests pass, precondition enforcement works, conflict detection catches incompatible contracts"
     ],
-    "passes": false,
+    "passes": true,
     "phase": 3
   },
   {
