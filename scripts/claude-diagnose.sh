@@ -10,8 +10,11 @@
 #
 # Requires:
 #   - claude CLI (npm install -g @anthropic-ai/claude-code)
-#   - ANTHROPIC_API_KEY in env or ~/.amcp/config.json
-#   - SOLVR_API_KEY in env or ~/.amcp/config.json (optional)
+#   - anthropic.apiKey in ~/.amcp/config.json (agent's own key, NOT env)
+#   - solvr.apiKey in ~/.amcp/config.json (optional)
+#
+# SECURITY: This script ONLY uses keys from config, never from environment.
+#           This prevents the agent from accidentally using the human's API key.
 #
 # Exit codes:
 #   0 = healthy or fixes applied
@@ -80,9 +83,12 @@ Options:
   --bash-only   Run bash health checks only (no Claude, no Solvr)
   -h, --help    Show this help
 
-Environment:
-  ANTHROPIC_API_KEY   Required for Claude analysis (or set in config)
-  SOLVR_API_KEY       Optional for Solvr integration (or set in config)
+Config (in ~/.amcp/config.json):
+  anthropic.apiKey    Required for Claude analysis (agent's own key, NOT human's)
+  solvr.apiKey        Optional for Solvr integration
+
+NOTE: This script will NOT use inherited ANTHROPIC_API_KEY from environment.
+      The agent must have its own configured API key.
 EOF
       exit 0
       ;;
@@ -113,13 +119,20 @@ if [[ "$FLAG_BASH_ONLY" == true ]]; then
 fi
 
 # ============================================================
-# Step 2: Resolve API keys
+# Step 2: Resolve API keys (AGENT-ONLY — no env fallback)
 # ============================================================
 
-ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-$(config_get anthropic.apiKey)}"
+# SECURITY: Only use explicitly configured agent key, NEVER inherit from env.
+# This prevents proactive-amcp from using the human's API key.
+ANTHROPIC_API_KEY="$(config_get anthropic.apiKey)"
 if [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
-  log_error "No ANTHROPIC_API_KEY found in environment or config"
-  log_error "Set via: export ANTHROPIC_API_KEY=... or: proactive-amcp config set anthropic.apiKey ..."
+  log_error "No agent Anthropic key configured in ~/.amcp/config.json"
+  log_error "proactive-amcp requires its OWN API key (not the human's)."
+  log_error ""
+  log_error "Configure with:"
+  log_error "  proactive-amcp config set anthropic.apiKey sk-ant-api03-YOUR-AGENT-KEY"
+  log_error ""
+  log_error "Or run with --bash-only to skip Claude analysis."
   # Fall back to bash-only output
   echo "$FINDINGS"
   exit 2

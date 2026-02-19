@@ -17,14 +17,16 @@
 #   2 = missing dependency
 #
 # Config keys (in ~/.amcp/config.json):
-#   groq.apiKey    - Groq API key (required, or GROQ_API_KEY env)
+#   groq.apiKey    - Groq API key (required — agent's own key)
 #   groq.model     - Model name (default: openai/gpt-oss-20b)
 #
 # Environment:
 #   CONFIG_FILE          Override config path (default: ~/.amcp/config.json)
-#   GROQ_API_KEY         Override Groq API key from config
 #   SMART_THRESHOLD      Minimum score to include in checkpoint (default: 0.3)
 #   SMART_MAX_FILE_SIZE  Max file size to evaluate (default: 50000 bytes)
+#
+# SECURITY: This script only uses keys from config, never from environment.
+#           Agent must configure its own Groq API key.
 
 set -euo pipefail
 
@@ -90,10 +92,12 @@ except (KeyError, TypeError, IOError, json.JSONDecodeError):
 }
 
 get_groq_api_key() {
-  local key="${GROQ_API_KEY:-}"
-  [ -n "$key" ] && { echo "$key"; return; }
+  # SECURITY: Only use config key, never env. Agent must have its own key.
+  local key
   key=$(read_config_key "groq.apiKey")
   [ -n "$key" ] && { echo "$key"; return; }
+  echo "[smart-checkpoint-filter] ERROR: No groq.apiKey in ~/.amcp/config.json" >&2
+  echo "[smart-checkpoint-filter] Set with: proactive-amcp config set groq.apiKey gsk_YOUR_KEY" >&2
   return 1
 }
 
