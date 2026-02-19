@@ -1227,3 +1227,25 @@
   - `npm run build` succeeds (dist/ output confirmed)
   - Structural grep confirms: export default plugin, register(api: PluginApi), registerService (2), registerHook("gateway_start"|"session_end"), registerCommand("amcp")
   - File size: index.ts=209 lines (under 800)
+
+## Task: P4-INF-04 — Create build pipeline with npm scripts for build/test/lint/publish (DONE)
+- Created `.github/workflows/ci.yml` (74 lines) — GitHub Actions CI workflow
+  - 3 jobs: build-and-test, bash-syntax, bats-tests
+  - build-and-test: matrix across Node 18/20/22, runs npm ci + lint + build + test + npm pack verification
+  - bash-syntax: validates all scripts/*.sh with bash -n
+  - bats-tests: installs BATS via apt-get, runs bats test/
+  - npm pack verification: confirms dist/index.js, dist/index.d.ts, scripts/proactive-amcp.sh, skill/SKILL.md, openclaw.plugin.json present
+- Created `skill/SKILL.md` — SKILL.md copy in skill/ directory (matches openclaw.plugin.json "skill": "skill/SKILL.md")
+- Updated `package.json` files array: added `skill/` directory, added `!scripts/__pycache__/` exclusion
+  - npm pack now includes skill/SKILL.md (was missing)
+  - npm pack now excludes scripts/__pycache__/*.pyc (was 10 files, ~110KB of noise)
+  - Package size: 174.5 KB → 127.3 KB (27% smaller)
+- Existing npm scripts already in place: build (tsc), test (vitest run), lint (tsc --noEmit), clean (rm -rf dist), prepublishOnly (npm run build)
+- Verification:
+  - npm run lint passes (tsc --noEmit, zero errors)
+  - npm run build produces dist/ (index.js, types.js, declarations, source maps)
+  - npm test passes all 11 tests
+  - npm pack --dry-run confirms: dist/index.js, dist/index.d.ts, scripts/proactive-amcp.sh, skill/SKILL.md, openclaw.plugin.json all present
+  - No __pycache__ files in pack output
+  - bash -n passes on all scripts/*.sh
+  - CI workflow: 74 lines (under 800)

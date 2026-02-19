@@ -1148,7 +1148,7 @@
       "Ensure skill/ directory is included in published package",
       "Verify: npm pack creates correct package structure"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "P4-INF-05",

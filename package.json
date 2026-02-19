@@ -10,7 +10,9 @@
   },
   "files": [
     "scripts/",
+    "!scripts/__pycache__/",
     "dist/",
+    "skill/",
     "openclaw.plugin.json"
   ],
   "scripts": {
