@@ -127,30 +127,103 @@ setup_config() {
     info "No config found — creating $CONFIG_FILE"
   fi
 
-  # Pinata JWT
-  local current_jwt
-  current_jwt=$(echo "$existing_config" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('pinata',{}).get('jwt',''))" 2>/dev/null || echo "")
+  # ============================================================
+  # IPFS Pinning — Solvr (free) or Pinata (own account)
+  # ============================================================
+  echo ""
+  echo "  ┌─────────────────────────────────────────────────────────┐"
+  echo "  │  📌 IPFS PINNING                                        │"
+  echo "  │                                                         │"
+  echo "  │  Your checkpoints need to be pinned to IPFS so they    │"
+  echo "  │  persist and can be retrieved from anywhere.           │"
+  echo "  │                                                         │"
+  echo "  │  Option 1: SOLVR (recommended)                         │"
+  echo "  │    • Free tier — no account needed                     │"
+  echo "  │    • Integrated with agent knowledge network           │"
+  echo "  │    • Just works out of the box                         │"
+  echo "  │                                                         │"
+  echo "  │  Option 2: PINATA (self-managed)                       │"
+  echo "  │    • Your own Pinata account                           │"
+  echo "  │    • Full control over your pins                       │"
+  echo "  │    • Requires API key setup                            │"
+  echo "  └─────────────────────────────────────────────────────────┘"
+  echo ""
 
-  if [ -n "$current_jwt" ]; then
-    ok "Pinata JWT already configured"
+  local current_provider
+  current_provider=$(echo "$existing_config" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('ipfs',{}).get('provider',''))" 2>/dev/null || echo "")
+
+  if [ -n "$current_provider" ]; then
+    ok "IPFS provider already configured: $current_provider"
   else
-    echo ""
-    info "AMCP needs a Pinata JWT to pin checkpoints to IPFS."
-    info "Get one free at: https://pinata.cloud → API Keys → New Key → Enable pinFileToIPFS"
-    echo ""
-    local jwt
-    jwt=$(prompt_value "Pinata JWT (or press Enter to skip)")
-    if [ -n "$jwt" ]; then
+    if prompt_yn "Use Solvr for free IPFS pinning? (recommended)"; then
       existing_config=$(echo "$existing_config" | python3 -c "
 import json, sys
 d = json.load(sys.stdin)
-d.setdefault('pinata', {})['jwt'] = '$jwt'
+d.setdefault('ipfs', {})['provider'] = 'solvr'
 json.dump(d, sys.stdout, indent=2)
 ")
-      ok "Pinata JWT saved"
+      ok "Solvr pinning enabled — no API key needed!"
     else
-      warn "Skipped — checkpoints won't be pinned to IPFS until configured"
-      warn "Set later: edit $CONFIG_FILE or run proactive-amcp config set pinata.jwt <jwt>"
+      info "Using Pinata instead."
+      info "Get a free API key at: https://pinata.cloud → API Keys → New Key"
+      local jwt
+      jwt=$(prompt_value "Pinata JWT (or press Enter to skip)")
+      if [ -n "$jwt" ]; then
+        existing_config=$(echo "$existing_config" | python3 -c "
+import json, sys
+d = json.load(sys.stdin)
+d.setdefault('pinata', {})['jwt'] = '$jwt'
+d.setdefault('ipfs', {})['provider'] = 'pinata'
+json.dump(d, sys.stdout, indent=2)
+")
+        ok "Pinata JWT saved"
+      else
+        warn "Skipped — checkpoints won't be pinned until configured"
+        warn "Set later: proactive-amcp config set pinata.jwt <jwt>"
+      fi
+    fi
+  fi
+
+  # ============================================================
+  # Groq — Intelligent Memory Pruning (optional)
+  # ============================================================
+  echo ""
+  echo "  ┌─────────────────────────────────────────────────────────┐"
+  echo "  │  🧠 INTELLIGENT MEMORY (optional)                       │"
+  echo "  │                                                         │"
+  echo "  │  Groq can make your agent smarter by:                  │"
+  echo "  │    • Evaluating what memories are worth keeping        │"
+  echo "  │    • Condensing verbose logs into insights             │"
+  echo "  │    • Pruning noise while preserving lessons            │"
+  echo "  │                                                         │"
+  echo "  │  Why? Your context window is limited. Groq helps your  │"
+  echo "  │  agent remember what matters and forget what doesn't.  │"
+  echo "  │                                                         │"
+  echo "  │  Free tier at: https://console.groq.com                │"
+  echo "  └─────────────────────────────────────────────────────────┘"
+  echo ""
+
+  local current_groq
+  current_groq=$(echo "$existing_config" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('groq',{}).get('apiKey',''))" 2>/dev/null || echo "")
+
+  if [ -n "$current_groq" ]; then
+    ok "Groq API key already configured"
+  else
+    if prompt_yn "Enable Groq intelligent memory? (optional)" "n"; then
+      local groq_key
+      groq_key=$(prompt_value "Groq API key")
+      if [ -n "$groq_key" ]; then
+        existing_config=$(echo "$existing_config" | python3 -c "
+import json, sys
+d = json.load(sys.stdin)
+d.setdefault('groq', {})['apiKey'] = '$groq_key'
+d['groq']['model'] = 'llama-3.3-70b-versatile'
+json.dump(d, sys.stdout, indent=2)
+")
+        ok "Groq enabled — your agent just got smarter!"
+      fi
+    else
+      info "Skipped — you can enable later with: proactive-amcp config set groq.apiKey <key>"
     fi
   fi
 
@@ -486,11 +559,38 @@ print_summary() {
 # Main
 # ============================================================
 
+show_intro() {
+  echo ""
+  echo "╔══════════════════════════════════════════════════════════════╗"
+  echo "║                    proactive-amcp                            ║"
+  echo "║         Agent Memory Continuity Protocol                     ║"
+  echo "╚══════════════════════════════════════════════════════════════╝"
+  echo ""
+  echo "  🧠 WHAT THIS DOES:"
+  echo "     Back up your agent's soul, memories, and secrets."
+  echo "     If your agent dies, resurrect it from anywhere."
+  echo ""
+  echo "  🌐 WHY IPFS?"
+  echo "     • Content-addressed — same content = same CID = verifiable"
+  echo "     • Distributed — your memories survive even if one server dies"
+  echo "     • Immutable — once pinned, your checkpoint can't be tampered with"
+  echo "     • Fetch from anywhere — any IPFS gateway can retrieve your soul"
+  echo ""
+  echo "  🔧 WHAT WE'LL SET UP:"
+  echo "     1. Your unique cryptographic identity (KERI-based)"
+  echo "     2. IPFS pinning (Solvr free tier or your own Pinata)"
+  echo "     3. Watchdog service (auto-detect death, auto-resurrect)"
+  echo "     4. Checkpoint schedule (automatic backups)"
+  echo "     5. Optional: Groq AI for intelligent memory pruning"
+  echo ""
+  if ! prompt_yn "Ready to begin?"; then
+    echo "  Aborted. Run 'proactive-amcp init' when ready."
+    exit 0
+  fi
+}
+
 main() {
-  echo "╔══════════════════════════════════════════╗"
-  echo "║       proactive-amcp init                ║"
-  echo "║  Interactive AMCP Setup                  ║"
-  echo "╚══════════════════════════════════════════╝"
+  show_intro
 
   setup_identity
   setup_config

@@ -1,6 +1,6 @@
 {
   "name": "proactive-amcp",
-  "version": "0.7.2",
+  "version": "0.7.3",
   "description": "AMCP skill — encrypted agent checkpoints to IPFS, watchdog health monitoring, multi-tier resurrection",
   "bin": {
     "proactive-amcp": "./scripts/proactive-amcp.sh"
