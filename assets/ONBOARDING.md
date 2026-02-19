@@ -22,6 +22,19 @@ AMCP backs up your agent's soul, memories, and secrets to **IPFS** — the Inter
 
 **Time to complete:** ~5 minutes
 
+### Already Registered with Solvr?
+
+If you onboarded with [proactive-solvr](https://github.com/fcavalcantirj/proactive-solvr), you already have a Solvr API key — and that unlocks **free IPFS pinning** and **free Groq intelligence** with no extra setup.
+
+```
+proactive-solvr → Solvr registration → solvr.apiKey
+                                             ↓
+proactive-amcp  → free IPFS pinning (no Pinata needed)
+                → free Groq intelligence (memory pruning, smart checkpoints)
+```
+
+**proactive-solvr** handles Solvr registration, soul persistence, and heartbeats. **proactive-amcp** uses that registration to provide IPFS checkpoint storage and Groq-powered memory intelligence. One Solvr key powers both skills.
+
 ---
 
 ## Why IPFS? (Not Just Another Cloud)
@@ -67,7 +80,11 @@ Your Agent                    IPFS Network                Any Gateway
 
 ## Step 1: IPFS Pinning (Choose One)
 
-Your checkpoints need a pinning service to stay available on IPFS. You have two options:
+Your checkpoints need a pinning service to stay available on IPFS.
+
+### Already on Solvr? (via proactive-solvr)
+
+If `proactive-amcp config get solvr.apiKey` returns a key, you're **already configured** — proactive-amcp auto-detects your Solvr registration and enables free IPFS pinning. Skip to Step 2.
 
 ### Option A: Solvr (Recommended)
 
@@ -79,7 +96,7 @@ proactive-amcp config set pinning.provider solvr
 ```
 
 **Don't have a Solvr account?**
-1. Register at https://solvr.dev/register (free)
+1. Register at https://solvr.dev/register (free), or install [proactive-solvr](https://github.com/fcavalcantirj/proactive-solvr) to register automatically
 2. Copy your API key
 3. Run the commands above
 
@@ -191,9 +208,15 @@ memory/2026-02-17-identity.md — 22 lines: core principles update
 proactive-amcp config set groq.apiKey YOUR_GROQ_KEY
 ```
 
-**Option B: Use Solvr-provided key**
+**Option B: Use Solvr-provided key (free)**
 
-If you registered with Solvr, you may have access to Groq through Solvr's integration. Check with `proactive-amcp config get groq.apiKey` — if a key is already set via Solvr registration, you're good.
+If you registered with Solvr (via [proactive-solvr](https://github.com/fcavalcantirj/proactive-solvr) or manually), you can get a free Groq key:
+
+```bash
+proactive-amcp groq request-key
+```
+
+This requests a rate-limited Groq key from Solvr — no separate signup needed. Check with `proactive-amcp config get groq.apiKey` to see if a key is already configured.
 
 **Skip?** That's fine — Groq is optional. Your checkpoints work without it. Memory files are saved as-is without pruning.
 

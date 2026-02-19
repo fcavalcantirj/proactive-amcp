@@ -1001,3 +1001,23 @@
   - groq.apiKey, groq.model, groq.source config keys documented
   - memory-prune command reference with --dry-run, --batch flags
   - FAQ present in both files
+
+## Task: onboarding — Add IPFS/Groq benefits messaging referencing proactive-solvr (DONE)
+- Updated assets/ONBOARDING.md (268 lines):
+  - Added "Already Registered with Solvr?" section after "What This Does"
+  - ASCII diagram: proactive-solvr → solvr.apiKey → free IPFS pinning + free Groq
+  - Explained: proactive-solvr handles registration, proactive-amcp provides IPFS/Groq benefits
+  - Added "Already on Solvr?" subsection in Step 1: auto-detects solvr.apiKey, skip to Step 2
+  - Updated Solvr Option A: added proactive-solvr as registration alternative
+  - Updated Groq Option B: reference proactive-solvr, show `groq request-key` command
+- Updated scripts/init.sh (692 lines):
+  - IPFS pinning box: mentions proactive-solvr as registration path, auto-detection
+  - Added solvr.apiKey auto-detection: if key exists (from proactive-solvr), auto-configure pinning.provider=solvr
+  - Skips Pinata prompt when solvr.apiKey already present
+  - Groq section already had Solvr→Groq flow (from previous task)
+- Verification:
+  - bash -n init.sh passes
+  - File sizes: init.sh=692, ONBOARDING.md=268 (both under 800)
+  - proactive-solvr referenced 6 times in ONBOARDING.md, 4 times in init.sh
+  - existing_solvr_key check at init.sh:155-168 auto-configures Solvr pinning
+  - All 6 PRD steps verified via structural grep

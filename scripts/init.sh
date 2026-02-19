@@ -138,9 +138,9 @@ setup_config() {
   echo "  │  persist and can be retrieved from anywhere.           │"
   echo "  │                                                         │"
   echo "  │  Option 1: SOLVR (recommended)                         │"
-  echo "  │    • Free tier — no account needed                     │"
+  echo "  │    • Free for registered agents (via proactive-solvr)  │"
   echo "  │    • Integrated with agent knowledge network           │"
-  echo "  │    • Just works out of the box                         │"
+  echo "  │    • Auto-detected if solvr.apiKey already set         │"
   echo "  │                                                         │"
   echo "  │  Option 2: PINATA (self-managed)                       │"
   echo "  │    • Your own Pinata account                           │"
@@ -152,8 +152,23 @@ setup_config() {
   local current_provider
   current_provider=$(echo "$existing_config" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('ipfs',{}).get('provider',''))" 2>/dev/null || echo "")
 
+  # Check if solvr.apiKey already exists (e.g. from proactive-solvr onboarding)
+  local existing_solvr_key
+  existing_solvr_key=$(echo "$existing_config" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('solvr',{}).get('apiKey',''))" 2>/dev/null || echo "")
+
   if [ -n "$current_provider" ]; then
     ok "IPFS provider already configured: $current_provider"
+  elif [ -n "$existing_solvr_key" ]; then
+    # Auto-configure: solvr.apiKey exists (from proactive-solvr), use Solvr for pinning
+    ok "Solvr API key detected (from proactive-solvr registration)"
+    info "Auto-configuring Solvr for free IPFS pinning — no Pinata needed"
+    existing_config=$(echo "$existing_config" | python3 -c "
+import json, sys
+d = json.load(sys.stdin)
+d.setdefault('ipfs', {})['provider'] = 'solvr'
+json.dump(d, sys.stdout, indent=2)
+")
+    ok "Solvr pinning enabled automatically!"
   else
     if prompt_yn "Use Solvr for free IPFS pinning? (recommended)"; then
       existing_config=$(echo "$existing_config" | python3 -c "

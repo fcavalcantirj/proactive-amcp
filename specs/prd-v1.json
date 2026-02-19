@@ -1091,7 +1091,7 @@
       "Wire config check: if solvr.apiKey exists, skip Pinata requirement",
       "Verify: user who did proactive-solvr onboarding sees free IPFS option in proactive-amcp"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "P4-INF-01",
