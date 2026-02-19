@@ -1623,7 +1623,7 @@
       "Support loading adapter by type from config",
       "Verify: base evaluator pattern works"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "P3-EVAL-04",

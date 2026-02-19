@@ -1021,3 +1021,31 @@
   - proactive-solvr referenced 6 times in ONBOARDING.md, 4 times in init.sh
   - existing_solvr_key check at init.sh:155-168 auto-configures Solvr pinning
   - All 6 PRD steps verified via structural grep
+
+## Task: P3-EVAL-03 — Implement base Evaluator class and adapter pattern (DONE)
+- Created `scripts/lib/evaluator.sh` (329 lines) — base evaluator with adapter pattern per PROTOCOL.md Layer 3
+- Public API (MemoryEvaluator interface from PROTOCOL.md):
+  - `evaluate_memory()`: evaluates a memory file, delegates to loaded adapter's `_adapter_evaluate()`
+  - `get_evaluator_metadata()`: returns adapter metadata via `_adapter_metadata()`
+  - `load_evaluator()`: loads adapter by type from scripts/lib/evaluators/{type}.sh
+  - `list_evaluator_types()`: lists available adapter files
+  - `current_evaluator_type()`: returns currently loaded adapter type
+- Adapter contract: adapters must define `_adapter_evaluate()` and `_adapter_metadata()`
+  - Verified on load via `type -t` checks; error if missing
+- Config-driven adapter resolution via `_resolve_evaluator_type()`:
+  - Priority: EVALUATOR_TYPE env > evaluators[0].type in config > "groq" default
+- Helper utilities for adapters:
+  - `eval_read_config()`: dot-path config reader (reusable by adapters)
+  - `get_evaluator_config()`: read evaluator-specific config from evaluators array
+  - `build_evaluation_request()`: build EvaluationRequest JSON per PROTOCOL.md
+  - `validate_evaluation_response()`: validate EvaluationResponse fields (score, keep, reason, confidence, categories)
+  - `normalize_score()`: convert 0-1 scale to 0-100 (PROTOCOL.md uses 0-100)
+- Empty file fast path: returns score=0, keep=false without API call
+- Content truncation: 8000 chars max for API efficiency
+- Guard against double-source: `_EVALUATOR_BASE_LOADED` flag
+- Directory structure: scripts/lib/evaluators/ for adapter files
+- Verification:
+  - bash -n syntax check passes
+  - File size: 329 lines (under 800)
+  - All 7 functional tests pass: load_evaluator, current_evaluator_type, get_evaluator_metadata, evaluate_memory, empty file, list_evaluator_types, normalize_score
+  - Structural grep confirms: evaluate_memory(), get_evaluator_metadata(), load_evaluator(), _adapter_evaluate, _adapter_metadata all present
