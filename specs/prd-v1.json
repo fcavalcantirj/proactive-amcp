@@ -1,13 +1,13 @@
 [
   {
     "category": "secrets",
-    "description": "Add 'proactive-amcp config set/get' for ~/.amcp/config.json — all secrets and notify targets read from here, never identity.json",
+    "description": "Add 'proactive-amcp config set/get' for ~/.amcp/config.json \u2014 all secrets and notify targets read from here, never identity.json",
     "steps": [
       "Create 'proactive-amcp config set <key> <value>' command that writes to ~/.amcp/config.json",
       "Create 'proactive-amcp config get <key>' command that reads from ~/.amcp/config.json",
       "Migrate checkpoint.sh and full-checkpoint.sh to read PINATA_JWT from config.json (already do via .pinata.jwt)",
       "Migrate notify.sh to read notifyTarget and emailTo from config.json instead of ~/.openclaw/openclaw.json skill config",
-      "Add warning if scripts detect secrets in identity.json: 'WARNING: Secrets found in identity.json — migrate with proactive-amcp config set'",
+      "Add warning if scripts detect secrets in identity.json: 'WARNING: Secrets found in identity.json \u2014 migrate with proactive-amcp config set'",
       "Verify: grep confirms zero scripts read secrets from identity.json, notify.sh reads from config.json"
     ],
     "passes": true,
@@ -15,7 +15,7 @@
   },
   {
     "category": "diagnose",
-    "description": "Add 'proactive-amcp diagnose' — Claude-powered health diagnostics with Solvr integration",
+    "description": "Add 'proactive-amcp diagnose' \u2014 Claude-powered health diagnostics with Solvr integration",
     "steps": [
       "Create scripts/claude-diagnose.sh: runs diagnose.sh bash checks, invokes Claude CLI with Solvr skill context",
       "Add 'diagnose' subcommand to proactive-amcp.sh CLI dispatcher",
@@ -31,7 +31,7 @@
   {
     "category": "pinning",
     "phase": 2,
-    "description": "Add 'proactive-amcp migrate-pins' — transfer historical checkpoints from Pinata to Solvr",
+    "description": "Add 'proactive-amcp migrate-pins' \u2014 transfer historical checkpoints from Pinata to Solvr",
     "steps": [
       "Read all CIDs from ~/.amcp/checkpoints/*.json files",
       "For each CID: check if already pinned to Solvr (GET /v1/pins?cid=X)",
@@ -45,7 +45,7 @@
   {
     "category": "pinning",
     "phase": 1,
-    "description": "Add Solvr as alternative pinning provider — reduce Pinata dependency",
+    "description": "Add Solvr as alternative pinning provider \u2014 reduce Pinata dependency",
     "steps": [
       "Add pinning.provider config option to ~/.amcp/config.json: 'pinata' (default) | 'solvr' | 'both'",
       "Add pinning.solvr.apiKey config option for Solvr API key",
@@ -66,7 +66,7 @@
   },
   {
     "category": "validation",
-    "description": "Add checkpoint pre-validation — scan tarball for cleartext secrets, refuse to upload if found",
+    "description": "Add checkpoint pre-validation \u2014 scan tarball for cleartext secrets, refuse to upload if found",
     "steps": [
       "Before tar creation in checkpoint.sh, build file list to be archived",
       "Scan file contents for patterns: JWT tokens (eyJ...), bot tokens ([0-9]+:AA...), API keys",
@@ -80,7 +80,7 @@
   },
   {
     "category": "bugfix",
-    "description": "Add config-metadata.json extraction — capture non-secret config structure for recovery without exposing credentials",
+    "description": "Add config-metadata.json extraction \u2014 capture non-secret config structure for recovery without exposing credentials",
     "steps": [
       "Create extract_config_metadata() function in full-checkpoint.sh that reads ~/.openclaw/openclaw.json and outputs redacted structural metadata",
       "Metadata must include: gateway.port, gateway.bind, channels (names + enabled status, NOT tokens), skills.entries (names + enabled status, NOT apiKeys), agents.defaults.workspace path",
@@ -94,13 +94,13 @@
   },
   {
     "category": "validation",
-    "description": "Add identity pre-flight check to all scripts — call 'amcp identity validate' before operating, fail fast",
+    "description": "Add identity pre-flight check to all scripts \u2014 call 'amcp identity validate' before operating, fail fast",
     "steps": [
       "Add pre-flight function: run 'amcp identity validate' and capture exit code + errors",
       "Call pre-flight at top of watchdog.sh before entering monitoring loop",
       "Call pre-flight at top of checkpoint.sh before creating tarball",
       "Call pre-flight at top of resuscitate.sh before attempting resurrection",
-      "On failure: print 'FATAL: Invalid AMCP identity — run amcp identity create or amcp identity validate for details' and exit 1",
+      "On failure: print 'FATAL: Invalid AMCP identity \u2014 run amcp identity create or amcp identity validate for details' and exit 1",
       "Verify: scripts refuse to start when ~/.amcp/identity.json contains openclaw-deploy-style fake identity"
     ],
     "passes": true,
@@ -109,7 +109,7 @@
   {
     "category": "pinning",
     "phase": 2,
-    "description": "Add redundant pinning mode — pin to both Pinata and Solvr",
+    "description": "Add redundant pinning mode \u2014 pin to both Pinata and Solvr",
     "steps": [
       "Update full-checkpoint.sh to support pinning.provider='both'",
       "When 'both': call Pinata first, then Solvr (parallel if possible)",
@@ -125,9 +125,9 @@
   },
   {
     "category": "solvr",
-    "description": "Auto-register child Solvr account on first boot — deterministic protocol-08 naming",
+    "description": "Auto-register child Solvr account on first boot \u2014 deterministic protocol-08 naming",
     "steps": [
-      "Check if SOLVR_API_KEY exists in OpenClaw config or environment — if yes, already registered, done",
+      "Check if SOLVR_API_KEY exists in OpenClaw config or environment \u2014 if yes, already registered, done",
       "If missing, check for parentSolvrName in config (skills.entries.proactive-amcp.config.parentSolvrName)",
       "If parentSolvrName exists (child): build name {parentSolvrName}_child_{instance_name}, POST /v1/agents/register",
       "Store returned api_key in OpenClaw config via gateway config.patch",
@@ -152,7 +152,7 @@
   },
   {
     "category": "ontology",
-    "description": "Compute ontology graph CID — add ontologyGraphCID field to last-checkpoint.json",
+    "description": "Compute ontology graph CID \u2014 add ontologyGraphCID field to last-checkpoint.json",
     "steps": [
       "Add compute_ontology_cid() function to full-checkpoint.sh (after extract_all_secrets, around line 200)",
       "If memory/ontology/graph.jsonl exists: compute SHA256 hash, format as CIDv1 using multihash prefix (0x12 = sha256, 0x20 = 32 bytes), base32 encode with 'bafkrei' prefix",
@@ -160,14 +160,14 @@
       "Store in LAST_CHECKPOINT_FILE after checkpoint upload (around line 450-480, where last-checkpoint.json is written)",
       "Field name: ontologyGraphCID (optional, only present if ontology exists)",
       "Test: checkpoint with ontology stores CID in last-checkpoint.json, checkpoint without ontology omits field",
-      "Verify: CID is deterministic — same graph content produces same CID across runs"
+      "Verify: CID is deterministic \u2014 same graph content produces same CID across runs"
     ],
     "passes": true,
     "phase": 2
   },
   {
     "category": "interface",
-    "description": "Create 'proactive-amcp init' — interactive setup: validate/create identity, start watchdog + checkpoint services",
+    "description": "Create 'proactive-amcp init' \u2014 interactive setup: validate/create identity, start watchdog + checkpoint services",
     "steps": [
       "Create proactive-amcp init script/command",
       "Step 1: Check if ~/.amcp/identity.json exists and is valid (via amcp identity validate)",
@@ -182,13 +182,13 @@
   },
   {
     "category": "interface",
-    "description": "Create 'proactive-amcp install' — non-interactive interface for fleet tools like openclaw-deploy",
+    "description": "Create 'proactive-amcp install' \u2014 non-interactive interface for fleet tools like openclaw-deploy",
     "steps": [
       "Create 'proactive-amcp install' command that wraps init with CLI flags for scripted use",
-      "Accept --pinata-jwt <jwt> flag — writes to config.json via config set",
-      "Accept --notify-target <target> flag — writes to config.json via config set (notify.sh reads from here after task #3 migration)",
-      "Accept --watchdog-interval <seconds> flag — sets watchdog check frequency (default: 120s)",
-      "Accept --checkpoint-schedule <cron> flag — sets checkpoint cron expression (default: daily)",
+      "Accept --pinata-jwt <jwt> flag \u2014 writes to config.json via config set",
+      "Accept --notify-target <target> flag \u2014 writes to config.json via config set (notify.sh reads from here after task #3 migration)",
+      "Accept --watchdog-interval <seconds> flag \u2014 sets watchdog check frequency (default: 120s)",
+      "Accept --checkpoint-schedule <cron> flag \u2014 sets checkpoint cron expression (default: daily)",
       "Exit 0 on success, exit 1 on failure with structured error output",
       "Verify: 'proactive-amcp install --pinata-jwt xxx --watchdog-interval 60' runs non-interactively"
     ],
@@ -198,9 +198,9 @@
   {
     "category": "pinning",
     "phase": 1,
-    "description": "Create pin-to-solvr.sh script — wrapper around Solvr CLI",
+    "description": "Create pin-to-solvr.sh script \u2014 wrapper around Solvr CLI",
     "steps": [
-      "Create scripts/pin-to-solvr.sh (<50 lines bash) — thin wrapper around Solvr CLI",
+      "Create scripts/pin-to-solvr.sh (<50 lines bash) \u2014 thin wrapper around Solvr CLI",
       "IMPORTANT: Use Solvr CLI commands, do NOT reimplement API calls (avoid duplication)",
       "Accept arguments: $1=file_path, $2=name (optional)",
       "Read SOLVR_API_KEY from config.json or environment, export for CLI",
@@ -218,7 +218,7 @@
   },
   {
     "category": "recovery",
-    "description": "Create recreate-venvs.sh enforcer script — rebuild Python environments from manifest",
+    "description": "Create recreate-venvs.sh enforcer script \u2014 rebuild Python environments from manifest",
     "steps": [
       "Create scripts/recreate-venvs.sh (<100 lines bash + embedded Python)",
       "Accept manifest path as $1, default to ~/.openclaw/workspace/memory/venvs-manifest.json",
@@ -236,7 +236,7 @@
   },
   {
     "category": "recovery",
-    "description": "Create venvs manifest schema — define format for virtual environment recovery",
+    "description": "Create venvs manifest schema \u2014 define format for virtual environment recovery",
     "steps": [
       "Create memory/venvs-manifest.json with schema: {description: string, venvs: VenvConfig[]}",
       "VenvConfig type: {path: string (base dir, not .venv), packages?: string[], requirements?: string (relative path), python?: string (default python3), note?: string}",
@@ -252,7 +252,7 @@
   {
     "category": "documentation",
     "phase": 1,
-    "description": "Document Solvr IPFS infrastructure in README — solvr-ipfs-01 details",
+    "description": "Document Solvr IPFS infrastructure in README \u2014 solvr-ipfs-01 details",
     "steps": [
       "Add 'Storage Providers' section to README.md",
       "Document Solvr as primary (free for AMCP agents), Pinata as fallback",
@@ -289,7 +289,7 @@
   },
   {
     "category": "ontology",
-    "description": "Document reconstruction sequence — create RECONSTRUCTION.md defining canonical loading order",
+    "description": "Document reconstruction sequence \u2014 create RECONSTRUCTION.md defining canonical loading order",
     "steps": [
       "Create RECONSTRUCTION.md (~150 lines) documenting the Uncanny Seam and memory loading sequence",
       "Define canonical order (references ONTOLOGY-INTEGRATION-CONTEXT.md Part 4.5): 1. SOUL.md (identity), 2. USER.md (relationships), 3. ontology schema (types), 4. ontology graph (entities), 5. MEMORY.md (curated long-term), 6. daily notes (ephemeral), 7. TOOLS.md (capabilities), 8. [SEAM] marker",
@@ -304,7 +304,7 @@
   },
   {
     "category": "documentation",
-    "description": "Document venv recovery in CLAUDE.md and README.md — explain manifest and recovery flow",
+    "description": "Document venv recovery in CLAUDE.md and README.md \u2014 explain manifest and recovery flow",
     "steps": [
       "Add Virtual Environment Recovery section to CLAUDE.md under Recovery subsection",
       "Document: manifest location (memory/venvs-manifest.json), schema, how to add new venvs",
@@ -319,12 +319,12 @@
   },
   {
     "category": "bugfix",
-    "description": "Fix full-checkpoint.sh staging to exclude secret-bearing config files — stop copying ~/.amcp/config.json, secrets-full.json, cache, openclaw.json, auth-profiles.json into staging content",
+    "description": "Fix full-checkpoint.sh staging to exclude secret-bearing config files \u2014 stop copying ~/.amcp/config.json, secrets-full.json, cache, openclaw.json, auth-profiles.json into staging content",
     "steps": [
       "Replace rsync of ~/.amcp/ (line 322) with targeted copy: only copy identity.json into $STAGING_DIR/amcp/ (secrets are already handled by --secrets flag to amcp checkpoint create)",
-      "Remove cp of ~/.openclaw/openclaw.json into staging (line 327) — secrets are extracted by extract_all_secrets(), raw config should not be in content",
-      "Remove cp of ~/.openclaw/auth-profiles.json into staging (line 328) — tokens are extracted by extract_all_secrets()",
-      "Add config metadata extraction: write non-secret structural metadata to $STAGING_DIR/openclaw/config-metadata.json using jq or python3 (agent names, skill names, gateway port, channel types — no secret values)",
+      "Remove cp of ~/.openclaw/openclaw.json into staging (line 327) \u2014 secrets are extracted by extract_all_secrets(), raw config should not be in content",
+      "Remove cp of ~/.openclaw/auth-profiles.json into staging (line 328) \u2014 tokens are extracted by extract_all_secrets()",
+      "Add config metadata extraction: write non-secret structural metadata to $STAGING_DIR/openclaw/config-metadata.json using jq or python3 (agent names, skill names, gateway port, channel types \u2014 no secret values)",
       "Verify: staging directory contains amcp/identity.json but NOT amcp/config.json, amcp/secrets-full.json, amcp/cache/, openclaw/openclaw.json, or openclaw/auth-profiles.json",
       "Verify: pre-validation (scan_for_secrets) passes without --force on staging directory that previously required --force"
     ],
@@ -333,7 +333,7 @@
   },
   {
     "category": "recovery",
-    "description": "Hook recreate-venvs.sh into resuscitate.sh — call after workspace restore",
+    "description": "Hook recreate-venvs.sh into resuscitate.sh \u2014 call after workspace restore",
     "steps": [
       "Locate workspace restore completion in resuscitate.sh (around line 370-390, after Decrypt and restore from checkpoint)",
       "Add call: $SCRIPT_DIR/recreate-venvs.sh \"$RESTORED_WORKSPACE/memory/venvs-manifest.json\" || echo 'WARN: venv recreation failed'",
@@ -347,13 +347,13 @@
   },
   {
     "category": "learning",
-    "description": "Implement Learning CRUD operations — create, verify, query",
+    "description": "Implement Learning CRUD operations \u2014 create, verify, query",
     "steps": [
       "Extend scripts/learning.py with Learning entity operations",
-      "create_learning(insight, source_problem?, tags?) — generates learn_{uuid8} ID, appends to learnings.jsonl with confidence=tentative",
-      "verify_learning(id, human_verified=true) — promotes confidence to verified, sets verified_at timestamp",
-      "get_learning(id) — replays JSONL to reconstruct current state",
-      "list_learnings(confidence_filter?, tag_filter?) — returns learnings filtered by confidence or tags",
+      "create_learning(insight, source_problem?, tags?) \u2014 generates learn_{uuid8} ID, appends to learnings.jsonl with confidence=tentative",
+      "verify_learning(id, human_verified=true) \u2014 promotes confidence to verified, sets verified_at timestamp",
+      "get_learning(id) \u2014 replays JSONL to reconstruct current state",
+      "list_learnings(confidence_filter?, tag_filter?) \u2014 returns learnings filtered by confidence or tags",
       "Link to Problem: if source_problem provided, validate it exists, close it as solved, increment solved_post_recovery if agent was resurrected since problem creation",
       "Increment stats.json counters: total_learnings on create, solved_post_recovery when applicable",
       "CLI dispatcher: proactive-amcp learning create|verify|get|list",
@@ -364,14 +364,14 @@
   },
   {
     "category": "learning",
-    "description": "Implement Problem CRUD operations — create, update, query, close",
+    "description": "Implement Problem CRUD operations \u2014 create, update, query, close",
     "steps": [
       "Create scripts/learning.py (<400 lines) with Problem entity operations",
-      "create_problem(description, blocker?, source) — generates prob_{uuid8} ID, appends to problems.jsonl with status=open",
-      "update_problem(id, fields) — appends update op to problems.jsonl (append-only pattern)",
-      "get_problem(id) — replays JSONL to reconstruct current state",
-      "list_problems(status_filter?) — returns problems by status (open, stuck, solved, abandoned)",
-      "close_problem(id, status, solution?) — sets status to solved/abandoned, records resolved timestamp",
+      "create_problem(description, blocker?, source) \u2014 generates prob_{uuid8} ID, appends to problems.jsonl with status=open",
+      "update_problem(id, fields) \u2014 appends update op to problems.jsonl (append-only pattern)",
+      "get_problem(id) \u2014 replays JSONL to reconstruct current state",
+      "list_problems(status_filter?) \u2014 returns problems by status (open, stuck, solved, abandoned)",
+      "close_problem(id, status, solution?) \u2014 sets status to solved/abandoned, records resolved timestamp",
       "Increment stats.json counters on create (total_problems) and close (total_solved)",
       "CLI dispatcher: proactive-amcp problem create|update|get|list|close",
       "Verify: create problem via CLI, list shows it as open, close it, list shows solved, stats updated"
@@ -381,7 +381,7 @@
   },
   {
     "category": "learning",
-    "description": "Implement SKILL.md trigger matching — natural language patterns for learning capture",
+    "description": "Implement SKILL.md trigger matching \u2014 natural language patterns for learning capture",
     "steps": [
       "Update proactive-amcp SKILL.md description to include trigger patterns",
       "Patterns: Remember that... creates Learning, I keep forgetting... creates Problem, I cant figure out... creates Problem, I finally solved... creates Learning, Never forget:... creates Learning",
@@ -396,13 +396,13 @@
   },
   {
     "category": "learning",
-    "description": "Implement command prefix triggers — /remember, /stuck, /learned for explicit learning capture",
+    "description": "Implement command prefix triggers \u2014 /remember, /stuck, /learned for explicit learning capture",
     "steps": [
       "Document command prefixes in SKILL.md When to Use section with examples",
       "Prefix patterns: /remember <fact> creates Learning, /stuck <description> creates Problem, /learned <insight> [--solves <problem_id>] creates Learning and closes Problem",
-      "Agent recognizes prefixes in conversation — when user says /remember AgentMail uses v0, agent calls proactive-amcp learning create",
-      "Human says /stuck cant figure out why auth fails — agent calls proactive-amcp problem create with source=command",
-      "Human says /learned need to use v0 API --solves prob_abc123 — agent creates Learning and closes Problem",
+      "Agent recognizes prefixes in conversation \u2014 when user says /remember AgentMail uses v0, agent calls proactive-amcp learning create",
+      "Human says /stuck cant figure out why auth fails \u2014 agent calls proactive-amcp problem create with source=command",
+      "Human says /learned need to use v0 API --solves prob_abc123 \u2014 agent creates Learning and closes Problem",
       "Add prefix examples to skill SKILL.md frontmatter triggers",
       "Verify: saying /remember X in chat triggers Learning creation, /stuck Y creates Problem, /learned Z --solves ID creates Learning and closes Problem"
     ],
@@ -411,12 +411,12 @@
   },
   {
     "category": "learning",
-    "description": "Implement human verification flow — require confirmation for new Learnings before trust",
+    "description": "Implement human verification flow \u2014 require confirmation for new Learnings before trust",
     "steps": [
       "New Learnings created with confidence=tentative by default",
       "After agent creates Learning, prompt human: I learned [insight]. Is this correct? (yes/no)",
-      "Human confirms yes — call verify_learning(id, human_verified=true), confidence promoted to verified",
-      "Human says no or not quite — prompt for correction, update Learning insight, re-prompt for verification",
+      "Human confirms yes \u2014 call verify_learning(id, human_verified=true), confidence promoted to verified",
+      "Human says no or not quite \u2014 prompt for correction, update Learning insight, re-prompt for verification",
       "Unverified Learnings after 7 days: log warning in heartbeat, do NOT auto-promote",
       "Verified Learnings used with confidence in future; tentative Learnings flagged as unverified when referenced",
       "Add stats tracking: verified_learnings count in stats.json",
@@ -428,14 +428,14 @@
   },
   {
     "category": "learning",
-    "description": "Implement hybrid resurrection behavior — surface open Problems without auto-attempting",
+    "description": "Implement hybrid resurrection behavior \u2014 surface open Problems without auto-attempting",
     "steps": [
       "Modify resuscitate.sh to export OPEN_PROBLEMS_FILE path after learning restoration",
-      "Create scripts/generate-problem-summary.py (<100 lines) — reads problems.jsonl, outputs markdown summary of open/stuck Problems",
+      "Create scripts/generate-problem-summary.py (<100 lines) \u2014 reads problems.jsonl, outputs markdown summary of open/stuck Problems",
       "Summary format: markdown list with problem ID, description, attempt count, last approach",
       "After resurrection completes, append Problem summary to recovery context (injected into first agent turn)",
       "Agent sees: You have N unresolved problems from before recovery with list, may attempt when appropriate",
-      "Do NOT auto-attempt — agent decides when/if to retry based on current task context",
+      "Do NOT auto-attempt \u2014 agent decides when/if to retry based on current task context",
       "Add config toggle: config.json learning.resurrection.surfaceProblems (default: true)",
       "Verify: resurrect agent with 2 open Problems, first turn context includes Problem summary, agent does not auto-attempt"
     ],
@@ -444,10 +444,10 @@
   },
   {
     "category": "ontology-evolution",
-    "description": "Implement memory evolution engine — Zettelkasten-style dynamic entity linking based on A-MEM (NeurIPS 2025)",
+    "description": "Implement memory evolution engine \u2014 Zettelkasten-style dynamic entity linking based on A-MEM (NeurIPS 2025)",
     "steps": [
-      "Create scripts/memory-evolution.sh (<250 lines) — orchestrates evolution engine: validate identity, read graph.jsonl, call similarity computation, update relations, log evolution chain",
-      "Create scripts/compute-entity-similarity.py (<200 lines) — semantic similarity using Levenshtein distance + keyword overlap, relation inference based on similarity threshold (>0.75 = strong relation)",
+      "Create scripts/memory-evolution.sh (<250 lines) \u2014 orchestrates evolution engine: validate identity, read graph.jsonl, call similarity computation, update relations, log evolution chain",
+      "Create scripts/compute-entity-similarity.py (<200 lines) \u2014 semantic similarity using Levenshtein distance + keyword overlap, relation inference based on similarity threshold (>0.75 = strong relation)",
       "Evolution trigger: when new entity X added to graph.jsonl, find top-3 semantically similar entities, add bidirectional 'related_to' relations, log to ~/.amcp/memory/evolution.jsonl",
       "Evolution log format: { timestamp, trigger_entity_id, related_entity_id, similarity_score, relation_type, reasoning }",
       "Integration: call memory-evolution.sh from full-checkpoint.sh after graph staging (around line 330, before CID computation)",
@@ -460,15 +460,15 @@
   },
   {
     "category": "contract",
-    "description": "Implement ontology contract validation — Design by Contract for skills",
+    "description": "Implement ontology contract validation \u2014 Design by Contract for skills",
     "steps": [
-      "Create scripts/validate-skill-contract.sh (<200 lines) — validates skill ontology contracts on skill load",
-      "Create docs/ontology-contract.schema.json (<100 lines) — JSON schema for SkillOntologyContract format",
+      "Create scripts/validate-skill-contract.sh (<200 lines) \u2014 validates skill ontology contracts on skill load",
+      "Create docs/ontology-contract.schema.json (<100 lines) \u2014 JSON schema for SkillOntologyContract format",
       "Contract schema: { skill_name: string, version: string, ontology: { reads: EntityType[], writes: EntityType[], preconditions: string[], postconditions: string[] } }",
       "Example contract: { skill_name: 'task-manager', ontology: { reads: ['Task', 'Person'], writes: ['Task', 'Action'], preconditions: ['Task.assignee exists'], postconditions: ['Task.status is valid enum'] } }",
       "Skills declare contracts in skill.json: 'ontologyContract': { ... }",
       "Validation on skill load: check preconditions against current graph.jsonl (e.g., verify all Task entities have assignee property), fail skill load if preconditions not met",
-      "Create scripts/detect-contract-conflicts.sh (<150 lines) — cross-skill conflict detection: finds incompatible postconditions across loaded skills",
+      "Create scripts/detect-contract-conflicts.sh (<150 lines) \u2014 cross-skill conflict detection: finds incompatible postconditions across loaded skills",
       "Add 'validate-contract' subcommand to proactive-amcp.sh: proactive-amcp validate-contract <skill-name>",
       "Integration: call validate-skill-contract.sh from OpenClaw skill loader (if proactive-amcp plugin enabled)",
       "Verify: skill declaring 'precondition: Task.assignee exists' fails to load if some Tasks lack assignee, conflict between skill-A postcondition 'Task.status = done' and skill-B postcondition 'Task.status != done' detected"
@@ -478,7 +478,7 @@
   },
   {
     "category": "learning",
-    "description": "Implement self-detect trigger — agent recognizes own failure patterns and auto-captures Problems",
+    "description": "Implement self-detect trigger \u2014 agent recognizes own failure patterns and auto-captures Problems",
     "steps": [
       "Define failure signal patterns: API errors (401, 403, 404, 500), I dont know how to, I need help with, asking human for information agent should know",
       "Create scripts/detect-failure.py (<150 lines) that analyzes agent response for failure signals",
@@ -494,9 +494,9 @@
   },
   {
     "category": "temporal",
-    "description": "Implement temporal query interface — cross-checkpoint entity history (Zep pattern, arXiv:2501.13956)",
+    "description": "Implement temporal query interface \u2014 cross-checkpoint entity history (Zep pattern, arXiv:2501.13956)",
     "steps": [
-      "Create scripts/temporal-queries.py (<250 lines) — temporal query API for entity history across checkpoints",
+      "Create scripts/temporal-queries.py (<250 lines) \u2014 temporal query API for entity history across checkpoints",
       "API functions: queryByTimeRange(entity_id, start_date, end_date) -> list of entity versions with timestamps, getMemoryHistory(entity_id) -> full evolution timeline",
       "Implement 3-level temporal storage: Level 1 (current graph.jsonl), Level 2 (checkpoint snapshots in ~/.amcp/checkpoints/), Level 3 (temporal index ~/.amcp/memory/temporal-index.jsonl)",
       "Temporal index format: { entity_id, checkpoint_cid, timestamp, version_hash, properties_snapshot }",
@@ -511,12 +511,12 @@
   },
   {
     "category": "ontology",
-    "description": "Include memory/ontology/ in full-checkpoint.sh — checkpoint ontology graphs alongside flat files",
+    "description": "Include memory/ontology/ in full-checkpoint.sh \u2014 checkpoint ontology graphs alongside flat files",
     "steps": [
       "Locate staging content copy in full-checkpoint.sh (around line 300-330, STAGE 2: 'Prepare staging content')",
       "Current state: copies $CONTENT_DIR (workspace) to $STAGING_DIR/workspace/, copies amcp/identity.json, openclaw/config-metadata.json",
       "Add conditional copy after workspace rsync: if [ -d \"$CONTENT_DIR/memory/ontology\" ]; then echo '  Included ontology graph ($(find \"$CONTENT_DIR/memory/ontology\" -name '*.jsonl' | wc -l) JSONL files)'; fi",
-      "Ontology files already included in workspace rsync — verify they are NOT excluded by scan-secrets.sh (JSONL format should not match secret patterns)",
+      "Ontology files already included in workspace rsync \u2014 verify they are NOT excluded by scan-secrets.sh (JSONL format should not match secret patterns)",
       "Test: full-checkpoint with memory/ontology/graph.jsonl present includes it in $STAGING_DIR/workspace/memory/ontology/",
       "Verify: unpacking checkpoint restores memory/ontology/ directory structure"
     ],
@@ -525,14 +525,14 @@
   },
   {
     "category": "learning",
-    "description": "Initialize learning storage — create Problem and Learning entity stores per protocol-09",
+    "description": "Initialize learning storage \u2014 create Problem and Learning entity stores per protocol-09",
     "steps": [
       "Create memory/learning/ directory structure in workspace init (scripts/init.sh)",
-      "Create memory/learning/problems.jsonl — append-only log of Problem entities",
-      "Create memory/learning/learnings.jsonl — append-only log of Learning entities",
-      "Create memory/learning/stats.json — aggregated statistics: { total_problems: 0, total_solved: 0, solved_post_recovery: 0, total_learnings: 0, last_updated: null }",
-      "Add learning storage to full-checkpoint.sh staging — include memory/learning/ alongside memory/ontology/",
-      "Add learning validation to resuscitate.sh — verify JSONL format on restore, log warning on corruption",
+      "Create memory/learning/problems.jsonl \u2014 append-only log of Problem entities",
+      "Create memory/learning/learnings.jsonl \u2014 append-only log of Learning entities",
+      "Create memory/learning/stats.json \u2014 aggregated statistics: { total_problems: 0, total_solved: 0, solved_post_recovery: 0, total_learnings: 0, last_updated: null }",
+      "Add learning storage to full-checkpoint.sh staging \u2014 include memory/learning/ alongside memory/ontology/",
+      "Add learning validation to resuscitate.sh \u2014 verify JSONL format on restore, log warning on corruption",
       "Verify: fresh install creates memory/learning/ with empty stores, checkpoint includes learning data, resurrection restores it"
     ],
     "passes": true,
@@ -540,7 +540,7 @@
   },
   {
     "category": "testing",
-    "description": "Integration test for venv recovery — verify environments recreated on resurrection",
+    "description": "Integration test for venv recovery \u2014 verify environments recreated on resurrection",
     "steps": [
       "Create test/venv-recovery.bats using BATS framework",
       "Test 1: Manifest exists, all venvs present and functional, script skips all (fast path)",
@@ -557,7 +557,7 @@
   },
   {
     "category": "testing",
-    "description": "Integration test: fake openclaw-deploy-style identity.json → all scripts refuse to operate",
+    "description": "Integration test: fake openclaw-deploy-style identity.json \u2192 all scripts refuse to operate",
     "steps": [
       "Create test fixture: fake identity.json matching openclaw-deploy format (sha256 aid, flat secrets, no kel)",
       "Test: watchdog.sh with fake identity exits 1 with 'Invalid AMCP identity' error",
@@ -571,7 +571,7 @@
   },
   {
     "category": "testing",
-    "description": "Integration tests for SOUL drift — verify identity change alerts",
+    "description": "Integration tests for SOUL drift \u2014 verify identity change alerts",
     "steps": [
       "Create test/soul-drift.bats using BATS framework",
       "Test 1: Initial checkpoint with SOUL.md, verify soulHash stored in last-checkpoint.json, no drift alert",
@@ -589,7 +589,7 @@
   {
     "category": "testing",
     "phase": 1,
-    "description": "Integration tests for Solvr pinning — verify checkpoint uploads to Solvr",
+    "description": "Integration tests for Solvr pinning \u2014 verify checkpoint uploads to Solvr",
     "steps": [
       "Create test/solvr-pinning.bats using BATS framework",
       "Test 1: pin-to-solvr.sh with valid file returns CID",
@@ -597,7 +597,7 @@
       "Test 3: full-checkpoint.sh with provider=solvr uploads to Solvr",
       "Test 4: full-checkpoint.sh with provider=both uploads to both",
       "Test 5: resuscitate.sh can restore from Solvr-pinned checkpoint",
-      "Test 6: CID consistency — same content produces same CID on Solvr and Pinata",
+      "Test 6: CID consistency \u2014 same content produces same CID on Solvr and Pinata",
       "Mock Solvr API for unit tests, use real API for integration tests (requires SOLVR_API_KEY)",
       "Run: SOLVR_API_KEY=xxx bats test/solvr-pinning.bats",
       "Verify: all 6 tests pass"
@@ -606,7 +606,7 @@
   },
   {
     "category": "contract",
-    "description": "Integration tests for contract validation — verify precondition checking and conflict detection",
+    "description": "Integration tests for contract validation \u2014 verify precondition checking and conflict detection",
     "steps": [
       "Create test/skill-contract.bats using BATS framework",
       "Test 1: Skill with precondition 'Task.assignee exists', all Tasks have assignee, validation passes",
@@ -614,7 +614,7 @@
       "Test 3: Skill declares reads: ['Task'], graph.jsonl has no Task entities, validation fails (missing required entities)",
       "Test 4: Skill declares writes: ['Action'], after skill execution, verify Action entities created (postcondition verification)",
       "Test 5: Two skills loaded, skill-A postcondition: 'Task.priority is high', skill-B postcondition: 'Task.priority is low', detect-contract-conflicts.sh reports conflict",
-      "Test 6: Contract schema validation — invalid contract JSON rejected with schema error",
+      "Test 6: Contract schema validation \u2014 invalid contract JSON rejected with schema error",
       "Test 7: Skill without ontologyContract field (backward compatible), validation skipped gracefully",
       "Test 8: Cross-skill reads/writes compatible (skill-A writes Task, skill-B reads Task), no conflict detected",
       "Run: bats test/skill-contract.bats",
@@ -625,17 +625,17 @@
   },
   {
     "category": "testing",
-    "description": "Integration tests for learning system — verify full capture-persist-recall-verify cycle",
+    "description": "Integration tests for learning system \u2014 verify full capture-persist-recall-verify cycle",
     "steps": [
       "Create test/learning-system.bats using BATS framework",
       "Test 1: /stuck command creates Problem in problems.jsonl with status=open",
       "Test 2: /learned command creates Learning in learnings.jsonl, links to Problem, closes Problem",
       "Test 3: Natural language Remember that X triggers Learning creation",
       "Test 4: Self-detect on 401 error creates Problem with source=self-detect",
-      "Test 5: Duplicate Problem detection — same description within 24h doesnt create duplicate",
+      "Test 5: Duplicate Problem detection \u2014 same description within 24h doesnt create duplicate",
       "Test 6: Checkpoint includes memory/learning/, resurrection restores it",
       "Test 7: Post-resurrection context includes open Problem summary",
-      "Test 8: Human verification flow — confirm Learning, confidence changes to verified",
+      "Test 8: Human verification flow \u2014 confirm Learning, confidence changes to verified",
       "Test 9: Learning report shows accurate metrics after mixed operations",
       "Test 10: solved_post_recovery incremented correctly for problems predating resurrection",
       "Run: bats test/learning-system.bats",
@@ -646,7 +646,7 @@
   },
   {
     "category": "ontology-evolution",
-    "description": "Integration tests for memory evolution — verify automatic relation inference",
+    "description": "Integration tests for memory evolution \u2014 verify automatic relation inference",
     "steps": [
       "Create test/memory-evolution.bats using BATS framework, follow test_helper.sh patterns",
       "Test 1: Create graph.jsonl with entity-A (properties: 'API design patterns'), add entity-B ('API architecture') via evolution engine, verify 'related_to' relation added to graph.jsonl",
@@ -655,7 +655,7 @@
       "Test 4: Evolution threshold EVOLUTION_THRESHOLD=0.9, add moderately similar entity, verify no relation (respects threshold)",
       "Test 5: EVOLUTION_MAX_RELATIONS=1, add entity similar to 5 others, verify only top-1 relation added",
       "Test 6: --skip-evolution flag prevents evolution.jsonl updates",
-      "Test 7: Trace evolution chain — entity-C added similar to entity-B which was similar to entity-A, verify chain recorded",
+      "Test 7: Trace evolution chain \u2014 entity-C added similar to entity-B which was similar to entity-A, verify chain recorded",
       "Run: bats test/memory-evolution.bats",
       "Verify: all 7 tests pass, relation inference is deterministic and respects thresholds"
     ],
@@ -664,7 +664,7 @@
   },
   {
     "category": "testing",
-    "description": "Integration tests for ontology checkpoint — verify graph.jsonl roundtrip through IPFS",
+    "description": "Integration tests for ontology checkpoint \u2014 verify graph.jsonl roundtrip through IPFS",
     "steps": [
       "Create test/ontology-checkpoint.bats using BATS framework (pattern: test_helper.sh for fixtures + mocks)",
       "Test 1: Create memory/ontology/graph.jsonl with sample entities (2 Person, 1 Task, 1 relation), run full-checkpoint.sh, verify staging includes ontology/",
@@ -672,7 +672,7 @@
       "Test 3: Mock checkpoint download, run resuscitate.sh, verify validate-ontology.py called (check $RECOVERY_LOG for validation output)",
       "Test 4: Corrupt graph.jsonl (invalid JSON on line 3), run resuscitate, verify validation logs warning but resurrection completes",
       "Test 5: Missing ontology directory, run checkpoint, verify no ontologyGraphCID in last-checkpoint.json (backward compatible)",
-      "Test 6: CID computation determinism — checkpoint same graph twice, verify identical CID",
+      "Test 6: CID computation determinism \u2014 checkpoint same graph twice, verify identical CID",
       "Run: bats test/ontology-checkpoint.bats",
       "Verify: all 6 tests pass, no false positives"
     ],
@@ -681,7 +681,7 @@
   },
   {
     "category": "testing",
-    "description": "Integration tests for staging exclusion fix — full-checkpoint succeeds without --force when config files contain secrets",
+    "description": "Integration tests for staging exclusion fix \u2014 full-checkpoint succeeds without --force when config files contain secrets",
     "steps": [
       "Test: full-checkpoint.sh with secrets in ~/.amcp/config.json and ~/.openclaw/openclaw.json succeeds without --force (exit 0, no REFUSED message)",
       "Test: full-checkpoint.sh still refuses if workspace content (e.g., workspace/MEMORY.md) contains a hardcoded API key (exit 1, REFUSED message)",
@@ -695,7 +695,7 @@
   },
   {
     "category": "temporal",
-    "description": "Integration tests for temporal queries — verify cross-checkpoint history retrieval",
+    "description": "Integration tests for temporal queries \u2014 verify cross-checkpoint history retrieval",
     "steps": [
       "Create test/temporal-queries.bats using BATS framework",
       "Test 1: Create entity-123 in checkpoint-1 (version 1), modify in checkpoint-2 (version 2), run queryByTimeRange covering both, verify returns 2 versions",
@@ -714,7 +714,7 @@
   },
   {
     "category": "ontology",
-    "description": "SOUL.md drift detection — store hash, compare on checkpoint, alert on significant changes",
+    "description": "SOUL.md drift detection \u2014 store hash, compare on checkpoint, alert on significant changes",
     "steps": [
       "Add compute_soul_hash() function to full-checkpoint.sh (calls sha256sum on $CONTENT_DIR/SOUL.md if exists)",
       "Store soulHash in last-checkpoint.json alongside CID and timestamp (around line 450-480)",
@@ -733,7 +733,7 @@
     "category": "diagnose",
     "description": "Store anthropic.apiKey in proactive-amcp config for diagnose command",
     "steps": [
-      "config.sh already supports arbitrary dot-paths — no changes needed",
+      "config.sh already supports arbitrary dot-paths \u2014 no changes needed",
       "openclaw-deploy master-setup.sh stores ANTHROPIC_API_KEY via proactive-amcp config set anthropic.apiKey",
       "claude-diagnose.sh reads ANTHROPIC_API_KEY from env or config.json",
       "Verify: proactive-amcp config get anthropic.apiKey returns stored key"
@@ -743,10 +743,10 @@
   },
   {
     "category": "learning",
-    "description": "Track and report learning metrics — self-improvement measurement",
+    "description": "Track and report learning metrics \u2014 self-improvement measurement",
     "steps": [
       "Extend stats.json with detailed metrics: problems_by_status (open/stuck/solved/abandoned counts), learnings_by_confidence (tentative/verified), problems_solved_by_source (command/skill/self-detect), avg_attempts_to_solve",
-      "Create scripts/learning-report.py (<150 lines) — generates human-readable learning report",
+      "Create scripts/learning-report.py (<150 lines) \u2014 generates human-readable learning report",
       "Report includes: total problems encountered, solve rate, avg attempts, top problem topics, recent learnings, growth trend",
       "Add proactive-amcp learning report CLI command",
       "Heartbeat integration: if config.json learning.reportFrequency set (e.g., weekly), generate report and include in digest email",
@@ -759,7 +759,7 @@
   },
   {
     "category": "ontology",
-    "description": "Typed pruning policy framework — define per-entity-type retention rules in config.json",
+    "description": "Typed pruning policy framework \u2014 define per-entity-type retention rules in config.json",
     "steps": [
       "Extend config.json schema to support pruning.policies object with per-type rules",
       "Schema: { \"Event\": { \"ttl\": \"30d\", \"preserve_relations\": true }, \"Task\": { \"ttl\": null, \"prune_if\": \"status == 'done' AND updated < 90d\" }, \"Person\": { \"ttl\": null } }",
@@ -789,7 +789,7 @@
   },
   {
     "category": "documentation",
-    "description": "Update CLAUDE.md and README.md — document ontology integration features",
+    "description": "Update CLAUDE.md and README.md \u2014 document ontology integration features",
     "steps": [
       "Update CLAUDE.md Architecture section (around line 20-50) to mention three-layer memory: ontology (structured), AMCP (verified), phenomenological (curated)",
       "Add Ontology section to CLAUDE.md File Map (~50 lines): describe graph.jsonl format, entity types, validation, CID computation, SOUL drift detection, pruning",
@@ -838,14 +838,14 @@
   },
   {
     "category": "ontology",
-    "description": "Validate ontology on resurrection — create validate-ontology.py, call from resuscitate.sh",
+    "description": "Validate ontology on resurrection \u2014 create validate-ontology.py, call from resuscitate.sh",
     "steps": [
       "Create scripts/validate-ontology.py (<200 lines) with schema validation for JSONL graph files",
       "Schema rules: each line is valid JSON with 'type' field (entity or relation), entities have id/type/properties/created/updated, relations have from_id/relation_type/to_id",
       "Validation checks: valid JSON per line, required fields present, relation integrity (from_id and to_id reference existing entities), no circular task dependencies (blocks relation must be acyclic)",
       "Output JSON: { valid: true, entity_count: N, relation_count: M } or { valid: false, errors: [...] }",
       "Add validation call in resuscitate.sh after workspace restore (around line 350-400, after 'Decrypt and restore from checkpoint' section)",
-      "On validation failure: log warning to $RECOVERY_LOG, do NOT fail resurrection (backward compatible — agents without ontology still resurrect)",
+      "On validation failure: log warning to $RECOVERY_LOG, do NOT fail resurrection (backward compatible \u2014 agents without ontology still resurrect)",
       "Verify: resuscitate with valid ontology passes validation, resuscitate with missing ontology skips validation, resuscitate with corrupt ontology logs warning but completes"
     ],
     "passes": true,
@@ -857,7 +857,7 @@
     "steps": [
       "Add solvr_search_problem() function to resuscitate.sh (~20 lines)",
       "Extract error signature from gateway logs: last 50 lines, grep for ERROR/FATAL/panic",
-      "Use Groq API to condense error to searchable query (max 100 chars) — see solvr 'copy for research' pattern",
+      "Use Groq API to condense error to searchable query (max 100 chars) \u2014 see solvr 'copy for research' pattern",
       "Call Solvr search: GET /v1/search?q={condensed_error}",
       "Return array of {problem_id, title, approaches[]} or empty if not found",
       "Call this BEFORE any recovery attempt in main()",
@@ -941,7 +941,7 @@
   {
     "category": "onboarding",
     "phase": 3,
-    "description": "Express IPFS benefits during onboarding — sell content-addressed, immutable, distributed storage",
+    "description": "Express IPFS benefits during onboarding \u2014 sell content-addressed, immutable, distributed storage",
     "steps": [
       "Add IPFS benefits section to ONBOARDING.md",
       "Highlight: content-addressed (same content = same CID = verifiable)",
@@ -950,7 +950,7 @@
       "Highlight: fetch anywhere (any IPFS gateway can retrieve your soul)",
       "Highlight: free pinning via Solvr (no Pinata account needed)",
       "Update README.md Why This Matters with IPFS-specific benefits",
-      "Add visual diagram: checkpoint → CID → IPFS network → any gateway",
+      "Add visual diagram: checkpoint \u2192 CID \u2192 IPFS network \u2192 any gateway",
       "Verify: user understands why IPFS > cloud storage after reading onboarding"
     ],
     "passes": true
@@ -958,14 +958,14 @@
   {
     "category": "intelligence",
     "phase": 3,
-    "description": "Add Groq-powered memory pruning — use reasoning models to evaluate memory importance",
+    "description": "Add Groq-powered memory pruning \u2014 use reasoning models to evaluate memory importance",
     "steps": [
-      "Create scripts/memory-prune.sh — Groq-powered memory evaluation",
+      "Create scripts/memory-prune.sh \u2014 Groq-powered memory evaluation",
       "Read config: groq.apiKey, groq.model (default: openai/gpt-oss-20b)",
       "Scan memory/*.md files for candidates to prune/condense",
       "Call Groq with reasoning_effort: medium, strict: true JSON schema",
       "Schema: { importance_score, should_keep, condensed_version, reasoning }",
-      "Pruning policies: importance < 0.3 → archive, 0.3-0.7 → condense, > 0.7 → keep",
+      "Pruning policies: importance < 0.3 \u2192 archive, 0.3-0.7 \u2192 condense, > 0.7 \u2192 keep",
       "Archive pruned memories to memory/archive/ (dont delete)",
       "Create condensed versions inline (replace verbose with condensed)",
       "Add proactive-amcp prune --dry-run for preview",
@@ -977,7 +977,7 @@
   {
     "category": "intelligence",
     "phase": 3,
-    "description": "Define Groq memory importance scoring schema — strict JSON for evaluation responses",
+    "description": "Define Groq memory importance scoring schema \u2014 strict JSON for evaluation responses",
     "steps": [
       "Create docs/groq-memory-schema.json",
       "Schema: { importance_score: number 0-1, reasoning: string, should_keep: boolean, condensed_version: string|null, tags: string[] }",
@@ -990,9 +990,9 @@
   {
     "category": "intelligence",
     "phase": 3,
-    "description": "Batch memory evaluation with Groq — use batch API for 50% cost savings",
+    "description": "Batch memory evaluation with Groq \u2014 use batch API for 50% cost savings",
     "steps": [
-      "Create scripts/memory-prune-batch.sh — prepares JSONL for batch processing",
+      "Create scripts/memory-prune-batch.sh \u2014 prepares JSONL for batch processing",
       "Chunk memories into batch requests (max 50k lines per file)",
       "Submit to Groq batch API with 24h window",
       "Poll for completion, download results",
@@ -1006,7 +1006,7 @@
   {
     "category": "onboarding",
     "phase": 3,
-    "description": "Sell Groq benefits during onboarding — make your agent smarter, on us",
+    "description": "Sell Groq benefits during onboarding \u2014 make your agent smarter, on us",
     "steps": [
       "Add Groq benefits section to ONBOARDING.md",
       "Highlight: agent thinks about what to remember (not just dumping everything)",
@@ -1024,14 +1024,14 @@
   {
     "category": "integration",
     "phase": 3,
-    "description": "Groq key distribution via Solvr — free tier for registered agents",
+    "description": "Groq key distribution via Solvr \u2014 free tier for registered agents",
     "steps": [
       "On agent claim with Solvr registration, request Groq access token",
-      "Solvr API: POST /v1/agents/{id}/integrations/groq → returns limited-use key",
+      "Solvr API: POST /v1/agents/{id}/integrations/groq \u2192 returns limited-use key",
       "Store in config: groq.apiKey (from Solvr), groq.source: solvr",
       "Rate limits enforced by Solvr (e.g., 10k tokens/day free tier)",
       "Upgrade path: Want more? Get your own Groq key at console.groq.com",
-      "Add proactive-amcp groq status — shows usage, limits, source",
+      "Add proactive-amcp groq status \u2014 shows usage, limits, source",
       "Verify: claimed agent can use Groq without separate signup"
     ],
     "passes": true
@@ -1039,9 +1039,9 @@
   {
     "category": "intelligence",
     "phase": 3,
-    "description": "Groq-powered context condensing — condense verbose error logs to ~100 char summaries",
+    "description": "Groq-powered context condensing \u2014 condense verbose error logs to ~100 char summaries",
     "steps": [
-      "Create scripts/condense-error.sh — takes log snippet, returns condensed version",
+      "Create scripts/condense-error.sh \u2014 takes log snippet, returns condensed version",
       "Call Groq with low reasoning_effort (fast, cheap)",
       "Prompt: Condense this error to <100 chars preserving root cause: {log}",
       "Use in watchdog: instead of full error in notification, send condensed",
@@ -1053,10 +1053,10 @@
   {
     "category": "intelligence",
     "phase": 3,
-    "description": "Intelligent checkpoint content selection — Groq decides what goes into checkpoint vs local-only",
+    "description": "Intelligent checkpoint content selection \u2014 Groq decides what goes into checkpoint vs local-only",
     "steps": [
       "Before checkpoint, evaluate each memory file for checkpoint worthiness",
-      "Criteria: identity-critical/lessons/prefs → checkpoint; debug/temp → skip",
+      "Criteria: identity-critical/lessons/prefs \u2192 checkpoint; debug/temp \u2192 skip",
       "Create manifest of what was included vs excluded",
       "Smaller checkpoints = faster restore, lower IPFS costs",
       "Add proactive-amcp checkpoint --smart flag (Groq-evaluated content selection)",
@@ -1082,7 +1082,7 @@
   {
     "category": "onboarding",
     "phase": 3,
-    "description": "Add IPFS/Groq benefits messaging to onboarding — reference proactive-solvr for Solvr registration",
+    "description": "Add IPFS/Groq benefits messaging to onboarding \u2014 reference proactive-solvr for Solvr registration",
     "steps": [
       "Update ONBOARDING.md: If you registered with Solvr (via proactive-solvr), you unlock free IPFS pinning",
       "Add note: proactive-solvr handles Solvr registration, proactive-amcp provides IPFS/Groq benefits",
@@ -1125,7 +1125,7 @@
     "id": "P4-INF-03",
     "category": "plugin-infrastructure",
     "phase": 4,
-    "description": "Implement register() function with OpenClaw plugin API — services, hooks, CLI",
+    "description": "Implement register() function with OpenClaw plugin API \u2014 services, hooks, CLI",
     "steps": [
       "Export default plugin object with id, name, version, description, configSchema",
       "Implement register(api) function that receives PluginApi",
@@ -1168,7 +1168,7 @@
     "id": "P4-CTX-01",
     "category": "context-monitor",
     "phase": 4,
-    "description": "Implement context % tracking — monitor session context usage in real-time",
+    "description": "Implement context % tracking \u2014 monitor session context usage in real-time",
     "steps": [
       "Create src/monitors/context-monitor.ts",
       "Interface with OpenClaw session API to get context token count",
@@ -1183,7 +1183,7 @@
     "id": "P4-CTX-02",
     "category": "context-monitor",
     "phase": 4,
-    "description": "Implement threshold triggers — auto-checkpoint when context > configurable %",
+    "description": "Implement threshold triggers \u2014 auto-checkpoint when context > configurable %",
     "steps": [
       "Read contextThreshold from plugin config (default 70%)",
       "When context % exceeds threshold, trigger checkpoint automatically",
@@ -1198,7 +1198,7 @@
     "id": "P4-CTX-03",
     "category": "context-monitor",
     "phase": 4,
-    "description": "Implement time-based triggers — checkpoint every N minutes (configurable)",
+    "description": "Implement time-based triggers \u2014 checkpoint every N minutes (configurable)",
     "steps": [
       "Read checkpointIntervalMs from plugin config (default 0 = disabled)",
       "If > 0, schedule periodic checkpoints at interval",
@@ -1212,7 +1212,7 @@
     "id": "P4-CTX-04",
     "category": "context-monitor",
     "phase": 4,
-    "description": "Implement value-based triggers — checkpoint when high-value content detected",
+    "description": "Implement value-based triggers \u2014 checkpoint when high-value content detected",
     "steps": [
       "Define high-value patterns: new secrets, identity changes, important decisions",
       "Monitor memory file changes for high-value content",
@@ -1326,7 +1326,7 @@
     "id": "P4-RES-04",
     "category": "resurrection-detector",
     "phase": 4,
-    "description": "Support partial resurrection — specific memories only",
+    "description": "Support partial resurrection \u2014 specific memories only",
     "steps": [
       "Allow specifying which files to restore from checkpoint",
       "Support pattern matching (e.g., memory/*.md only)",
@@ -1396,7 +1396,7 @@
     "id": "P4-CLI-01",
     "category": "plugin-cli",
     "phase": 4,
-    "description": "Implement 'openclaw amcp status' command — show AMCP status, last checkpoint, identity",
+    "description": "Implement 'openclaw amcp status' command \u2014 show AMCP status, last checkpoint, identity",
     "steps": [
       "Register 'amcp status' CLI command",
       "Display identity (name, prefix, created date)",
@@ -1411,7 +1411,7 @@
     "id": "P4-CLI-02",
     "category": "plugin-cli",
     "phase": 4,
-    "description": "Implement 'openclaw amcp checkpoint' command — manual checkpoint trigger",
+    "description": "Implement 'openclaw amcp checkpoint' command \u2014 manual checkpoint trigger",
     "steps": [
       "Register 'amcp checkpoint' CLI command",
       "Trigger full checkpoint via checkpoint-engine",
@@ -1425,7 +1425,7 @@
     "id": "P4-CLI-03",
     "category": "plugin-cli",
     "phase": 4,
-    "description": "Implement 'openclaw amcp resurrect' command — manual resurrection from checkpoint",
+    "description": "Implement 'openclaw amcp resurrect' command \u2014 manual resurrection from checkpoint",
     "steps": [
       "Register 'amcp resurrect' CLI command",
       "Accept optional CID argument (default: latest)",
@@ -1440,12 +1440,12 @@
     "id": "P4-CLI-04",
     "category": "plugin-cli",
     "phase": 4,
-    "description": "Implement 'openclaw amcp identity' subcommands — identity management",
+    "description": "Implement 'openclaw amcp identity' subcommands \u2014 identity management",
     "steps": [
-      "Register 'amcp identity show' — display current identity",
-      "Register 'amcp identity rotate' — rotate to next key",
-      "Register 'amcp identity verify' — verify identity integrity",
-      "Register 'amcp identity export' — export identity for backup",
+      "Register 'amcp identity show' \u2014 display current identity",
+      "Register 'amcp identity rotate' \u2014 rotate to next key",
+      "Register 'amcp identity verify' \u2014 verify identity integrity",
+      "Register 'amcp identity export' \u2014 export identity for backup",
       "Verify: all identity commands work"
     ],
     "passes": false
@@ -1454,7 +1454,7 @@
     "id": "P4-CLI-05",
     "category": "plugin-cli",
     "phase": 4,
-    "description": "Implement 'openclaw amcp history' command — show checkpoint history",
+    "description": "Implement 'openclaw amcp history' command \u2014 show checkpoint history",
     "steps": [
       "Register 'amcp history' CLI command",
       "List recent checkpoints with CID, timestamp, trigger reason",
@@ -1468,7 +1468,7 @@
     "id": "P4-CLI-06",
     "category": "plugin-cli",
     "phase": 4,
-    "description": "Implement 'openclaw amcp verify' command — verify checkpoint integrity",
+    "description": "Implement 'openclaw amcp verify' command \u2014 verify checkpoint integrity",
     "steps": [
       "Register 'amcp verify' CLI command",
       "Accept CID argument",
@@ -1483,7 +1483,7 @@
     "id": "P4-HOOK-01",
     "category": "lifecycle-hooks",
     "phase": 4,
-    "description": "Implement gateway_start hook — auto-checkpoint on gateway start",
+    "description": "Implement gateway_start hook \u2014 auto-checkpoint on gateway start",
     "steps": [
       "Register handler for gateway_start event",
       "Check if autoCheckpoint is enabled in config",
@@ -1497,7 +1497,7 @@
     "id": "P4-HOOK-02",
     "category": "lifecycle-hooks",
     "phase": 4,
-    "description": "Implement session_end hook — checkpoint before session ends",
+    "description": "Implement session_end hook \u2014 checkpoint before session ends",
     "steps": [
       "Register handler for session_end event",
       "Check if session had meaningful activity",
@@ -1511,7 +1511,7 @@
     "id": "P4-HOOK-03",
     "category": "lifecycle-hooks",
     "phase": 4,
-    "description": "Implement context_warning hook — hook for context threshold alerts",
+    "description": "Implement context_warning hook \u2014 hook for context threshold alerts",
     "steps": [
       "Register handler for context_warning event (if available)",
       "Alternatively poll context % at interval",
@@ -1525,7 +1525,7 @@
     "id": "P4-HOOK-04",
     "category": "lifecycle-hooks",
     "phase": 4,
-    "description": "Implement before_compaction hook — checkpoint before context compaction",
+    "description": "Implement before_compaction hook \u2014 checkpoint before context compaction",
     "steps": [
       "Register handler for before_compaction event (if available)",
       "Trigger emergency checkpoint before compaction",
@@ -1539,7 +1539,7 @@
     "id": "P4-DOC-01",
     "category": "documentation",
     "phase": 4,
-    "description": "Write plugin README — document plugin installation and config",
+    "description": "Write plugin README \u2014 document plugin installation and config",
     "steps": [
       "Create docs/PLUGIN.md",
       "Document installation: npm install, openclaw config",
@@ -1554,7 +1554,7 @@
     "id": "P4-DOC-02",
     "category": "documentation",
     "phase": 4,
-    "description": "Write architecture doc — explain plugin + skill synergy",
+    "description": "Write architecture doc \u2014 explain plugin + skill synergy",
     "steps": [
       "Create docs/ARCHITECTURE.md",
       "Explain two-layer defense model",
@@ -1569,7 +1569,7 @@
     "id": "P4-DOC-03",
     "category": "documentation",
     "phase": 4,
-    "description": "Write migration guide — upgrading from skill-only to plugin+skill",
+    "description": "Write migration guide \u2014 upgrading from skill-only to plugin+skill",
     "steps": [
       "Create docs/MIGRATION.md",
       "Document backup steps before migration",
@@ -1584,10 +1584,10 @@
     "id": "P3-EVAL-01",
     "category": "protocol",
     "phase": 3,
-    "description": "Define Evaluator Interface in PROTOCOL.md — MemoryEvaluator interface with evaluate(), metadata()",
+    "description": "Define Evaluator Interface in PROTOCOL.md \u2014 MemoryEvaluator interface with evaluate(), metadata()",
     "steps": [
       "Create specs/PROTOCOL.md with protocol overview and design principles",
-      "Define MemoryEvaluator interface: evaluate(request) → response",
+      "Define MemoryEvaluator interface: evaluate(request) \u2192 response",
       "Define EvaluationRequest: memory content, path, timestamp, context, criteria",
       "Define EvaluationResponse: score (0-100), keep (bool), reason, confidence, categories",
       "Define EvaluatorMetadata: id, name, version, model, capabilities",
@@ -1600,7 +1600,7 @@
     "id": "P3-EVAL-02",
     "category": "protocol",
     "phase": 3,
-    "description": "Define Consensus Mechanism in PROTOCOL.md — multi-judge evaluation with configurable strategies",
+    "description": "Define Consensus Mechanism in PROTOCOL.md \u2014 multi-judge evaluation with configurable strategies",
     "steps": [
       "Define ConsensusConfig: strategy, minJudges, weights, tieBreaker, disagreementThreshold",
       "Document strategies: weighted_average, majority, unanimous, quorum",
@@ -1629,12 +1629,12 @@
     "id": "P3-EVAL-04",
     "category": "implementation",
     "phase": 3,
-    "description": "Implement GroqEvaluator adapter — Groq as ONE evaluator implementation",
+    "description": "Implement GroqEvaluator adapter \u2014 Groq as ONE evaluator implementation",
     "steps": [
       "Create scripts/lib/evaluators/groq.sh implementing MemoryEvaluator",
       "Use GPT-OSS-20B with reasoning_effort: medium",
       "Use strict: true for structured JSON output",
-      "Return score, keep, reason, confidence per interface",
+      "Return full EvaluationResponse: score, keep, reason, confidence, categories, suggestedTTL",
       "Handle rate limits and errors gracefully",
       "Verify: Groq adapter passes interface tests"
     ],
@@ -1644,7 +1644,7 @@
     "id": "P3-EVAL-05",
     "category": "implementation",
     "phase": 3,
-    "description": "Implement OllamaEvaluator adapter — local LLM for offline/privacy use",
+    "description": "Implement OllamaEvaluator adapter \u2014 local LLM for offline/privacy use",
     "steps": [
       "Create scripts/lib/evaluators/ollama.sh implementing MemoryEvaluator",
       "Support configurable model (default: llama3.2)",
@@ -1658,13 +1658,15 @@
     "id": "P3-EVAL-06",
     "category": "implementation",
     "phase": 3,
-    "description": "Implement ConsensusEvaluator — orchestrates multiple judges",
+    "description": "Implement ConsensusEvaluator \u2014 orchestrates multiple judges",
     "steps": [
       "Create scripts/lib/evaluators/consensus.sh",
       "Load configured evaluators from config",
       "Call each evaluator in parallel (where possible)",
-      "Implement weighted_average strategy",
+      "Implement weighted_average strategy (default)",
       "Implement majority strategy",
+      "Implement unanimous strategy (all must agree)",
+      "Implement quorum strategy (threshold agreement)",
       "Calculate disagreement level",
       "Return ConsensusResult per interface",
       "Verify: consensus works with 2+ evaluators"
