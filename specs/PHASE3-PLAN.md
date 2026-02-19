@@ -15,25 +15,9 @@ Phase 3 transforms proactive-amcp from a backup tool into an **intelligence ampl
 
 ## New Tasks (to add to PRD)
 
-### 1. Onboarding: Agent Claiming Flow
+### 1. IPFS Value Proposition in Onboarding
 
-**Task: Implement "Claim Your Agent" onboarding**
-```
-category: onboarding
-description: Add "Claim Your Agent" flow that registers agent identity and unlocks IPFS + Groq benefits
-steps:
-- Create scripts/claim-agent.sh — interactive claiming flow
-- Prompt: "Name your agent" → generates AID (Agent ID)
-- Prompt: "Describe your agent's purpose" → seeds SOUL.md
-- Auto-register with Solvr (if configured) to get agent profile
-- Generate AgentMemory vault key → stores in config
-- Show benefits unlocked: "✅ IPFS pinning (free) ✅ Groq intelligence (free) ✅ Solvr knowledge network"
-- Update ONBOARDING.md to guide through claiming
-- Add "proactive-amcp claim" subcommand
-- Verify: new install → claim flow → agent registered with Solvr + AgentMemory + ready for IPFS
-```
-
-### 2. IPFS Value Proposition in Onboarding
+> **Note:** Agent claiming already exists via `solvr-register.sh` + `amcp identity create`
 
 **Task: Express IPFS benefits during onboarding**
 ```
