@@ -1579,5 +1579,111 @@
       "Verify: migration is smooth"
     ],
     "passes": false
+  },
+  {
+    "id": "P3-EVAL-01",
+    "category": "protocol",
+    "phase": 3,
+    "description": "Define Evaluator Interface in PROTOCOL.md — MemoryEvaluator interface with evaluate(), metadata()",
+    "steps": [
+      "Create specs/PROTOCOL.md with protocol overview and design principles",
+      "Define MemoryEvaluator interface: evaluate(request) → response",
+      "Define EvaluationRequest: memory content, path, timestamp, context, criteria",
+      "Define EvaluationResponse: score (0-100), keep (bool), reason, confidence, categories",
+      "Define EvaluatorMetadata: id, name, version, model, capabilities",
+      "Document that implementations (Groq, Ollama, etc) are adapters, not the protocol",
+      "Verify: PROTOCOL.md defines complete interface"
+    ],
+    "passes": true
+  },
+  {
+    "id": "P3-EVAL-02",
+    "category": "protocol",
+    "phase": 3,
+    "description": "Define Consensus Mechanism in PROTOCOL.md — multi-judge evaluation with configurable strategies",
+    "steps": [
+      "Define ConsensusConfig: strategy, minJudges, weights, tieBreaker, disagreementThreshold",
+      "Document strategies: weighted_average, majority, unanimous, quorum",
+      "Define ConsensusResult: finalScore, finalKeep, individualResults, consensusReached",
+      "Document disagreement handling and escalation",
+      "Add example configurations (minimal, balanced, high-assurance)",
+      "Verify: consensus mechanism fully specified"
+    ],
+    "passes": true
+  },
+  {
+    "id": "P3-EVAL-03",
+    "category": "implementation",
+    "phase": 3,
+    "description": "Implement base Evaluator class and adapter pattern in scripts/lib/",
+    "steps": [
+      "Create scripts/lib/evaluator.sh with base functions",
+      "Define evaluate_memory() that calls adapter-specific implementation",
+      "Define get_evaluator_metadata() for adapter info",
+      "Support loading adapter by type from config",
+      "Verify: base evaluator pattern works"
+    ],
+    "passes": false
+  },
+  {
+    "id": "P3-EVAL-04",
+    "category": "implementation",
+    "phase": 3,
+    "description": "Implement GroqEvaluator adapter — Groq as ONE evaluator implementation",
+    "steps": [
+      "Create scripts/lib/evaluators/groq.sh implementing MemoryEvaluator",
+      "Use GPT-OSS-20B with reasoning_effort: medium",
+      "Use strict: true for structured JSON output",
+      "Return score, keep, reason, confidence per interface",
+      "Handle rate limits and errors gracefully",
+      "Verify: Groq adapter passes interface tests"
+    ],
+    "passes": false
+  },
+  {
+    "id": "P3-EVAL-05",
+    "category": "implementation",
+    "phase": 3,
+    "description": "Implement OllamaEvaluator adapter — local LLM for offline/privacy use",
+    "steps": [
+      "Create scripts/lib/evaluators/ollama.sh implementing MemoryEvaluator",
+      "Support configurable model (default: llama3.2)",
+      "Handle Ollama not running gracefully",
+      "Return evaluation per interface spec",
+      "Verify: Ollama adapter works offline"
+    ],
+    "passes": false
+  },
+  {
+    "id": "P3-EVAL-06",
+    "category": "implementation",
+    "phase": 3,
+    "description": "Implement ConsensusEvaluator — orchestrates multiple judges",
+    "steps": [
+      "Create scripts/lib/evaluators/consensus.sh",
+      "Load configured evaluators from config",
+      "Call each evaluator in parallel (where possible)",
+      "Implement weighted_average strategy",
+      "Implement majority strategy",
+      "Calculate disagreement level",
+      "Return ConsensusResult per interface",
+      "Verify: consensus works with 2+ evaluators"
+    ],
+    "passes": false
+  },
+  {
+    "id": "P3-EVAL-07",
+    "category": "configuration",
+    "phase": 3,
+    "description": "Add evaluator configuration to ~/.amcp/config.json",
+    "steps": [
+      "Add evaluators array to config schema",
+      "Support type, model, weight, apiKey per evaluator",
+      "Add consensus section with strategy, minJudges, tieBreaker",
+      "Default to single Groq evaluator if not configured",
+      "Add 'proactive-amcp config evaluators' command to list/add/remove",
+      "Verify: config supports multi-evaluator setup"
+    ],
+    "passes": false
   }
 ]
