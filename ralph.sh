@@ -74,11 +74,8 @@ for ((i=1; i<=$1; i++)); do
 
 === WORKFLOW ===
 
-🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨
-⛔ PHASE RESTRICTION: ONLY WORK ON TASKS WHERE \"phase\": 3 ⛔
-⛔ DO NOT TOUCH phase 1 or phase 2 tasks - they are COMPLETE ⛔
-⛔ If all phase 2 tasks pass, STOP and report PHASE_3_COMPLETE ⛔
-🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨
+PHASE RESTRICTION: ONLY work on tasks where phase=3. Phase 1 and 2 are COMPLETE.
+If all phase 3 tasks pass, STOP and report PHASE_3_COMPLETE.
 
 1. Find the highest-priority requirement in specs/prd-v1.json where passes=false AND phase=3 and work ONLY on that.
 2. Implement the requirement in scripts/ (bash) or as a new command.
@@ -91,7 +88,10 @@ for ((i=1; i<=$1; i++)); do
 
 IMPORTANT: Always use 'git add .' before committing to include NEW files!
 
-CRITICAL: ONE TASK AT A TIME. NO FILE OVER 800 LINES." > "$tmpfile" 2>&1 || true
+CRITICAL: 
+- ONE TASK ONLY then STOP. Do NOT continue to another task.
+- After commit+push, you are DONE. Exit immediately.
+- NO FILE OVER 800 LINES." > "$tmpfile" 2>&1 || true
 
   iter_end=$(date +%s)
   iter_time=$((iter_end - iter_start))
