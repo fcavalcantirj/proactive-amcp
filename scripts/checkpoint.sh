@@ -26,10 +26,12 @@ AGENT_NAME="${AGENT_NAME:-ClaudiusThePirateEmperor}"
 # Parse args
 NOTIFY=""
 FORCE_CHECKPOINT=""
+SMART_CHECKPOINT=false
 for arg in "$@"; do
   case $arg in
     --notify) NOTIFY="--notify" ;;
     --force)  FORCE_CHECKPOINT="force" ;;
+    --smart)  SMART_CHECKPOINT=true ;;
   esac
 done
 
@@ -204,12 +206,61 @@ echo "Found $SECRET_COUNT secrets"
 # Pre-validation: scan content for cleartext secrets
 scan_for_secrets "$CONTENT_DIR" "$FORCE_CHECKPOINT"
 
+# Smart content selection (--smart flag): use Groq to filter memory files
+EFFECTIVE_CONTENT_DIR="$CONTENT_DIR"
+SMART_STAGING=""
+if [ "$SMART_CHECKPOINT" = true ] && [ -x "$SCRIPT_DIR/smart-checkpoint-filter.sh" ]; then
+  echo ""
+  echo "=== Smart Content Selection (Groq) ==="
+  local_smart_args=("--content-dir" "$CONTENT_DIR")
+
+  SMART_MANIFEST=$("$SCRIPT_DIR/smart-checkpoint-filter.sh" "${local_smart_args[@]}" 2>&1 | tee /dev/stderr | tail -1) || {
+    echo "WARN: Smart filter failed, including all files (fallback)" >&2
+    SMART_MANIFEST=""
+  }
+
+  if [ -n "$SMART_MANIFEST" ]; then
+    # Copy content to temp staging, then remove excluded files
+    SMART_STAGING=$(mktemp -d)
+    rsync -a \
+      --exclude='.venv' --exclude='.git' --exclude='node_modules' \
+      --exclude='__pycache__' --exclude='*.pyc' --exclude='.pytest_cache' \
+      "$CONTENT_DIR/" "$SMART_STAGING/"
+
+    local excluded_count=0
+    while IFS= read -r excl_file; do
+      local staged_path="$SMART_STAGING/$excl_file"
+      if [ -f "$staged_path" ]; then
+        rm -f "$staged_path"
+        excluded_count=$((excluded_count + 1))
+      fi
+    done < <(echo "$SMART_MANIFEST" | python3 -c "
+import json, sys
+try:
+    m = json.loads(sys.stdin.read())
+    for f in m.get('exclude', []):
+        print(f)
+except: pass
+" 2>/dev/null)
+    echo "  Excluded $excluded_count files from checkpoint"
+    EFFECTIVE_CONTENT_DIR="$SMART_STAGING"
+  fi
+elif [ "$SMART_CHECKPOINT" = true ]; then
+  echo "WARN: --smart requested but smart-checkpoint-filter.sh not found" >&2
+fi
+
+# Cleanup smart staging on exit
+cleanup_smart() {
+  [ -n "$SMART_STAGING" ] && rm -rf "$SMART_STAGING"
+}
+trap 'cleanup; cleanup_smart' EXIT
+
 # Create checkpoint
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 CHECKPOINT_PATH="$CHECKPOINT_DIR/checkpoint-$TIMESTAMP.amcp"
 
 echo "Creating checkpoint..."
-AMCP_ARGS="checkpoint create --identity $IDENTITY_PATH --content $CONTENT_DIR --secrets $SECRETS_FILE --out $CHECKPOINT_PATH"
+AMCP_ARGS="checkpoint create --identity $IDENTITY_PATH --content $EFFECTIVE_CONTENT_DIR --secrets $SECRETS_FILE --out $CHECKPOINT_PATH"
 [ -n "$PREVIOUS_CID" ] && AMCP_ARGS="$AMCP_ARGS --previous $PREVIOUS_CID"
 
 $AMCP_CLI $AMCP_ARGS

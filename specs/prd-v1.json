@@ -1062,7 +1062,7 @@
       "Add proactive-amcp checkpoint --smart flag (Groq-evaluated content selection)",
       "Verify: smart checkpoints are 30-50% smaller without losing important content"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "documentation",

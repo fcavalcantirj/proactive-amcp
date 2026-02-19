@@ -940,3 +940,42 @@
   - File sizes: condense-error.sh=342, watchdog.sh=449, proactive-amcp.sh=189 (all under 800)
   - Structural grep: Groq API URL (1), temperature 0 (1), condense prompt (1), cache refs (3), watchdog integration (2+3), CLI dispatch (4)
   - All 126 tests pass (no regressions)
+
+## Task: intelligence — Intelligent checkpoint content selection (Phase 3) (DONE)
+- Created `scripts/smart-checkpoint-filter.sh` (427 lines) — Groq-powered checkpoint content selection
+- Evaluates each memory file for "checkpoint worthiness" before checkpoint creation
+- Criteria: identity-critical files (SOUL.md, USER.md, AGENTS.md, MEMORY.md, TOOLS.md) always included
+  - Empty files always excluded
+  - Files >50KB included by default (too large for cheap evaluation)
+  - All other *.md files evaluated by Groq for importance
+- Groq evaluation with strict JSON schema: `{ include, score, reason }`
+  - temperature=0, max_tokens=150 for fast, deterministic decisions
+  - Content truncated to 4000 chars per file for speed/cost
+  - Fallback to include on any API error (never lose data by accident)
+- Score threshold: files below SMART_THRESHOLD (default 0.3) excluded from checkpoint
+- Output: JSON manifest with include[], exclude[], decisions[] written to stdout
+  - Manifest also saved to staging as amcp/smart-filter-manifest.json for audit
+- Token usage tracked in ~/.amcp/groq-usage.json with source=smart-filter
+- Also scans memory/daily/, memory/notes/, memory/scratch/ subdirs for ephemeral files
+- Added `--smart` flag to full-checkpoint.sh:
+  - Calls smart-checkpoint-filter.sh after workspace staging
+  - Removes excluded files from staging directory
+  - Saves filter manifest alongside checkpoint
+  - Graceful fallback: filter failure includes all files
+- Added `--smart` flag to checkpoint.sh:
+  - Creates temp staging copy when smart filtering
+  - Removes excluded files from staging, passes filtered dir to amcp CLI
+  - Cleanup of temp staging via trap
+- Added `checkpoint` subcommand to proactive-amcp.sh CLI (delegates to full-checkpoint.sh)
+- Verification:
+  - bash -n passes on all 4 scripts (smart-checkpoint-filter.sh, full-checkpoint.sh, checkpoint.sh, proactive-amcp.sh)
+  - File sizes: smart-checkpoint-filter.sh=427, full-checkpoint.sh=787, checkpoint.sh=368, proactive-amcp.sh=195 (all under 800)
+  - All 10 structural grep checks pass:
+    - evaluate_file/checkpoint worthiness (5 refs)
+    - identity-critical/ALWAYS_INCLUDE (7 refs)
+    - include/exclude manifest (24 refs)
+    - --smart in full-checkpoint.sh (3 refs), checkpoint.sh (3 refs)
+    - checkpoint subcommand in CLI (1 ref)
+    - Groq strict JSON schema (3 refs)
+    - Token usage tracking (3 refs)
+    - Excluded files removed from staging (4 refs)

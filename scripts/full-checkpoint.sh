@@ -20,6 +20,7 @@ DRY_RUN=false
 NOTIFY=false
 FORCE_CHECKPOINT=""
 SKIP_EVOLUTION=false
+SMART_CHECKPOINT=false
 
 for arg in "$@"; do
   case $arg in
@@ -27,6 +28,7 @@ for arg in "$@"; do
     --notify) NOTIFY=true ;;
     --force)  FORCE_CHECKPOINT="force" ;;
     --skip-evolution) SKIP_EVOLUTION=true ;;
+    --smart) SMART_CHECKPOINT=true ;;
   esac
 done
 
@@ -429,6 +431,7 @@ get_workspace() {
   echo "${ws/#\~/$HOME}"
 }
 WORKSPACE_DIR=$(get_workspace)
+CONTENT_DIR="${CONTENT_DIR:-$WORKSPACE_DIR}"
 
 # Extract redacted config metadata (structural info only, no secrets)
 extract_config_metadata() {
@@ -517,6 +520,48 @@ cp "$IDENTITY_PATH" "$STAGING_DIR/amcp/identity.json" 2>/dev/null || true
 # Extract redacted config metadata from openclaw.json (structural info, no secrets)
 echo "Extracting config metadata..."
 extract_config_metadata
+
+# Smart content selection (--smart flag): use Groq to filter memory files
+SMART_MANIFEST=""
+if [ "$SMART_CHECKPOINT" = true ] && [ -x "$SCRIPT_DIR/smart-checkpoint-filter.sh" ]; then
+  echo ""
+  echo "=== Smart Content Selection (Groq) ==="
+  local_smart_args=("--content-dir" "$CONTENT_DIR")
+  [ "$DRY_RUN" = true ] && local_smart_args+=("--dry-run")
+  [ -n "${CONFIG_FILE:-}" ] && local_smart_args+=("--config" "$CONFIG_FILE")
+
+  SMART_MANIFEST=$("$SCRIPT_DIR/smart-checkpoint-filter.sh" "${local_smart_args[@]}" 2>&1 | tee /dev/stderr | tail -1) || {
+    echo "WARN: Smart filter failed, including all files (fallback)" >&2
+    SMART_MANIFEST=""
+  }
+
+  # Remove excluded files from staging
+  if [ -n "$SMART_MANIFEST" ]; then
+    local excluded_count=0
+    while IFS= read -r excl_file; do
+      local staged_path="$STAGING_DIR/workspace/$excl_file"
+      if [ -f "$staged_path" ]; then
+        rm -f "$staged_path"
+        excluded_count=$((excluded_count + 1))
+      fi
+    done < <(echo "$SMART_MANIFEST" | python3 -c "
+import json, sys
+try:
+    m = json.loads(sys.stdin.read())
+    for f in m.get('exclude', []):
+        print(f)
+except: pass
+" 2>/dev/null)
+    echo "  Excluded $excluded_count files from checkpoint"
+
+    # Save manifest alongside checkpoint for reference
+    mkdir -p "$STAGING_DIR/amcp"
+    echo "$SMART_MANIFEST" > "$STAGING_DIR/amcp/smart-filter-manifest.json"
+    echo "  Saved filter manifest to staging"
+  fi
+elif [ "$SMART_CHECKPOINT" = true ]; then
+  echo "WARN: --smart requested but smart-checkpoint-filter.sh not found at $SCRIPT_DIR" >&2
+fi
 
 # Log included optional directories
 if [ -d "$STAGING_DIR/workspace/memory/ontology" ]; then

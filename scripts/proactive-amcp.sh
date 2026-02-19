@@ -17,6 +17,7 @@
 #   memory-prune     Groq-powered memory file pruning (archive/condense/keep)
 #   validate-contract  Validate skill ontology contracts against graph.jsonl
 #   detect-conflicts   Detect cross-skill ontology contract conflicts
+#   checkpoint         Create checkpoint (delegates to full-checkpoint.sh, supports --smart)
 #   condense-error     Condense verbose error logs to ~100 char summaries (Groq)
 #   groq               Groq intelligence: status, request-key (free tier via Solvr)
 
@@ -47,6 +48,7 @@ Commands:
   temporal-query   Cross-checkpoint entity history queries
   detect-failure   Scan text for failure patterns, auto-create Problems
   prune            Prune ontology graph by typed retention policies
+  checkpoint       Create checkpoint (supports --smart for Groq content selection)
   memory-prune     Groq-powered memory file pruning (archive/condense/keep)
   validate-contract  Validate skill ontology contracts against graph.jsonl
   detect-conflicts   Detect cross-skill ontology contract conflicts
@@ -129,6 +131,10 @@ case "${1:-}" in
   solvr-register)
     shift
     exec "$SCRIPT_DIR/solvr-register.sh" "$@"
+    ;;
+  checkpoint)
+    shift
+    exec "$SCRIPT_DIR/full-checkpoint.sh" "$@"
     ;;
   migrate-pins)
     shift
