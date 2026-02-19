@@ -941,23 +941,6 @@
   {
     "category": "onboarding",
     "phase": 3,
-    "description": "Implement Claim Your Agent flow — registers identity, unlocks IPFS + Groq benefits",
-    "steps": [
-      "Create scripts/claim-agent.sh — interactive claiming flow",
-      "Prompt: Name your agent → generates AID (Agent ID)",
-      "Prompt: Describe your agents purpose → seeds SOUL.md",
-      "Auto-register with Solvr (if configured) to get agent profile",
-      "Generate AgentMemory vault key → stores in config",
-      "Show benefits unlocked: IPFS pinning (free), Groq intelligence (free), Solvr knowledge network",
-      "Update ONBOARDING.md to guide through claiming",
-      "Add proactive-amcp claim subcommand",
-      "Verify: new install → claim flow → agent registered with Solvr + AgentMemory + ready for IPFS"
-    ],
-    "passes": false
-  },
-  {
-    "category": "onboarding",
-    "phase": 3,
     "description": "Express IPFS benefits during onboarding — sell content-addressed, immutable, distributed storage",
     "steps": [
       "Add IPFS benefits section to ONBOARDING.md",
