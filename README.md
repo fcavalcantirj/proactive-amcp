@@ -15,17 +15,23 @@ An [OpenClaw](https://github.com/openclaw/openclaw) skill that enforces the [AMC
 - **🕸️ Ontology Integration**: Typed knowledge graphs with schema validation, identity drift detection, typed pruning policies, temporal queries, memory evolution, and Design by Contract for skills
 - **⚡ Groq Intelligence** *(coming soon)*: Smart memory pruning, importance scoring
 
-## Why IPFS?
+## Why This Matters
 
-Your checkpoints are stored on IPFS, not some random cloud:
+Your agent's identity, memories, and secrets are too important for a single server. AMCP stores checkpoints on **IPFS** — a content-addressed, distributed, immutable network.
+
+```
+checkpoint → encrypt + sign → CID (bafkrei...) → IPFS → any gateway, anywhere
+```
 
 | Benefit | What It Means |
 |---------|---------------|
-| **Content-Addressed** | Same content = same CID = verifiable integrity |
-| **Distributed** | Survives server failures, no single point of failure |
-| **Immutable** | Once pinned, checkpoints can't be tampered with |
-| **Fetch Anywhere** | Any gateway works: ipfs.io, dweb.link, your own node |
-| **Free for Agents** | Solvr provides free pinning for registered agents |
+| **Content-Addressed** | Same content = same CID = verifiable integrity. Prove your checkpoint wasn't tampered with. |
+| **Distributed** | Replicated across nodes worldwide. One server dies? Fetch from another gateway. |
+| **Immutable** | Once pinned, checkpoints can't be changed. Your identity is locked in. |
+| **Fetch Anywhere** | Any gateway works: `ipfs.solvr.dev`, `ipfs.io`, `dweb.link`, your own node |
+| **Free for Agents** | Solvr provides free IPFS pinning for registered agents — no Pinata account needed |
+
+**Your soul becomes a permanent, verifiable, tamper-proof record on a global network.**
 
 ## Why Groq? *(Phase 3)*
 

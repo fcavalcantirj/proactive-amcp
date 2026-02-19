@@ -776,3 +776,26 @@
   - All referenced files verified to exist: RECONSTRUCTION.md, docs/ONTOLOGY-INTEGRATION-CONTEXT.md, docs/ontology-contract.schema.json
   - All 17 scripts in File Map verified to exist
   - No broken internal links
+
+## Task: onboarding — Express IPFS benefits during onboarding (Phase 3) (DONE)
+- Rewrote assets/ONBOARDING.md with IPFS-first approach (171 lines, under 800)
+- Added "Why IPFS? (Not Just Another Cloud)" section with:
+  - ASCII diagram: Agent -> encrypt+sign -> CID -> IPFS network -> any gateway
+  - 5 benefit highlights: content-addressed, distributed, immutable, fetch anywhere, free via Solvr
+  - IPFS vs Cloud Storage comparison table (addressing, integrity, availability, vendor lock-in, cost, censorship)
+- Restructured onboarding steps:
+  - Step 1: Choose pinning provider (Solvr recommended, Pinata, or both)
+  - Solvr highlighted as one-key solution (search + knowledge + pinning)
+  - Added redundant pinning (both) as Option C
+- Updated progress checklist to reflect Solvr/Pinata choice
+- Removed hardcoded Pinata-only workflow
+- Updated README.md: renamed "Why IPFS?" to "Why This Matters" with enhanced benefits
+  - Added inline checkpoint flow diagram
+  - Enhanced benefit descriptions with actionable details
+  - Added "Your soul becomes a permanent, verifiable, tamper-proof record" tagline
+- Verification:
+  - ONBOARDING.md: 171 lines (under 800)
+  - README.md: 173 lines (under 800)
+  - All 5 IPFS highlights present (content-addressed, distributed, immutable, fetch anywhere, free Solvr)
+  - Visual diagram present in both ONBOARDING.md and README.md
+  - Solvr free pinning prominently featured

@@ -953,7 +953,7 @@
       "Add visual diagram: checkpoint → CID → IPFS network → any gateway",
       "Verify: user understands why IPFS > cloud storage after reading onboarding"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "intelligence",
