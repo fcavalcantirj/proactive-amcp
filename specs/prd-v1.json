@@ -1078,5 +1078,19 @@
       "Verify: all Groq features documented with examples"
     ],
     "passes": false
+  },
+  {
+    "category": "onboarding",
+    "phase": 3,
+    "description": "Integrate Solvr agent claiming into onboarding — guide user to claim on Solvr, fetch API key, unlock benefits",
+    "steps": [
+      "Update ONBOARDING.md to prompt: Have you claimed your agent on Solvr?",
+      "If no: guide to https://solvr.dev/claim with instructions",
+      "After claim: prompt for Solvr API key or auto-fetch via solvr-register.sh",
+      "Store Solvr key in config, show benefits unlocked: free IPFS pinning, Groq intelligence",
+      "solvr-register.sh already handles registration - wire it into onboarding flow",
+      "Verify: user claims on Solvr → proactive-amcp detects and configures automatically"
+    ],
+    "passes": false
   }
 ]
