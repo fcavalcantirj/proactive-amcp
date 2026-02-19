@@ -1001,7 +1001,7 @@
       "Track batch job IDs in ~/.amcp/batch-jobs.json",
       "Verify: large memory archives get pruned efficiently at 50% cost"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "onboarding",

@@ -841,3 +841,24 @@
   - All 7 examples validate against the schema
   - strict: true in Groq API integration section
   - File size: 195 lines (under 800)
+
+## Task: intelligence — Batch memory evaluation with Groq (Phase 3) (DONE)
+- Created `scripts/memory-prune-batch.sh` (621 lines) — Groq batch API for 50% cost savings
+- Three-mode workflow: --submit (prepare JSONL + upload + create batch), --poll (check status), --apply (download results + prune files)
+- JSONL batch format: custom_id=mem-eval-{filename}, method=POST, url=/v1/chat/completions, same JSON schema as memory-prune.sh
+- Files API: uploads JSONL to POST /files with purpose=batch
+- Batches API: creates job with 24h completion_window at POST /batches
+- Poll: GET /batches/{batch_id} checks status (validating/in_progress/completed/failed/expired)
+- Apply: downloads output file from GET /files/{output_file_id}/content, parses results, applies archive/condense/keep decisions
+- Batch file limit: validates <= 50,000 lines per JSONL file (Groq limit)
+- Job tracking in ~/.amcp/batch-jobs.json: batch_id, input_file_id, status, file_count, model, memory_dir, timestamps
+- Token usage tracked in ~/.amcp/groq-usage.json with source=batch marker
+- --dry-run supported on all modes (preview without changes)
+- Updated memory-prune.sh: added --batch flag that delegates to memory-prune-batch.sh
+  - Also passes through --submit/--poll/--apply, --dry-run, --config, --content-dir
+  - proactive-amcp memory-prune --batch [--submit|--poll|--apply] works end-to-end
+- Verification:
+  - bash -n syntax check passes on both scripts
+  - File sizes: memory-prune-batch.sh=621, memory-prune.sh=442 (both under 800)
+  - Structural grep: batch_jobs (14 refs), 50000 limit check, 24h window, GROQ_API_BASE for /files and /batches
+  - --batch flag present in memory-prune.sh arg parsing and usage text

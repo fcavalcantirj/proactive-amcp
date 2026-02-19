@@ -41,9 +41,15 @@ Usage: memory-prune.sh [OPTIONS]
 
 Options:
   --dry-run          Preview what would be pruned (no changes)
+  --batch            Use Groq batch API (50% cost savings, async)
   --config FILE      Override config path (default: ~/.amcp/config.json)
   --content-dir DIR  Override workspace directory
   --help, -h         Show this help
+
+Batch mode (--batch):
+  --submit           Prepare and submit batch job (default batch action)
+  --poll             Check status of pending batch jobs
+  --apply            Download results and apply pruning decisions
 
 Config keys (in ~/.amcp/config.json):
   groq.apiKey    Groq API key (required, or set GROQ_API_KEY env)
@@ -58,15 +64,24 @@ USAGE
 }
 
 # --- Argument parsing ---
+BATCH_MODE=false
+BATCH_ARGS=()
 while [[ $# -gt 0 ]]; do
   case $1 in
-    --dry-run) DRY_RUN=true; shift ;;
-    --config) CONFIG_FILE="${2:?--config requires a path}"; shift 2 ;;
-    --content-dir) CONTENT_DIR="${2:?--content-dir requires a path}"; shift 2 ;;
+    --dry-run) DRY_RUN=true; BATCH_ARGS+=("--dry-run"); shift ;;
+    --batch) BATCH_MODE=true; shift ;;
+    --submit|--poll|--apply) BATCH_MODE=true; BATCH_ARGS+=("$1"); shift ;;
+    --config) CONFIG_FILE="${2:?--config requires a path}"; BATCH_ARGS+=("--config" "$2"); shift 2 ;;
+    --content-dir) CONTENT_DIR="${2:?--content-dir requires a path}"; BATCH_ARGS+=("--content-dir" "$2"); shift 2 ;;
     --help|-h) usage ;;
     *) shift ;;
   esac
 done
+
+# Delegate to batch script if --batch mode
+if $BATCH_MODE; then
+  exec "$SCRIPT_DIR/memory-prune-batch.sh" "${BATCH_ARGS[@]}"
+fi
 
 # --- Config helpers ---
 read_config_key() {
