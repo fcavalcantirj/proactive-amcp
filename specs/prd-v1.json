@@ -1638,7 +1638,7 @@
       "Handle rate limits and errors gracefully",
       "Verify: Groq adapter passes interface tests"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "P3-EVAL-05",

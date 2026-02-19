@@ -1049,3 +1049,28 @@
   - File size: 329 lines (under 800)
   - All 7 functional tests pass: load_evaluator, current_evaluator_type, get_evaluator_metadata, evaluate_memory, empty file, list_evaluator_types, normalize_score
   - Structural grep confirms: evaluate_memory(), get_evaluator_metadata(), load_evaluator(), _adapter_evaluate, _adapter_metadata all present
+
+## Task: P3-EVAL-04 — Implement GroqEvaluator adapter (DONE)
+- Created `scripts/lib/evaluators/groq.sh` (429 lines) — Groq as ONE evaluator implementation per PROTOCOL.md
+- Implements `_adapter_evaluate()` returning full EvaluationResponse: score (0-100), keep, reason, confidence, categories, suggestedTTL
+- Implements `_adapter_metadata()` returning EvaluatorMetadata: id, name, version, model, capabilities
+- Uses GPT-OSS-20B model with `strict: True` JSON schema output via `response_format.json_schema`
+- Groq API request built via python3 (safe JSON escaping, no shell injection)
+- Schema enforces all 6 required fields: score (integer 0-100), keep (boolean), reason (string), confidence (number 0-1), categories (string[]), suggestedTTL (integer)
+- Rate limit handling: retries on HTTP 429 with exponential backoff (2s, 4s), max 2 retries
+- Server error handling: retries on HTTP 500/502/503 with delay
+- Auth error handling: immediate fail on 401/403 with descriptive message
+- Network error handling: immediate fail on timeout/unreachable
+- Graceful fallback: on any API error, returns score=50, keep=true (never lose data by accident)
+- Token usage tracked in ~/.amcp/groq-usage.json with source=evaluator-groq
+- API key resolution: GROQ_API_KEY env > evaluators[].apiKey > groq.apiKey config (3 sources)
+- Model resolution: evaluators[].model > groq.model config > "openai/gpt-oss-20b" default
+- Guard against double-source: _GROQ_ADAPTER_LOADED flag
+- Response parsing: normalizes 0-1 float scores to 0-100 integer, clamps all fields to valid ranges
+- Integrates with base evaluator.sh: load_evaluator("groq") sources adapter, verifies _adapter_evaluate/_adapter_metadata defined
+- Verification:
+  - bash -n syntax check passes
+  - File size: 429 lines (under 800)
+  - All 7 functional tests pass: list_evaluator_types, load_evaluator, current_evaluator_type, metadata fields, _adapter_evaluate type, empty file fast path, normalize_score
+  - Structural grep: _adapter_evaluate (2), _adapter_metadata (2), gpt-oss-20b (2), strict True (1), EvaluationResponse (7), suggestedTTL (9), 429 rate limit (3), confidence (10), categories (11)
+  - All 126 existing tests pass (no regressions)
