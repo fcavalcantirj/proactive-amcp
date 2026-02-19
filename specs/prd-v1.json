@@ -985,7 +985,7 @@
       "Add examples for each score tier",
       "Verify: Groq returns compliant JSON with strict: true"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "intelligence",

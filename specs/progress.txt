@@ -819,3 +819,25 @@
   - bash -n syntax check passes on both scripts
   - File sizes: memory-prune.sh=427, proactive-amcp.sh=177 (both under 800)
   - All structural grep checks pass: groq.apiKey, groq.model, strict, importance_score, archive_dir, DRY_RUN, track_usage
+
+## Task: intelligence — Define Groq memory importance scoring schema (Phase 3) (DONE)
+- Created `docs/groq-memory-schema.json` (195 lines) — formal JSON schema for Groq memory evaluation
+- Schema defines 5 required fields: importance_score (number 0-1), should_keep (boolean), condensed_version (string|null), reasoning (string), tags (string[])
+- additionalProperties: false enforces strict output
+- x-score-criteria with 4 tiers:
+  - 0.9-1.0: Critical — core identity, failure lessons, user preferences
+  - 0.7-0.9: High — project context, architectural decisions
+  - 0.4-0.6: Medium — routine logs, status updates (condense)
+  - 0.1-0.3: Low — debug output, temporary notes (archive)
+- x-examples with 7 examples covering all tiers (2 critical, 1 high, 2 medium, 2 low)
+  - Each example includes input_summary and full evaluation object
+- x-groq-usage documents API integration: endpoint, response_format with strict: true, recommended model/temperature
+- Schema exactly matches inline schema used by memory-prune.sh (verified programmatically)
+- Verification:
+  - Valid JSON (python3 json.load passes)
+  - All 5 required fields present with correct types
+  - additionalProperties: false confirmed
+  - All 4 score tiers documented with indicators
+  - All 7 examples validate against the schema
+  - strict: true in Groq API integration section
+  - File size: 195 lines (under 800)
