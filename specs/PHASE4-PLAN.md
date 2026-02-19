@@ -260,14 +260,54 @@ If skill instructions are overridden by prompt injection:
 
 ---
 
-## Open Questions
+## Open Questions — RESOLVED
 
-1. **Hook availability**: Does OpenClaw expose `before_compaction` hook?
-2. **Context % API**: How to get real-time context usage from gateway?
-3. **Plugin distribution**: npm package or OpenClaw plugin registry?
-4. **Backwards compatibility**: How to support skill-only installs?
+| Question | Answer | Source |
+|----------|--------|--------|
+| Hook availability | ✅ ALL hooks exist including `before_compaction` | plugin-sdk/index.d.ts |
+| Context % API | ✅ `tokenCount` available in `before_compaction` event | Verified in SDK |
+| Plugin distribution | npm package (same as SecureClaw) | SecureClaw pattern |
+| Backwards compatibility | Skill-only mode if plugin disabled | Check in gateway_start |
+
+---
+
+## Verified Hooks (from OpenClaw v0.39.7)
+
+```typescript
+type PluginHookName = 
+  | "before_agent_start"  // ← Inject identity
+  | "agent_end"
+  | "before_compaction"   // ← CRITICAL: checkpoint before wipe
+  | "after_compaction"
+  | "message_received"
+  | "message_sending"     // ← Can modify/cancel
+  | "message_sent"
+  | "before_tool_call"    // ← Can block tools
+  | "after_tool_call"
+  | "tool_result_persist"
+  | "session_start"
+  | "session_end"         // ← Checkpoint before end
+  | "gateway_start"       // ← Checkpoint on start
+  | "gateway_stop"
+```
+
+**Key Insight:** The hooks.md docs are OUTDATED. The actual plugin SDK has full hook support.
+
+---
+
+## Study Notes
+
+See `specs/PHASE4-STUDY-NOTES.md` for comprehensive engineering documentation including:
+- Full hook API with types
+- SecureClaw architecture analysis
+- Monitor patterns
+- Prompt injection detection
+- Plugin manifest design
+- Directory structure
+- Security considerations
 
 ---
 
 *Created: 2026-02-19*
-*Based on: SecureClaw architecture study*
+*Updated: 2026-02-19 (verified all hooks exist)*
+*Based on: SecureClaw architecture study + OpenClaw SDK verification*
