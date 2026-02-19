@@ -732,3 +732,17 @@
   - Test: conflicting postconditions detected (== vs !=)
   - Test: JSON output works for both commands
   - File sizes: schema=70, validate.sh=90, validate.py=211, detect.sh=48, detect.py=241, cli=171 (all under 800)
+
+## Task: testing — Integration tests for contract validation (index 45) (DONE)
+- Created `test/skill-contract.bats` (8 tests):
+  - Test 1: All Tasks have assignee → PASS, precondition satisfied
+  - Test 2: Task missing assignee → FAIL with entity ID 'task-bad' and property error
+  - Test 3: reads declares Task but graph has no Task entities → FAIL
+  - Test 4: Writes Action, graph has Action → PASS, verified via JSON output (entity_types_found)
+  - Test 5: Conflicting postconditions (== high vs != high) → CONFLICTS FOUND, exit 1
+  - Test 6: Invalid contract JSON → FAIL, exit 1
+  - Test 7: Skill without ontologyContract → SKIP, exit 0 (backward compatible)
+  - Test 8: Compatible reads/writes (writer Task, reader Task) → No conflicts, exit 0
+- Verification:
+  - All 8 tests pass
+  - File size: 209 lines (under 800)
