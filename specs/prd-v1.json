@@ -1737,7 +1737,7 @@
       "Add 'proactive-amcp backup-config' manual command",
       "Verify: ls ~/.amcp/config-backups shows timestamped backups after successful gateway starts"
     ],
-    "passes": false,
+    "passes": true,
     "phase": 5
   },
   {

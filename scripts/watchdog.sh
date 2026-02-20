@@ -447,6 +447,8 @@ do_check() {
       rm -f "$LOCK_FILE"
     fi
     update_state "HEALTHY" 0 ""
+    # Backup config on healthy check (only when valid and changed)
+    [ -x "$SCRIPT_DIR/backup-config.sh" ] && "$SCRIPT_DIR/backup-config.sh" 2>/dev/null || true
     echo "✅ HEALTHY"
     return 0
   fi

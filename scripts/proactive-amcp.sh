@@ -19,6 +19,7 @@
 #   detect-conflicts   Detect cross-skill ontology contract conflicts
 #   checkpoint         Create checkpoint (delegates to full-checkpoint.sh, supports --smart)
 #   condense-error     Condense verbose error logs to ~100 char summaries (Groq)
+#   backup-config      Create/list/restore OpenClaw config backups
 #   groq               Groq intelligence: status, request-key (free tier via Solvr)
 
 set -euo pipefail
@@ -49,6 +50,7 @@ Commands:
   detect-failure   Scan text for failure patterns, auto-create Problems
   prune            Prune ontology graph by typed retention policies
   checkpoint       Create checkpoint (supports --smart for Groq content selection)
+  backup-config    Create/list/restore OpenClaw config backups
   memory-prune     Groq-powered memory file pruning (archive/condense/keep)
   validate-contract  Validate skill ontology contracts against graph.jsonl
   detect-conflicts   Detect cross-skill ontology contract conflicts
@@ -135,6 +137,10 @@ case "${1:-}" in
   checkpoint)
     shift
     exec "$SCRIPT_DIR/full-checkpoint.sh" "$@"
+    ;;
+  backup-config)
+    shift
+    exec "$SCRIPT_DIR/backup-config.sh" "$@"
     ;;
   migrate-pins)
     shift

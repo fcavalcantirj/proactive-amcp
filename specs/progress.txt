@@ -2177,3 +2177,22 @@
   - `grep` confirms errorHistory (6 refs in update_state + functions)
   - `grep` confirms escalation routing for config_semantic_invalid and gateway_unresponsive
   - `grep` confirms try-fix-config.sh guard pattern ([ -x ... ])
+
+## Task P5-03: backup — Automatic config backup system (DONE)
+- Created `scripts/backup-config.sh` (260 lines) — automatic OpenClaw config backup system
+- `create_config_backup()`: validates config before backing up (openclaw validate → jq → python3 fallback)
+- Timestamped backups: `openclaw-YYYYMMDD-HHMMSS.json` in `~/.amcp/config-backups/`
+- SHA-256 hash comparison: skips backup if config unchanged since last backup
+- Keeps last 10 backups (`MAX_BACKUPS`), prunes older ones automatically
+- Subcommands: `--force` (backup even if unchanged), `--list` (show backups), `--restore [FILE]` (restore from backup)
+- `--restore` saves broken config as `openclaw.json.broken-TIMESTAMP` before overwriting
+- Updated `scripts/proactive-amcp.sh`: added `backup-config` command routing
+- Updated `scripts/init.sh`: added `setup_config_backups()` — creates `~/.amcp/config-backups/` and takes initial backup
+- Updated `scripts/watchdog.sh`: on HEALTHY check, triggers backup via guard pattern `[ -x ... ] && ... || true`
+- Verification:
+  - All 4 scripts pass `bash -n` syntax check
+  - `grep` confirms create_config_backup in backup-config.sh (3 refs)
+  - `grep` confirms backup-config in proactive-amcp.sh (4 refs: comment, usage, case, exec)
+  - `grep` confirms config-backups/backup-config/setup_config_backups in init.sh (4 refs)
+  - `grep` confirms backup-config.sh guard in watchdog.sh (1 ref)
+  - File sizes: backup-config.sh=260, proactive-amcp.sh=201, init.sh=714, watchdog.sh=592 (all under 800)
