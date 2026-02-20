@@ -1533,7 +1533,7 @@
       "Ensure checkpoint completes before compaction proceeds",
       "Verify: checkpoint fires before compaction"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "P4-DOC-01",

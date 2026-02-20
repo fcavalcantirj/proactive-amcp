@@ -284,14 +284,33 @@ describe("integration: lifecycle hooks", () => {
     expect(sessionEntry.maxTokens).toBe(200000);
   });
 
-  it("before_compaction hook emits high-priority checkpoint event", () => {
+  it("before_compaction hook emits high-priority checkpoint event", async () => {
     const handlers = state.hooks.get("before_compaction")!;
-    handlers[0](makeEvent("before_compaction"));
+    await handlers[0](makeEvent("before_compaction"));
 
     expect(state.emissions).toContainEqual({
       event: "amcp:checkpoint:requested",
       data: { trigger: "before_compaction", priority: "high" },
     });
+  });
+
+  it("before_compaction hook awaits log write before returning", async () => {
+    const handlers = state.hooks.get("before_compaction")!;
+    await handlers[0](makeEvent("before_compaction"));
+
+    // Log should be written immediately (no setTimeout needed) because
+    // before_compaction awaits appendCheckpointLog to ensure checkpoint
+    // completes before compaction proceeds.
+    const logContent = await readFile(checkpointLogPath, "utf-8");
+    const entries = logContent
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line));
+    const compactionEntry = entries.find(
+      (e: Record<string, unknown>) => e.trigger === "before_compaction",
+    );
+    expect(compactionEntry).toBeDefined();
+    expect(compactionEntry.trigger).toBe("before_compaction");
   });
 
   it("context_warning hook emits warning at 60% threshold", () => {
@@ -378,7 +397,7 @@ describe("integration: lifecycle hooks", () => {
       await handlers[0](makeEvent(hookName));
     }
 
-    // Wait briefly for any fire-and-forget writes (gateway_start/stop/before_compaction)
+    // Wait briefly for any fire-and-forget writes (gateway_start/stop)
     await new Promise((resolve) => setTimeout(resolve, 200));
 
     const logContent = await readFile(checkpointLogPath, "utf-8");

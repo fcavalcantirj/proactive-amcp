@@ -2043,3 +2043,24 @@
   - TypeScript: `tsc --noEmit` passes cleanly
   - vitest: all 506 tests pass (35 integration + 22 context-monitor + 5 warnings), 0 failures
   - File sizes: context-monitor.ts=333, context-monitor-warnings.test.ts=228, index.ts=706, types.ts=229, integration.test.ts=640 (all under 800)
+
+## Task: P4-HOOK-04 — Implement before_compaction hook with await (DONE)
+- Made `before_compaction` hook handler `async` in `src/index.ts` (line 276)
+  - Previously fire-and-forget: `appendCheckpointLog(...).catch(...)` — compaction could proceed before log write completed
+  - Now matches `session_end` pattern: `await appendCheckpointLog()` with try/catch
+  - Ensures checkpoint log is persisted BEFORE compaction proceeds (PRD step 4)
+- Hook already implemented all other PRD steps:
+  - Step 1: Handler registered for `before_compaction` event ✓
+  - Step 2: Emits `amcp:checkpoint:requested` with `priority: "high"` ✓
+  - Step 3: Includes `trigger: "before_compaction"` in CheckpointLogEntry metadata ✓
+  - Step 4: Now awaits log write before returning ✓ (was the missing piece)
+- Updated `src/integration.test.ts`:
+  - Made "before_compaction hook emits high-priority checkpoint event" test `async` with `await`
+  - Added new test: "before_compaction hook awaits log write before returning"
+    - Verifies log is written immediately after handler returns (no setTimeout needed)
+    - Reads checkpoint-log.jsonl and confirms `before_compaction` entry exists
+  - Updated comment: fire-and-forget list now "(gateway_start/stop)" — before_compaction removed
+- Verification:
+  - TypeScript: `tsc --noEmit` passes cleanly
+  - vitest: all 507 tests pass (36 integration), 0 failures
+  - File sizes: index.ts=710, integration.test.ts=658 (both under 800)

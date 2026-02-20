@@ -273,7 +273,7 @@ function registerHooks(
     }
   });
 
-  api.registerHook("before_compaction", (_event: LifecycleEvent) => {
+  api.registerHook("before_compaction", async (_event: LifecycleEvent) => {
     api.logger.info("amcp: before_compaction — emergency checkpoint queued");
     const entry: CheckpointLogEntry = {
       timestamp: new Date().toISOString(),
@@ -283,9 +283,13 @@ function registerHooks(
       maxTokens: 0,
       cooldownMs: config.checkpointCooldownMs,
     };
-    appendCheckpointLog(checkpointLogPath, entry).catch((err) =>
-      api.logger.warn(`amcp: failed to log before_compaction trigger: ${err}`),
-    );
+
+    // Await the log write to ensure checkpoint is recorded before compaction proceeds.
+    try {
+      await appendCheckpointLog(checkpointLogPath, entry);
+    } catch (err) {
+      api.logger.warn(`amcp: failed to log before_compaction trigger: ${err}`);
+    }
     api.emit("amcp:checkpoint:requested", {
       trigger: "before_compaction",
       priority: "high",
