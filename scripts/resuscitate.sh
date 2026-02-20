@@ -9,6 +9,14 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 AMCP_CLI="${AMCP_CLI:-$(command -v amcp 2>/dev/null || echo "$HOME/bin/amcp")}"
 IDENTITY_PATH="${IDENTITY_PATH:-$HOME/.amcp/identity.json}"
+
+# Ensure Node.js webcrypto is available for amcp CLI (fixes "crypto.subtle must be defined")
+# Node 18 needs this flag; Node 20+ has webcrypto by default (flag is a harmless no-op)
+# Critical for systemd/cron contexts where env may be minimal
+case "${NODE_OPTIONS:-}" in
+  *--experimental-global-webcrypto*) ;;
+  *) export NODE_OPTIONS="${NODE_OPTIONS:+$NODE_OPTIONS }--experimental-global-webcrypto" ;;
+esac
 LAST_CHECKPOINT_FILE="$HOME/.amcp/last-checkpoint.json"
 CONTENT_DIR="${CONTENT_DIR:-$HOME/.openclaw/workspace}"
 AGENT_NAME="${AGENT_NAME:-Agent}"

@@ -2217,3 +2217,15 @@
   - `grep` confirms: tier_a/tier_b/tier_c functions (6 refs), broken- save (2 refs), restart+health check (5 refs)
   - `grep` confirms try-fix-config.sh integrated in resuscitate.sh (4 refs)
   - File sizes: try-fix-config.sh=341, resuscitate.sh=629 (both under 800)
+
+## Task P5-05: crypto — Fix crypto.subtle error in amcp resuscitate (DONE)
+- Added `NODE_OPTIONS='--experimental-global-webcrypto'` to 4 scripts that call amcp CLI
+- Uses `case` pattern to avoid duplicate flags when scripts chain (e.g., watchdog -> resuscitate)
+- Scripts modified: resuscitate.sh, checkpoint.sh, full-checkpoint.sh, watchdog.sh
+- Node 18 needs this flag for webcrypto; Node 20+ has it by default (flag is harmless no-op)
+- Critical for systemd/cron contexts where env may be minimal (watchdog runs as systemd service)
+- Flag set right after AMCP_CLI definition, before any amcp CLI calls
+- Verification:
+  - All 4 scripts pass `bash -n` syntax check
+  - `grep` confirms `experimental-global-webcrypto` present in all 4 scripts (8 matches)
+  - File sizes: resuscitate.sh=637, checkpoint.sh=376, full-checkpoint.sh=800, watchdog.sh=600 (all ≤800)

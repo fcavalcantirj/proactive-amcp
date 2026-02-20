@@ -9,6 +9,15 @@ command -v python3 &>/dev/null || { echo "FATAL: python3 required but not found"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 AMCP_CLI="${AMCP_CLI:-$(command -v amcp 2>/dev/null || echo "$HOME/bin/amcp")}"
 IDENTITY_PATH="${IDENTITY_PATH:-$HOME/.amcp/identity.json}"
+
+# Ensure Node.js webcrypto is available for amcp CLI (fixes "crypto.subtle must be defined")
+# Node 18 needs this flag; Node 20+ has webcrypto by default (flag is a harmless no-op)
+# Critical for systemd/cron contexts where env may be minimal
+case "${NODE_OPTIONS:-}" in
+  *--experimental-global-webcrypto*) ;;
+  *) export NODE_OPTIONS="${NODE_OPTIONS:+$NODE_OPTIONS }--experimental-global-webcrypto" ;;
+esac
+
 CHECKPOINT_DIR="${CHECKPOINT_DIR:-$HOME/.amcp/checkpoints}"
 STAGING_DIR="$HOME/.amcp/staging-$$"
 LAST_CHECKPOINT_FILE="$HOME/.amcp/last-checkpoint.json"
@@ -650,7 +659,6 @@ echo "Checkpoint created: $CHECKPOINT_PATH ($CHECKPOINT_SIZE)"
 # ===========================================
 # STAGE 4: Pin to IPFS
 # ===========================================
-echo ""
 echo "=== STAGE 4: Pinning to IPFS (provider: $PINNING_PROVIDER) ==="
 
 CID=""
@@ -782,8 +790,6 @@ if [ "$NOTIFY" = true ]; then
 🔐 Secrets: $SECRET_COUNT"
   fi
 fi
-
-echo ""
 echo "=============================================="
 echo "  FULL CHECKPOINT COMPLETE"
 echo "=============================================="

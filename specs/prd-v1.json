@@ -1772,7 +1772,7 @@
       "Test in watchdog environment (systemd service, cron) not just interactive shell",
       "Verify: proactive-amcp resuscitate --from-cid <test-cid> works in systemd context"
     ],
-    "passes": false,
+    "passes": true,
     "phase": 5
   },
   {
