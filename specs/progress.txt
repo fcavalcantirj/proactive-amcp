@@ -2110,3 +2110,26 @@
   - ASCII diagrams included (architecture overview, data flows, memory layers)
   - Security benefits documented with 7-threat comparison table
   - File size: 473 lines (under 800)
+
+## Task P4-DOC-03: documentation — Write migration guide (DONE)
+- Created `docs/MIGRATION.md` — upgrading from skill-only to plugin+skill architecture
+- "Before You Start" section: backup identity.json, config.json, last-checkpoint.json
+- "What Changes (and What Doesn't)" table: 10 components compared before/after migration
+- Step 1 — Update proactive-amcp: git pull, clawhub update, or npm update paths
+- Step 2 — Add Plugin Config to Gateway: minimal config, full config, preserving existing skills config
+- Step 3 — Config Migration: AMCP config unchanged, IPFS provider mapping table
+- Step 4 — Restart Gateway: restart + verify plugin loaded via `openclaw amcp status`
+- Step 5 — Verify End-to-End: test plugin CLI checkpoint, test standalone skill, verify monitors
+- Cron/Systemd Coexistence: plugin + cron defense-in-depth, cooldown prevents duplicates
+- New Capabilities After Migration: memory integrity, context-aware checkpoints, resurrection detection, plugin CLI
+- Rollback section: quick disable (enabled: false) + full rollback with backup restore
+- Fleet Migration (openclaw-deploy): automatic via master-setup.sh, manual fleet update script
+- Troubleshooting table: 7 common problems with solutions
+- Summary table: 5 migration steps with estimated time
+- Verification:
+  - docs/MIGRATION.md created (all 6 PRD steps covered)
+  - Backup steps documented (11 backup references)
+  - Plugin installation alongside existing skill (4 references)
+  - Config migration documented (Step 3)
+  - End-to-end testing documented (Step 5)
+  - Migration path smooth: rollback section + troubleshooting

@@ -1578,7 +1578,7 @@
       "Test migration path end-to-end",
       "Verify: migration is smooth"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "P3-EVAL-01",
