@@ -27,6 +27,7 @@ import { createCheckpointHandler } from "./cli/checkpoint-command.js";
 import { createResurrectHandler } from "./cli/resurrect-command.js";
 import { createIdentityHandler } from "./cli/identity-command.js";
 import { createHistoryHandler } from "./cli/history-command.js";
+import { createVerifyHandler } from "./cli/verify-command.js";
 import type {
   AmcpPlugin,
   AmcpPluginConfig,
@@ -196,6 +197,7 @@ interface CliRegistrationDeps {
   identityPath: string;
   lastCheckpointPath: string;
   checkpointLogPath: string;
+  checkpointDir: string;
   scriptDir: string;
 }
 
@@ -274,20 +276,20 @@ function registerCliCommands(api: PluginApi, deps: CliRegistrationDeps): void {
     handler: historyHandler,
   });
 
-  // Placeholder commands — will be implemented in P4-CLI-06
-  const placeholderCommands = [
-    { name: "verify", description: "Verify checkpoint integrity" },
-  ];
+  // 'amcp verify' — fully implemented (P4-CLI-06)
+  const verifyHandler = createVerifyHandler({
+    logger: api.logger,
+    config: deps.config,
+    lastCheckpointPath: deps.lastCheckpointPath,
+    checkpointDir: deps.checkpointDir,
+    scriptDir: deps.scriptDir,
+  });
 
-  for (const cmd of placeholderCommands) {
-    api.registerCommand("amcp", {
-      name: cmd.name,
-      description: cmd.description,
-      async handler(args: string[]) {
-        api.logger.info(`amcp ${cmd.name}: ${args.join(" ") || "(no args)"}`);
-      },
-    });
-  }
+  api.registerCommand("amcp", {
+    name: "verify",
+    description: "Verify checkpoint integrity",
+    handler: verifyHandler,
+  });
 }
 
 /**
@@ -451,6 +453,11 @@ async function register(api: PluginApi): Promise<void> {
     (apiExt.amcpScriptDir as string) ??
     join(dirname(new URL(import.meta.url).pathname), "..", "scripts");
 
+  // Checkpoint directory — local checkpoint file storage
+  const checkpointDir =
+    (apiExt.amcpCheckpointDir as string) ??
+    join(homedir(), ".amcp", "checkpoints");
+
   // Register CLI commands — status command needs access to services and paths
   registerCliCommands(api, {
     config,
@@ -458,6 +465,7 @@ async function register(api: PluginApi): Promise<void> {
     identityPath,
     lastCheckpointPath,
     checkpointLogPath,
+    checkpointDir,
     scriptDir,
   });
 
@@ -587,4 +595,9 @@ export {
   formatHistoryResult,
   createHistoryHandler,
 } from "./cli/history-command.js";
+export {
+  runVerify,
+  formatVerifyResult as formatVerifyCheckpointResult,
+  createVerifyHandler,
+} from "./cli/verify-command.js";
 export type * from "./types.js";

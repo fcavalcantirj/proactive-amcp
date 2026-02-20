@@ -301,10 +301,22 @@ describe("integration: CLI commands", () => {
     ).resolves.toBeUndefined();
   });
 
-  it("verify command handler accepts CID arg", async () => {
+  it("verify command handler accepts local file arg", async () => {
+    // Create a local checkpoint file to verify (avoids IPFS fetch timeout)
+    const cpPath = join(mockScriptDir, "test-checkpoint.amcp");
+    await writeFile(
+      cpPath,
+      JSON.stringify({
+        aid: "Btest",
+        soul: { name: "Test" },
+        content: { memory: {} },
+        signature: "sig",
+        encryptedSecrets: "enc",
+      }),
+    );
     const cmd = state.commands.get("verify")!;
     await expect(
-      cmd.handler(["bafkreiexamplecid"]),
+      cmd.handler(["--checkpoint", cpPath]),
     ).resolves.toBeUndefined();
   });
 

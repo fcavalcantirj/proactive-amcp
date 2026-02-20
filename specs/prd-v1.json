@@ -1477,7 +1477,7 @@
       "Report integrity status",
       "Verify: corrupt checkpoint detected"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "P4-HOOK-01",

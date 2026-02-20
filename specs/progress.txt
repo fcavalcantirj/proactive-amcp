@@ -1928,3 +1928,44 @@
     4. Support --json for machine-readable output ✓
     5. Verify: history shows all checkpoints ✓
   - File sizes: history-command.ts=317, history-command.test.ts=672, index.ts=590 (all under 800)
+
+## P4-CLI-06: plugin-cli — Implement 'amcp verify' command (DONE)
+- Created `src/cli/verify-command.ts` (673 lines) — verify checkpoint integrity
+- Command accepts: CID argument, local file path, --checkpoint flag, or defaults to latest
+- Target resolution: last-checkpoint.json localPath → local CID match → IPFS fetch (4 gateways)
+- 8 verification checks run sequentially:
+  1. file_readable — checkpoint file accessible and non-empty
+  2. valid_json — parseable JSON structure
+  3. has_content — contains soul or content data
+  4. has_secrets — contains encrypted secrets
+  5. hash_computed — SHA-256 hash of file content
+  6. signature_present — Ed25519 signature field exists
+  7. signature_valid — amcp CLI `verify --checkpoint` validation (only if signature present)
+  8. aid_present — agent ID present in checkpoint
+- Result: intact (all pass) or ISSUES DETECTED (any fail)
+- Supports --json for machine-readable output
+- Supports --checkpoint flag for amcp CLI compatibility
+- IPFS fetch via curl to Solvr > ipfs.io > dweb.link > Cloudflare gateways
+- Created `src/cli/verify-command.test.ts` (602 lines) — 27 vitest tests:
+  - Local file verification: valid, nonexistent, unsigned, signed, hash, AID
+  - Corrupt checkpoint detection: invalid JSON, no content, empty file
+  - Latest checkpoint fallback: localPath, stale path, pinataCid
+  - Format output: intact, issues, errors, target/source display
+  - Handler: --json, --checkpoint, positional CID, all check names
+  - P4-CLI-06 verification: corrupt detected, intact passes, pass/total count
+- Updated `src/index.ts`:
+  - Replaced placeholder verify command with real `createVerifyHandler`
+  - Added `checkpointDir` to `CliRegistrationDeps` interface
+  - Added verify command exports (runVerify, formatVerifyCheckpointResult, createVerifyHandler)
+- Updated `src/integration.test.ts`: fixed verify test to use local file (avoids IPFS timeout)
+- Verification:
+  - vitest: all 27 verify tests pass, full suite 493/493 pass
+  - TypeScript: `tsc --noEmit` passes cleanly
+  - All 6 PRD steps verified:
+    1. Register 'amcp verify' CLI command ✓
+    2. Accept CID argument ✓
+    3. Fetch checkpoint and verify hash ✓
+    4. Verify signature if signed ✓
+    5. Report integrity status ✓
+    6. Verify: corrupt checkpoint detected ✓
+  - File sizes: verify-command.ts=673, verify-command.test.ts=602, index.ts=603 (all under 800)
