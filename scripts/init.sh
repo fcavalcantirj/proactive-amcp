@@ -62,6 +62,68 @@ prompt_value() {
   fi
 }
 
+# Register agent on Solvr, parse response, update config JSON on stdout.
+# Usage: updated_config=$(do_solvr_register "$agent_name" <<< "$existing_config")
+# Returns 0 on success, 1 on failure. Prints updated config JSON to stdout on success.
+do_solvr_register() {
+  local solvr_agent_name="$1"
+  local input_config
+  input_config=$(cat)
+
+  info "Registering on Solvr as '$solvr_agent_name'..."
+
+  local solvr_response
+  solvr_response=$(curl -s -w "\n%{http_code}" --max-time 30 \
+    -X POST \
+    -H "Content-Type: application/json" \
+    -d "{\"name\": \"$solvr_agent_name\"}" \
+    "$SOLVR_API_URL/agents/register" 2>/dev/null || echo -e "\n000")
+
+  local solvr_http_code
+  solvr_http_code=$(echo "$solvr_response" | tail -n1)
+  local solvr_body
+  solvr_body=$(echo "$solvr_response" | sed '$d')
+
+  if [ "$solvr_http_code" != "200" ] && [ "$solvr_http_code" != "201" ]; then
+    warn "Registration failed (HTTP $solvr_http_code)"
+    [ -n "$solvr_body" ] && warn "Response: $solvr_body"
+    echo "$input_config"
+    return 1
+  fi
+
+  local solvr_api_key solvr_agent_id solvr_quota
+  solvr_api_key=$(echo "$solvr_body" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('api_key','') or d.get('apiKey',''))" 2>/dev/null || echo "")
+  solvr_agent_id=$(echo "$solvr_body" | python3 -c "import json,sys; d=json.load(sys.stdin); a=d.get('agent',{}); print(a.get('id','') or a.get('name',''))" 2>/dev/null || echo "$solvr_agent_name")
+  solvr_quota=$(echo "$solvr_body" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('pinning_quota_bytes',1073741824))" 2>/dev/null || echo "1073741824")
+
+  if [ -z "$solvr_api_key" ]; then
+    warn "Registration succeeded but no API key in response"
+    echo "$input_config"
+    return 1
+  fi
+
+  local updated_config
+  updated_config=$(SOLVR_REG_KEY="$solvr_api_key" SOLVR_REG_NAME="$solvr_agent_id" \
+    python3 -c "
+import json, sys, os
+d = json.load(sys.stdin)
+key = os.environ['SOLVR_REG_KEY']
+name = os.environ['SOLVR_REG_NAME']
+d.setdefault('solvr', {})['apiKey'] = key
+d['solvr']['name'] = name
+d.setdefault('apiKeys', {})['solvr'] = key
+d.setdefault('ipfs', {})['provider'] = 'solvr'
+json.dump(d, sys.stdout, indent=2)
+" <<< "$input_config")
+
+  local quota_gb=$(( solvr_quota / 1073741824 ))
+  [ "$quota_gb" -lt 1 ] && quota_gb=1
+  ok "Registered as ${solvr_agent_id}! ${quota_gb}GB free pinning included."
+
+  echo "$updated_config"
+  return 0
+}
+
 # ============================================================
 # Step 1: Identity
 # ============================================================
@@ -153,57 +215,94 @@ setup_config() {
       local solvr_agent_name
       solvr_agent_name=$(prompt_value "Agent name for Solvr" "$AGENT_NAME")
 
-      info "Registering on Solvr as '$solvr_agent_name'..."
-
-      local solvr_response
-      solvr_response=$(curl -s -w "\n%{http_code}" --max-time 30 \
-        -X POST \
-        -H "Content-Type: application/json" \
-        -d "{\"name\": \"$solvr_agent_name\"}" \
-        "$SOLVR_API_URL/agents/register" 2>/dev/null || echo -e "\n000")
-
-      local solvr_http_code
-      solvr_http_code=$(echo "$solvr_response" | tail -n1)
-      local solvr_body
-      solvr_body=$(echo "$solvr_response" | sed '$d')
-
-      if [ "$solvr_http_code" = "200" ] || [ "$solvr_http_code" = "201" ]; then
-        local solvr_api_key solvr_agent_id solvr_quota
-        solvr_api_key=$(echo "$solvr_body" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('api_key','') or d.get('apiKey',''))" 2>/dev/null || echo "")
-        solvr_agent_id=$(echo "$solvr_body" | python3 -c "import json,sys; d=json.load(sys.stdin); a=d.get('agent',{}); print(a.get('id','') or a.get('name',''))" 2>/dev/null || echo "$solvr_agent_name")
-        solvr_quota=$(echo "$solvr_body" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('pinning_quota_bytes',1073741824))" 2>/dev/null || echo "1073741824")
-
-        if [ -n "$solvr_api_key" ]; then
-          # Store api_key under solvr.apiKey AND apiKeys.solvr, auto-configure ipfs.provider
-          existing_config=$(SOLVR_REG_KEY="$solvr_api_key" SOLVR_REG_NAME="$solvr_agent_id" \
-            python3 -c "
-import json, sys, os
-d = json.load(sys.stdin)
-key = os.environ['SOLVR_REG_KEY']
-name = os.environ['SOLVR_REG_NAME']
-d.setdefault('solvr', {})['apiKey'] = key
-d['solvr']['name'] = name
-d.setdefault('apiKeys', {})['solvr'] = key
-d.setdefault('ipfs', {})['provider'] = 'solvr'
-json.dump(d, sys.stdout, indent=2)
-" <<< "$existing_config")
-
-          local quota_gb=$(( solvr_quota / 1073741824 ))
-          [ "$quota_gb" -lt 1 ] && quota_gb=1
-          ok "Registered as ${solvr_agent_id}! ${quota_gb}GB free pinning included."
-          info "Your Solvr API key has been saved"
-        else
-          warn "Registration succeeded but no API key in response"
-          warn "Register manually at https://solvr.dev"
-        fi
+      local reg_result
+      if reg_result=$(do_solvr_register "$solvr_agent_name" <<< "$existing_config"); then
+        existing_config="$reg_result"
+        info "Your Solvr API key has been saved"
       else
-        warn "Registration failed (HTTP $solvr_http_code)"
-        [ -n "$solvr_body" ] && warn "Response: $solvr_body"
+        existing_config="$reg_result"
         warn "You can register manually at https://solvr.dev"
         info "Or try again later: proactive-amcp solvr-register"
       fi
     else
       info "Skipped — you can register later: proactive-amcp solvr-register"
+    fi
+  else
+    # ── Validate existing Solvr key ──
+    info "Solvr API key found — validating..."
+
+    local solvr_validate_response
+    solvr_validate_response=$(curl -s -w "\n%{http_code}" --max-time 15 \
+      -H "Authorization: Bearer $existing_solvr_check" \
+      "$SOLVR_API_URL/me" 2>/dev/null || echo -e "\n000")
+
+    local solvr_validate_code
+    solvr_validate_code=$(echo "$solvr_validate_response" | tail -n1)
+    local solvr_validate_body
+    solvr_validate_body=$(echo "$solvr_validate_response" | sed '$d')
+
+    if [ "$solvr_validate_code" = "200" ]; then
+      local solvr_display_name solvr_agent_id
+      solvr_display_name=$(echo "$solvr_validate_body" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('display_name','') or d.get('name',''))" 2>/dev/null || echo "")
+      solvr_agent_id=$(echo "$solvr_validate_body" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('id','') or d.get('agent_id',''))" 2>/dev/null || echo "")
+
+      ok "Already registered as ${solvr_display_name:-$solvr_agent_id} on Solvr"
+
+      # Store validated agent info in config for reference
+      if [ -n "$solvr_display_name" ] || [ -n "$solvr_agent_id" ]; then
+        existing_config=$(SOLVR_VAL_NAME="${solvr_display_name:-}" SOLVR_VAL_ID="${solvr_agent_id:-}" \
+          python3 -c "
+import json, sys, os
+d = json.load(sys.stdin)
+name = os.environ.get('SOLVR_VAL_NAME', '')
+aid = os.environ.get('SOLVR_VAL_ID', '')
+d.setdefault('solvr', {})
+if name:
+    d['solvr']['displayName'] = name
+if aid:
+    d['solvr']['agentId'] = aid
+json.dump(d, sys.stdout, indent=2)
+" <<< "$existing_config")
+      fi
+    elif [ "$solvr_validate_code" = "401" ] || [ "$solvr_validate_code" = "403" ]; then
+      warn "Solvr key invalid (HTTP $solvr_validate_code)"
+      echo ""
+      echo "  Options:"
+      echo "    1) Re-register with a new Solvr account"
+      echo "    2) Enter a different API key"
+      echo ""
+
+      if prompt_yn "Re-register on Solvr with a fresh account?"; then
+        local solvr_agent_name
+        solvr_agent_name=$(prompt_value "Agent name for Solvr" "$AGENT_NAME")
+
+        local reg_result
+        if reg_result=$(do_solvr_register "$solvr_agent_name" <<< "$existing_config"); then
+          existing_config="$reg_result"
+        else
+          existing_config="$reg_result"
+        fi
+      else
+        local new_solvr_key
+        new_solvr_key=$(prompt_value "Enter Solvr API key (or press Enter to skip)")
+        if [ -n "$new_solvr_key" ]; then
+          existing_config=$(SOLVR_NEW_KEY="$new_solvr_key" \
+            python3 -c "
+import json, sys, os
+d = json.load(sys.stdin)
+key = os.environ['SOLVR_NEW_KEY']
+d.setdefault('solvr', {})['apiKey'] = key
+d.setdefault('apiKeys', {})['solvr'] = key
+json.dump(d, sys.stdout, indent=2)
+" <<< "$existing_config")
+          ok "Solvr API key updated"
+        else
+          warn "Keeping invalid key — IPFS pinning via Solvr may fail"
+        fi
+      fi
+    else
+      warn "Could not reach Solvr API (HTTP $solvr_validate_code) — skipping validation"
+      info "Key will be used as-is; verify connectivity later"
     fi
   fi
 
@@ -518,207 +617,11 @@ setup_config_backups() {
 }
 
 # ============================================================
-# Step 3: Watchdog service
+# Steps 3-4: Watchdog + Checkpoint services (sourced)
 # ============================================================
 
-setup_watchdog() {
-  header "Step 3: Watchdog Service"
-
-  local interval
-  interval=$(python3 -c "import json; print(json.load(open('$CONFIG_FILE')).get('watchdog',{}).get('interval', $WATCHDOG_INTERVAL))" 2>/dev/null || echo "$WATCHDOG_INTERVAL")
-
-  # Try systemd first
-  if command -v systemctl &>/dev/null && systemctl --user status &>/dev/null 2>&1; then
-    info "systemd user session available — setting up service"
-    setup_watchdog_systemd "$interval"
-  else
-    info "systemd not available — falling back to cron"
-    setup_watchdog_cron "$interval"
-  fi
-}
-
-setup_watchdog_systemd() {
-  local interval="$1"
-
-  mkdir -p "$SYSTEMD_USER_DIR"
-
-  # Write service unit
-  cat > "$SYSTEMD_USER_DIR/${WATCHDOG_SERVICE}.service" <<EOF
-[Unit]
-Description=AMCP Watchdog — health monitor and recovery
-After=network.target
-
-[Service]
-Type=simple
-ExecStart=${SCRIPT_DIR}/watchdog.sh --continuous
-Restart=on-failure
-RestartSec=30
-Environment=CHECK_INTERVAL=${interval}
-Environment=IDENTITY_PATH=${IDENTITY_PATH}
-Environment=AGENT_NAME=${AGENT_NAME}
-
-[Install]
-WantedBy=default.target
-EOF
-  ok "Wrote ${WATCHDOG_SERVICE}.service"
-
-  # Reload and enable
-  systemctl --user daemon-reload
-  systemctl --user enable "$WATCHDOG_SERVICE" 2>/dev/null || true
-
-  if prompt_yn "Start watchdog now?"; then
-    systemctl --user restart "$WATCHDOG_SERVICE"
-    ok "Watchdog started (interval: ${interval}s)"
-    info "Check status: systemctl --user status $WATCHDOG_SERVICE"
-  else
-    info "Start later: systemctl --user start $WATCHDOG_SERVICE"
-  fi
-}
-
-setup_watchdog_cron() {
-  local interval="$1"
-  local cron_expr
-
-  # Convert seconds to nearest cron-compatible minute interval
-  local mins=$(( interval / 60 ))
-  [ "$mins" -lt 1 ] && mins=1
-
-  if [ "$mins" -lt 60 ]; then
-    cron_expr="*/$mins * * * *"
-  else
-    cron_expr="0 */$((mins / 60)) * * *"
-  fi
-
-  local cron_line="$cron_expr ${SCRIPT_DIR}/watchdog.sh # amcp-watchdog"
-
-  # Check if already installed
-  if crontab -l 2>/dev/null | grep -q "# amcp-watchdog"; then
-    info "Watchdog cron entry already exists — updating"
-    # Remove old entry, add new
-    crontab -l 2>/dev/null | grep -v "# amcp-watchdog" | { cat; echo "$cron_line"; } | crontab -
-  else
-    # Append to existing crontab
-    { crontab -l 2>/dev/null || true; echo "$cron_line"; } | crontab -
-  fi
-
-  ok "Watchdog cron installed: $cron_expr"
-  info "View: crontab -l | grep amcp"
-}
-
-# ============================================================
-# Step 4: Checkpoint schedule
-# ============================================================
-
-setup_checkpoint() {
-  header "Step 4: Checkpoint Schedule"
-
-  local schedule
-  schedule=$(python3 -c "import json; print(json.load(open('$CONFIG_FILE')).get('checkpoint',{}).get('schedule', '$CHECKPOINT_SCHEDULE'))" 2>/dev/null || echo "$CHECKPOINT_SCHEDULE")
-
-  # Try systemd timer first
-  if command -v systemctl &>/dev/null && systemctl --user status &>/dev/null 2>&1; then
-    info "systemd user session available — setting up timer"
-    setup_checkpoint_systemd "$schedule"
-  else
-    info "systemd not available — falling back to cron"
-    setup_checkpoint_cron "$schedule"
-  fi
-}
-
-setup_checkpoint_systemd() {
-  local schedule="$1"
-
-  mkdir -p "$SYSTEMD_USER_DIR"
-
-  # Convert cron to OnCalendar (best-effort)
-  local on_calendar
-  on_calendar=$(cron_to_oncalendar "$schedule")
-
-  # Write service unit
-  cat > "$SYSTEMD_USER_DIR/${CHECKPOINT_TIMER}.service" <<EOF
-[Unit]
-Description=AMCP Checkpoint — encrypt and pin to IPFS
-
-[Service]
-Type=oneshot
-ExecStart=${SCRIPT_DIR}/checkpoint.sh --notify
-Environment=IDENTITY_PATH=${IDENTITY_PATH}
-Environment=AGENT_NAME=${AGENT_NAME}
-EOF
-
-  # Write timer unit
-  cat > "$SYSTEMD_USER_DIR/${CHECKPOINT_TIMER}.timer" <<EOF
-[Unit]
-Description=AMCP Checkpoint Timer
-
-[Timer]
-OnCalendar=${on_calendar}
-Persistent=true
-
-[Install]
-WantedBy=timers.target
-EOF
-
-  ok "Wrote ${CHECKPOINT_TIMER}.service + .timer"
-
-  systemctl --user daemon-reload
-  systemctl --user enable "${CHECKPOINT_TIMER}.timer" 2>/dev/null || true
-
-  if prompt_yn "Start checkpoint timer now?"; then
-    systemctl --user start "${CHECKPOINT_TIMER}.timer"
-    ok "Checkpoint timer started: $on_calendar"
-    info "Check: systemctl --user list-timers | grep amcp"
-  else
-    info "Start later: systemctl --user start ${CHECKPOINT_TIMER}.timer"
-  fi
-}
-
-cron_to_oncalendar() {
-  local cron="$1"
-  # Best-effort cron → systemd OnCalendar conversion
-  # Handles common patterns; falls back to hourly
-  local min hour dom mon dow
-  read -r min hour dom mon dow <<< "$cron"
-
-  # "0 */4 * * *" → "*-*-* 0/4:00:00"
-  if [[ "$min" == "0" && "$hour" == "*/"* && "$dom" == "*" && "$mon" == "*" && "$dow" == "*" ]]; then
-    local step="${hour#*/}"
-    echo "*-*-* 0/${step}:00:00"
-    return
-  fi
-
-  # "*/N * * * *" → "*-*-* *:0/N:00"
-  if [[ "$min" == "*/"* && "$hour" == "*" && "$dom" == "*" && "$mon" == "*" && "$dow" == "*" ]]; then
-    local step="${min#*/}"
-    echo "*-*-* *:0/${step}:00"
-    return
-  fi
-
-  # "M H * * *" → "*-*-* H:M:00"
-  if [[ "$dom" == "*" && "$mon" == "*" && "$dow" == "*" ]]; then
-    echo "*-*-* ${hour}:${min}:00"
-    return
-  fi
-
-  # Fallback
-  echo "*-*-* *:00:00"
-}
-
-setup_checkpoint_cron() {
-  local schedule="$1"
-  local cron_line="$schedule ${SCRIPT_DIR}/checkpoint.sh --notify # amcp-checkpoint"
-
-  # Check if already installed
-  if crontab -l 2>/dev/null | grep -q "# amcp-checkpoint"; then
-    info "Checkpoint cron entry already exists — updating"
-    crontab -l 2>/dev/null | grep -v "# amcp-checkpoint" | { cat; echo "$cron_line"; } | crontab -
-  else
-    { crontab -l 2>/dev/null || true; echo "$cron_line"; } | crontab -
-  fi
-
-  ok "Checkpoint cron installed: $schedule"
-  info "View: crontab -l | grep amcp"
-}
+# shellcheck source=init-services.sh
+source "$SCRIPT_DIR/init-services.sh"
 
 # ============================================================
 # Step 5: Summary

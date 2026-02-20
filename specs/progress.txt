@@ -2416,3 +2416,20 @@
   - pinning_quota_bytes parsed from response
   - "Registered as" success message present
   - ipfs.provider auto-set to 'solvr'
+
+## Task P6-02: Solvr key validation in init.sh (DONE)
+- Added Solvr key validation in init.sh setup_config() — validates existing key before proceeding
+- When solvr.apiKey already exists: calls GET $SOLVR_API_URL/me with Bearer token
+- If 200: displays "Already registered as {display_name} on Solvr", stores displayName/agentId in config
+- If 401/403: warns "Solvr key invalid", offers re-register or enter new key
+- If network error: logs warning, skips validation, keeps existing key
+- Extracted shared do_solvr_register() helper to eliminate code duplication between initial registration and re-registration paths
+- Extracted watchdog/checkpoint service setup into scripts/init-services.sh (sourced by init.sh) to keep init.sh under 800 lines
+- Verification:
+  - bash -n syntax check passes for both init.sh and init-services.sh
+  - init.sh: 697 lines, init-services.sh: 213 lines (both under 800)
+  - GET $SOLVR_API_URL/me call present with Bearer auth
+  - "Already registered as" success message present
+  - "Solvr key invalid" warning present for 401/403
+  - displayName and agentId stored in config on validation success
+  - do_solvr_register used in both registration paths (no duplication)
