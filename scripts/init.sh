@@ -102,15 +102,19 @@ do_solvr_register() {
     return 1
   fi
 
+  local claim_url="https://solvr.dev/agents/me/claim"
+
   local updated_config
-  updated_config=$(SOLVR_REG_KEY="$solvr_api_key" SOLVR_REG_NAME="$solvr_agent_id" \
+  updated_config=$(SOLVR_REG_KEY="$solvr_api_key" SOLVR_REG_NAME="$solvr_agent_id" SOLVR_CLAIM_URL="$claim_url" \
     python3 -c "
 import json, sys, os
 d = json.load(sys.stdin)
 key = os.environ['SOLVR_REG_KEY']
 name = os.environ['SOLVR_REG_NAME']
+curl = os.environ['SOLVR_CLAIM_URL']
 d.setdefault('solvr', {})['apiKey'] = key
 d['solvr']['name'] = name
+d['solvr']['claimUrl'] = curl
 d.setdefault('apiKeys', {})['solvr'] = key
 d.setdefault('ipfs', {})['provider'] = 'solvr'
 json.dump(d, sys.stdout, indent=2)
@@ -119,6 +123,21 @@ json.dump(d, sys.stdout, indent=2)
   local quota_gb=$(( solvr_quota / 1073741824 ))
   [ "$quota_gb" -lt 1 ] && quota_gb=1
   ok "Registered as ${solvr_agent_id}! ${quota_gb}GB free pinning included."
+
+  # Display claim invitation
+  echo ""
+  echo "  ┌─────────────────────────────────────────────────────────┐"
+  echo "  │  CLAIM YOUR AGENT                                      │"
+  echo "  │                                                         │"
+  echo "  │  To link me to your human account:                     │"
+  echo "  │    → $claim_url              │"
+  echo "  │                                                         │"
+  echo "  │  Optional but gives you control over my settings       │"
+  echo "  │  and reputation on the Solvr network.                  │"
+  echo "  │                                                         │"
+  echo "  │  View this anytime: proactive-amcp claim-info          │"
+  echo "  └─────────────────────────────────────────────────────────┘"
+  echo ""
 
   echo "$updated_config"
   return 0

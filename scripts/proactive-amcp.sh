@@ -18,6 +18,7 @@
 #   validate-contract  Validate skill ontology contracts against graph.jsonl
 #   detect-conflicts   Detect cross-skill ontology contract conflicts
 #   checkpoint         Create checkpoint (delegates to full-checkpoint.sh, supports --smart)
+#   claim-info         Display Solvr claim URL to link agent to human account
 #   condense-error     Condense verbose error logs to ~100 char summaries (Groq)
 #   backup-config      Create/list/restore OpenClaw config backups
 #   groq               Groq intelligence: status, request-key (free tier via Solvr)
@@ -54,6 +55,7 @@ Commands:
   memory-prune     Groq-powered memory file pruning (archive/condense/keep)
   validate-contract  Validate skill ontology contracts against graph.jsonl
   detect-conflicts   Detect cross-skill ontology contract conflicts
+  claim-info         Display Solvr claim URL to link agent to human account
   condense-error     Condense verbose error logs to ~100 char summaries (Groq)
   groq               Groq intelligence: status, request-key (free tier via Solvr)
 
@@ -107,6 +109,54 @@ do_status() {
   done
 
   [ "$status" = "READY" ] && exit 0 || exit 1
+}
+
+do_claim_info() {
+  if [ ! -f "$CONFIG_FILE" ]; then
+    echo "ERROR: No config file at $CONFIG_FILE" >&2
+    echo "Run: proactive-amcp init" >&2
+    exit 1
+  fi
+
+  local claim_url agent_name agent_id
+  claim_url=$(python3 -c "import json; d=json.load(open('$CONFIG_FILE')); print(d.get('solvr',{}).get('claimUrl',''))" 2>/dev/null || echo "")
+  agent_name=$(python3 -c "import json; d=json.load(open('$CONFIG_FILE')); print(d.get('solvr',{}).get('displayName','') or d.get('solvr',{}).get('name',''))" 2>/dev/null || echo "")
+  agent_id=$(python3 -c "import json; d=json.load(open('$CONFIG_FILE')); print(d.get('solvr',{}).get('agentId',''))" 2>/dev/null || echo "")
+
+  if [ -z "$claim_url" ]; then
+    # Check if registered at all (has apiKey but no claim URL stored)
+    local solvr_key
+    solvr_key=$(python3 -c "import json; d=json.load(open('$CONFIG_FILE')); print(d.get('solvr',{}).get('apiKey',''))" 2>/dev/null || echo "")
+    if [ -n "$solvr_key" ]; then
+      claim_url="https://solvr.dev/agents/me/claim"
+      echo "  Solvr agent registered (claim URL not stored — using default)"
+    else
+      echo "ERROR: Not registered on Solvr yet" >&2
+      echo "Run: proactive-amcp init  (or proactive-amcp solvr-register)" >&2
+      exit 1
+    fi
+  fi
+
+  echo ""
+  echo "  ┌─────────────────────────────────────────────────────────┐"
+  echo "  │  CLAIM YOUR AGENT                                      │"
+  echo "  │                                                         │"
+  if [ -n "$agent_name" ]; then
+    printf "  │  Agent: %-47s │\n" "$agent_name"
+  fi
+  if [ -n "$agent_id" ]; then
+    printf "  │  ID:    %-47s │\n" "$agent_id"
+  fi
+  echo "  │                                                         │"
+  echo "  │  To link this agent to your human account:             │"
+  echo "  │    → $claim_url              │"
+  echo "  │                                                         │"
+  echo "  │  Claiming gives you:                                   │"
+  echo "  │    • Control over agent settings and reputation        │"
+  echo "  │    • Visibility into agent activity on Solvr           │"
+  echo "  │    • Ownership proof for the agent's identity          │"
+  echo "  └─────────────────────────────────────────────────────────┘"
+  echo ""
 }
 
 case "${1:-}" in
@@ -185,6 +235,10 @@ case "${1:-}" in
   condense-error)
     shift
     exec "$SCRIPT_DIR/condense-error.sh" "$@"
+    ;;
+  claim-info)
+    shift
+    do_claim_info
     ;;
   groq)
     shift

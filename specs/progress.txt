@@ -2433,3 +2433,21 @@
   - "Solvr key invalid" warning present for 401/403
   - displayName and agentId stored in config on validation success
   - do_solvr_register used in both registration paths (no duplication)
+
+## Task P6-03: Claim invitation message after Solvr registration (DONE)
+- Added claim invitation box to do_solvr_register() in init.sh — displayed after successful registration
+- Message: "To link me to your human account: https://solvr.dev/agents/me/claim"
+- Explains: "Optional but gives you control over my settings and reputation"
+- Stored solvr.claimUrl in config.json via do_solvr_register python3 block
+- Added 'proactive-amcp claim-info' subcommand to proactive-amcp.sh
+  - Reads solvr.claimUrl, displayName, agentId from config.json
+  - Falls back to default claim URL if registered but claimUrl not stored
+  - Errors if not registered on Solvr at all
+  - Displays formatted box with agent info and claim instructions
+- Verification:
+  - bash -n syntax check passes for init.sh and proactive-amcp.sh
+  - init.sh: 716 lines, proactive-amcp.sh: 255 lines (both under 800)
+  - claim_url and claimUrl present in init.sh do_solvr_register
+  - "CLAIM YOUR AGENT" box displayed after registration
+  - "proactive-amcp claim-info" hint shown in registration output
+  - claim-info case dispatch added to proactive-amcp.sh

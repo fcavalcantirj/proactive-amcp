@@ -1940,7 +1940,7 @@
       "Add 'proactive-amcp claim-info' command to display claim URL anytime",
       "Verify: new registration shows claim URL, claim-info command works"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "6.4",
