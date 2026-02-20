@@ -74,10 +74,10 @@ for ((i=1; i<=$1; i++)); do
 
 === WORKFLOW ===
 
-PHASE RESTRICTION: ONLY work on tasks where phase=5. Phase 1, 2, and 3 are COMPLETE.
+PHASE RESTRICTION: ONLY work on tasks where phase=6. Phase 1, 2, and 3 are COMPLETE.
 If all phase 4 tasks pass, STOP and report PHASE_4_COMPLETE.
 
-1. Find the highest-priority requirement in specs/prd-v1.json where passes=false AND phase=5 and work ONLY on that.
+1. Find the highest-priority requirement in specs/prd-v1.json where passes=false AND phase=6 and work ONLY on that.
 2. Implement the requirement in scripts/ (bash) or as a new command.
 3. Test: run 'bash -n scripts/<script>.sh' for syntax validation.
 4. Test: run structural grep checks where applicable.

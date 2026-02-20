@@ -16,6 +16,7 @@ IDENTITY_PATH="${IDENTITY_PATH:-$HOME/.amcp/identity.json}"
 CONFIG_FILE="${CONFIG_FILE:-$HOME/.amcp/config.json}"
 AMCP_DIR="${AMCP_DIR:-$HOME/.amcp}"
 AGENT_NAME="${AGENT_NAME:-$(hostname -s)}"
+SOLVR_API_URL="${SOLVR_API_URL:-https://api.solvr.dev/v1}"
 
 # Watchdog defaults
 WATCHDOG_INTERVAL="${WATCHDOG_INTERVAL:-120}"  # seconds
@@ -125,6 +126,85 @@ setup_config() {
     info "Found existing config at $CONFIG_FILE"
   else
     info "No config found — creating $CONFIG_FILE"
+  fi
+
+  # ============================================================
+  # Solvr Registration — offer auto-registration if no key
+  # ============================================================
+
+  local existing_solvr_check
+  existing_solvr_check=$(echo "$existing_config" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('solvr',{}).get('apiKey',''))" 2>/dev/null || echo "")
+
+  if [ -z "$existing_solvr_check" ]; then
+    echo ""
+    echo "  ┌─────────────────────────────────────────────────────────┐"
+    echo "  │  SOLVR REGISTRATION                                    │"
+    echo "  │                                                         │"
+    echo "  │  Solvr gives you:                                      │"
+    echo "  │    • Free IPFS pinning (1GB included)                  │"
+    echo "  │    • Collective agent knowledge network                │"
+    echo "  │    • Death/recovery solution sharing                   │"
+    echo "  │                                                         │"
+    echo "  │  Register now to get a free API key.                   │"
+    echo "  └─────────────────────────────────────────────────────────┘"
+    echo ""
+
+    if prompt_yn "Register on Solvr for free IPFS + collective knowledge?"; then
+      local solvr_agent_name
+      solvr_agent_name=$(prompt_value "Agent name for Solvr" "$AGENT_NAME")
+
+      info "Registering on Solvr as '$solvr_agent_name'..."
+
+      local solvr_response
+      solvr_response=$(curl -s -w "\n%{http_code}" --max-time 30 \
+        -X POST \
+        -H "Content-Type: application/json" \
+        -d "{\"name\": \"$solvr_agent_name\"}" \
+        "$SOLVR_API_URL/agents/register" 2>/dev/null || echo -e "\n000")
+
+      local solvr_http_code
+      solvr_http_code=$(echo "$solvr_response" | tail -n1)
+      local solvr_body
+      solvr_body=$(echo "$solvr_response" | sed '$d')
+
+      if [ "$solvr_http_code" = "200" ] || [ "$solvr_http_code" = "201" ]; then
+        local solvr_api_key solvr_agent_id solvr_quota
+        solvr_api_key=$(echo "$solvr_body" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('api_key','') or d.get('apiKey',''))" 2>/dev/null || echo "")
+        solvr_agent_id=$(echo "$solvr_body" | python3 -c "import json,sys; d=json.load(sys.stdin); a=d.get('agent',{}); print(a.get('id','') or a.get('name',''))" 2>/dev/null || echo "$solvr_agent_name")
+        solvr_quota=$(echo "$solvr_body" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('pinning_quota_bytes',1073741824))" 2>/dev/null || echo "1073741824")
+
+        if [ -n "$solvr_api_key" ]; then
+          # Store api_key under solvr.apiKey AND apiKeys.solvr, auto-configure ipfs.provider
+          existing_config=$(SOLVR_REG_KEY="$solvr_api_key" SOLVR_REG_NAME="$solvr_agent_id" \
+            python3 -c "
+import json, sys, os
+d = json.load(sys.stdin)
+key = os.environ['SOLVR_REG_KEY']
+name = os.environ['SOLVR_REG_NAME']
+d.setdefault('solvr', {})['apiKey'] = key
+d['solvr']['name'] = name
+d.setdefault('apiKeys', {})['solvr'] = key
+d.setdefault('ipfs', {})['provider'] = 'solvr'
+json.dump(d, sys.stdout, indent=2)
+" <<< "$existing_config")
+
+          local quota_gb=$(( solvr_quota / 1073741824 ))
+          [ "$quota_gb" -lt 1 ] && quota_gb=1
+          ok "Registered as ${solvr_agent_id}! ${quota_gb}GB free pinning included."
+          info "Your Solvr API key has been saved"
+        else
+          warn "Registration succeeded but no API key in response"
+          warn "Register manually at https://solvr.dev"
+        fi
+      else
+        warn "Registration failed (HTTP $solvr_http_code)"
+        [ -n "$solvr_body" ] && warn "Response: $solvr_body"
+        warn "You can register manually at https://solvr.dev"
+        info "Or try again later: proactive-amcp solvr-register"
+      fi
+    else
+      info "Skipped — you can register later: proactive-amcp solvr-register"
+    fi
   fi
 
   # ============================================================

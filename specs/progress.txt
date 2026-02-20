@@ -2394,3 +2394,25 @@
   - write_recovery_json: 6 occurrences (1 def + 5 calls)
   - format_recovery_notification: 6 occurrences (1 def + 5 calls)
   - condense_error_msg: 5 occurrences (still used for Groq error condensing)
+
+## Task: onboarding — Add Solvr auto-registration to init.sh (P6-01) (DONE)
+- Added SOLVR_API_URL variable to init.sh top-level variables (overridable, default https://api.solvr.dev/v1)
+- Added Solvr registration section in setup_config() BEFORE the IPFS pinning section
+- Flow: check if solvr.apiKey exists -> if not, prompt "Register on Solvr for free IPFS + collective knowledge?"
+- If yes: prompt for agent name (default: hostname), POST to /v1/agents/register
+- Parses response: extracts api_key (api_key or apiKey), agent.id (from agent object), pinning_quota_bytes
+- Stores api_key under solvr.apiKey AND apiKeys.solvr in config (two paths per PRD)
+- Auto-configures ipfs.provider to 'solvr' since key now exists
+- Displays: "Registered as {agent_id}! {N}GB free pinning included."
+- Safe string handling: uses SOLVR_REG_KEY and SOLVR_REG_NAME env vars to pass values to python3 (no shell injection)
+- Graceful failure: network errors or API failures show warning + manual registration instructions
+- Skip path: user can decline and register later via 'proactive-amcp solvr-register'
+- IPFS pinning section auto-detects the new key via existing_solvr_key check
+- Verification:
+  - bash -n syntax check passes
+  - File size: 794 lines (under 800)
+  - POST to /v1/agents/register present
+  - solvr.apiKey and apiKeys.solvr both stored
+  - pinning_quota_bytes parsed from response
+  - "Registered as" success message present
+  - ipfs.provider auto-set to 'solvr'
