@@ -447,6 +447,10 @@ get_suggested_fix() {
       echo "proactive-amcp session-fix; systemctl --user restart openclaw-gateway" ;;
     crash_loop_detected)
       echo "STOP auto-recovery. Review ~/.amcp/recovery-*.log for root cause" ;;
+    auth_expired)
+      echo "Renew OAuth at console.anthropic.com; restart gateway" ;;
+    auth_expiring|auth_check_timeout)
+      echo "Renew OAuth at console.anthropic.com before it expires" ;;
     *)
       echo "Review: ls -lt ~/.amcp/recovery-*.log | head -3" ;;
   esac
@@ -582,6 +586,30 @@ do_check() {
     [ -x "$SCRIPT_DIR/backup-config.sh" ] && "$SCRIPT_DIR/backup-config.sh" 2>/dev/null || true
     echo "✅ HEALTHY"
     return 0
+  fi
+
+  # Auth expiry — handle before normal failure flow
+  local has_auth_expiring
+  has_auth_expiring=$(has_finding "$diag_json" "auth_expiring")
+  if [ "$has_auth_expiring" = "yes" ]; then
+    echo "⚠️ OAuth token expiring soon"
+    [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "⚠️ [$AGENT_NAME] OAuth expiring soon — renew at console.anthropic.com"
+  fi
+
+  local has_auth_expired
+  has_auth_expired=$(has_finding "$diag_json" "auth_expired")
+  if [ "$has_auth_expired" = "yes" ]; then
+    echo "🔑 OAuth token expired — triggering immediate resurrection"
+    failures=$((failures + 1))
+    update_state "DEAD" "$failures" "auth_expired"
+    local report
+    report=$(build_escalation_report "🔑" "$AGENT_NAME" \
+      "OAuth token expired" \
+      "Immediate resurrection (auth failure is fatal)" \
+      "Recovery in progress" "$failures")
+    [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "$report"
+    launch_resurrection
+    return 2
   fi
 
   # Issues found — determine what and how to fix

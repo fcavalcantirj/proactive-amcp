@@ -2451,3 +2451,25 @@
   - "CLAIM YOUR AGENT" box displayed after registration
   - "proactive-amcp claim-info" hint shown in registration output
   - claim-info case dispatch added to proactive-amcp.sh
+
+## Task P6-05: watchdog — Auth expiry monitoring (DONE)
+- Added `check_auth_status()` to diagnose.sh (Check 8: Auth/OAuth status)
+  - Runs `openclaw models status --check` with 30s timeout if openclaw binary available
+  - Exit 0 = OK (no finding), Exit 2 = expiring → "auth_expiring" warning finding
+  - Exit 1 = expired → "auth_expired" critical finding with resuscitate.sh fix_command
+  - Exit 124 (timeout) → "auth_check_timeout" warning finding
+  - Unknown exit codes silently skipped (graceful degradation)
+- Updated diagnose.sh checks_run count from 9 to 10
+- Added auth handling to watchdog.sh `do_check()` — before normal failure flow:
+  - auth_expiring: sends Telegram alert "OAuth expiring soon — renew at console.anthropic.com"
+  - auth_expired: immediately sets state DEAD, sends escalation report, launches resurrection
+- Added auth finding types to watchdog.sh `get_suggested_fix()`:
+  - auth_expired → "Renew OAuth at console.anthropic.com; restart gateway"
+  - auth_expiring|auth_check_timeout → "Renew OAuth at console.anthropic.com before it expires"
+- Verification:
+  - bash -n syntax check passes for both diagnose.sh and watchdog.sh
+  - diagnose.sh: 688 lines, watchdog.sh: 799 lines (both under 800)
+  - `check_auth_status` function defined + called in diagnose.sh
+  - `openclaw models status --check` command present in diagnose.sh
+  - auth_expiring alert + auth_expired resurrection trigger present in watchdog.sh
+  - Escalation report built with structured ISSUE→TRIED→RESULT→NEXT format

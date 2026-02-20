@@ -583,6 +583,50 @@ PYEOF
 }
 
 # ============================================================
+# Check 8: Auth/OAuth status (catch expiration before death)
+# ============================================================
+check_auth_status() {
+  local openclaw_bin
+  openclaw_bin=$(command -v openclaw 2>/dev/null || echo "")
+  if [ -z "$openclaw_bin" ]; then
+    return 0
+  fi
+
+  local auth_exit=0
+  timeout 30 "$openclaw_bin" models status --check >/dev/null 2>&1 || auth_exit=$?
+
+  case $auth_exit in
+    0) return 0 ;;  # OK
+    2)
+      add_finding "auth_expiring" "warning" \
+        "OAuth token expiring soon — renew at console.anthropic.com" \
+        "" \
+        ""
+      return 1
+      ;;
+    1)
+      add_finding "auth_expired" "critical" \
+        "OAuth token expired — agent cannot authenticate to model provider" \
+        "" \
+        "$SCRIPT_DIR/resuscitate.sh"
+      return 1
+      ;;
+    124)
+      # timeout exit code — treat as potential issue
+      add_finding "auth_check_timeout" "warning" \
+        "Auth status check timed out after 30s" \
+        "" \
+        ""
+      return 1
+      ;;
+    *)
+      # Unknown exit code — skip silently
+      return 0
+      ;;
+  esac
+}
+
+# ============================================================
 # Run all checks
 # ============================================================
 has_issues=false
@@ -603,6 +647,7 @@ fi
 check_disk || has_issues=true
 check_memory || has_issues=true
 check_crash_loop || has_issues=true
+check_auth_status || has_issues=true
 
 # ============================================================
 # Output structured JSON
@@ -631,7 +676,7 @@ findings = json.loads('''$findings_json''')
 result = {
     'status': '$status',
     'findings': findings,
-    'checks_run': 9,
+    'checks_run': 10,
     'findings_count': len(findings)
 }
 print(json.dumps(result, indent=2))

@@ -1946,7 +1946,7 @@
     "id": "6.4",
     "category": "identity",
     "phase": 6,
-    "description": "Link AMCP identity to Solvr agent — prove cryptographic identity on Solvr profile",
+    "description": "Link AMCP identity to Solvr agent — BLOCKED: needs Solvr identity linking endpoint",
     "steps": [
       "After AMCP identity created and Solvr registered, call Solvr API to link them",
       "Sign a challenge with AMCP private key to prove ownership",
@@ -1955,7 +1955,8 @@
       "Add verification badge info to claim-info output",
       "Verify: Solvr /me endpoint shows has_amcp_identity:true after init"
     ],
-    "passes": false
+    "passes": false,
+    "blocked": "Solvr API needs AMCP identity linking endpoint (challenge-response)"
   },
   {
     "id": "6.5",
@@ -1970,7 +1971,7 @@
       "Add auth_status to diagnose.sh output",
       "Verify: watchdog detects expiring OAuth and alerts before death"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "6.6",
@@ -2036,7 +2037,7 @@
     "id": "6.10",
     "category": "integration",
     "phase": 6,
-    "description": "Add checkpoint metadata to Solvr — store checkpoint history on Solvr for discoverability",
+    "description": "Add checkpoint metadata to Solvr — BLOCKED: needs Solvr pins API meta field support",
     "steps": [
       "After successful checkpoint + IPFS pin, POST metadata to Solvr",
       "Include: CID, timestamp, size, previous_cid, agent_id",
@@ -2045,6 +2046,7 @@
       "Add --no-solvr-metadata flag to skip for privacy",
       "Verify: checkpoint metadata appears on Solvr, searchable by other agents"
     ],
-    "passes": false
+    "passes": false,
+    "blocked": "Solvr API needs meta field on pins endpoint (IPFS Pinning Service spec)"
   }
 ]
