@@ -2494,3 +2494,27 @@
   - Three detection methods present (CLI, config, directory)
   - Suspicious timing check against watchdog state present
   - Alert notification sent from watchdog.sh on detection
+
+## Task P6-07: status — Add 'proactive-amcp status --full' comprehensive status (DONE)
+- Created `scripts/status.sh` (620 lines) — comprehensive subsystem status
+- Three modes: basic (no flags), --full (human-readable), --json (machine-readable, implies --full)
+- Seven subsystem checks:
+  1. Identity: valid/invalid/missing, AID, path
+  2. Solvr: registered (key present), display name, agent ID, claim URL
+  3. IPFS: provider (pinata/solvr/both), key configuration, last CID, last timestamp
+  4. Watchdog: running (systemd/process), state (HEALTHY/DEGRADED/DEAD), consecutive failures, last check, retry delay
+  5. Checkpoints: local count, last CID, last timestamp
+  6. Auth: profile presence
+  7. Learning: problems total/open, learnings total
+- Overall status: READY if identity valid, DEGRADED otherwise
+- JSON output via python3 with clean() function to normalize None/empty values
+- Updated `proactive-amcp.sh` — removed inline do_status(), delegates to status.sh via exec
+  - Added status command description update in usage and header comment
+  - File reduced from 256 to 209 lines
+- config_get() helper reads dot-path values from config.json via python3/functools.reduce
+- Basic mode preserves backward-compatible STATUS: READY/NO_IDENTITY/NO_PINNING/INVALID_IDENTITY output
+- Verification:
+  - bash -n syntax check passes for both status.sh and proactive-amcp.sh
+  - File sizes: status.sh=620 lines, proactive-amcp.sh=209 lines (both under 800)
+  - All 7 subsystem check functions present with 3 references each (def + human + json)
+  - Status dispatch confirmed in proactive-amcp.sh via exec
