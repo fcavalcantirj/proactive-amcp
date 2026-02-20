@@ -2518,3 +2518,25 @@
   - File sizes: status.sh=620 lines, proactive-amcp.sh=209 lines (both under 800)
   - All 7 subsystem check functions present with 3 references each (def + human + json)
   - Status dispatch confirmed in proactive-amcp.sh via exec
+
+## Task P6-08: onboarding — Add solvr-register.sh standalone script (DONE)
+- PRD 6.8: Allow registration outside of init flow via standalone command
+- Added `--name` flag as alias for `--instance-name` in solvr-register.sh
+- Added existing key validation: calls GET /v1/me to verify key before accepting
+  - 200: shows "Already registered as {display_name}" with display_name from response
+  - 401/403: warns key invalid, proceeds to re-register
+  - Other codes: accepts key as-is (network errors shouldn't block)
+- After storing key: sets `pinning.provider` to `solvr` via config.sh (since key now exists)
+- After registration: displays claim URL (https://solvr.dev/agents/me/claim)
+  - Stores claim URL in config via `solvr.claimUrl`
+  - Human-readable output explains what claiming provides
+- JSON output includes `claim_url` field for scripting
+- Added `register` as alias for `solvr-register` in proactive-amcp.sh case statement
+- Added `register` to usage help text and header comments
+- Verification:
+  - bash -n syntax check passes on both scripts
+  - File sizes: solvr-register.sh=449, proactive-amcp.sh=211 (both under 800)
+  - --name flag present in arg parsing and help text
+  - pinning.provider update confirmed via grep
+  - claim URL display confirmed via grep
+  - register|solvr-register case confirmed in proactive-amcp.sh

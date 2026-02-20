@@ -48,7 +48,8 @@ proactive-amcp solvr-register — Auto-register child Solvr account
 Usage: $(basename "$0") [OPTIONS]
 
 Options:
-  --instance-name <name>   Child instance name (default: hostname)
+  --name <name>            Agent name for registration (default: hostname)
+  --instance-name <name>   Alias for --name
                            Must be lowercase alphanumeric + underscore, max 32 chars
   --dry-run                Show what would happen without registering
   -h, --help               Show this help
@@ -75,8 +76,8 @@ DRY_RUN=false
 parse_args() {
   while [ $# -gt 0 ]; do
     case "$1" in
-      --instance-name)
-        [ $# -lt 2 ] && die_json "missing_arg" "--instance-name requires a value"
+      --name|--instance-name)
+        [ $# -lt 2 ] && die_json "missing_arg" "$1 requires a value"
         INSTANCE_NAME="$2"
         shift 2
         ;;
@@ -303,9 +304,26 @@ main() {
   existing_key=$(get_existing_solvr_key)
 
   if [ -n "$existing_key" ]; then
-    log_ok "Already registered — SOLVR_API_KEY exists"
-    echo '{"already_registered": true}'
-    return 0
+    # Validate existing key before accepting
+    local me_response me_code
+    me_response=$(curl -s -w "\n%{http_code}" --max-time 10 \
+      -H "Authorization: Bearer $existing_key" \
+      "$SOLVR_API_URL/me" 2>/dev/null || echo -e "\n000")
+    me_code=$(echo "$me_response" | tail -n1)
+    if [ "$me_code" = "200" ]; then
+      local display_name
+      display_name=$(echo "$me_response" | sed '$d' | jq -r '.display_name // .name // "unknown"' 2>/dev/null || echo "unknown")
+      log_ok "Already registered as $display_name on Solvr"
+      echo "{\"already_registered\": true, \"display_name\": \"$display_name\"}"
+      return 0
+    elif [ "$me_code" = "401" ] || [ "$me_code" = "403" ]; then
+      log_warn "Existing Solvr key is invalid (HTTP $me_code) — will re-register"
+    else
+      # Network error or other — accept the key as-is
+      log_ok "Already registered — SOLVR_API_KEY exists (could not verify: HTTP $me_code)"
+      echo '{"already_registered": true}'
+      return 0
+    fi
   fi
 
   log_info "No SOLVR_API_KEY found — checking for parent config..."
@@ -392,12 +410,34 @@ main() {
   # Step 4: Store the key
   store_solvr_key "$child_api_key" "$child_name" "$parent_name"
 
+  # Step 5: Set pinning provider to solvr (key now exists)
+  if [ -x "$SCRIPT_DIR/config.sh" ]; then
+    "$SCRIPT_DIR/config.sh" set pinning.provider solvr 2>/dev/null || true
+    log_ok "Set pinning.provider to solvr"
+  fi
+
   log_ok "Child registered: $child_name"
   [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "[${AGENT_NAME}] Solvr child registered: $child_name" || true
 
+  # Step 6: Show claim URL
+  local claim_url="https://solvr.dev/agents/me/claim"
+  if [ -x "$SCRIPT_DIR/config.sh" ]; then
+    "$SCRIPT_DIR/config.sh" set solvr.claimUrl "$claim_url" 2>/dev/null || true
+  fi
+
+  echo ""
+  echo "  Registered as: $child_name"
+  echo ""
+  echo "  To link this agent to your human account:"
+  echo "    -> $claim_url"
+  echo ""
+  echo "  Claiming is optional but gives you control over"
+  echo "  agent settings, reputation, and activity visibility."
+  echo ""
+
   # Output for scripting
   cat <<EOF
-{"registered": true, "child_name": "$child_name", "parent_name": "$parent_name"}
+{"registered": true, "child_name": "$child_name", "parent_name": "$parent_name", "claim_url": "$claim_url"}
 EOF
 
   echo ""

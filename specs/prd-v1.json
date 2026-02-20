@@ -2016,7 +2016,7 @@
       "Add 'register' subcommand to proactive-amcp.sh dispatcher",
       "Verify: 'proactive-amcp register' works standalone"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "6.9",

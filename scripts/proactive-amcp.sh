@@ -8,6 +8,7 @@
 #   config           Manage ~/.amcp/config.json (set/get)
 #   install          Non-interactive setup for fleet tools (e.g. openclaw-deploy)
 #   diagnose         Claude-powered health diagnostics with Solvr integration
+#   register         Register on Solvr (alias: solvr-register)
 #   solvr-register   Auto-register child Solvr account on first boot
 #   migrate-pins     Transfer historical checkpoints from Pinata to Solvr
 #   problem          Problem CRUD: create, update, get, list, close
@@ -44,6 +45,7 @@ Commands:
   install          Non-interactive setup for fleet tools (accepts --pinata-jwt, --notify-target, etc.)
   config           Manage ~/.amcp/config.json (set/get secrets and settings)
   diagnose         Claude-powered health diagnostics with Solvr integration
+  register         Register on Solvr (alias for solvr-register)
   solvr-register   Auto-register child Solvr account on first boot
   migrate-pins     Transfer historical checkpoints from Pinata to Solvr
   problem          Problem CRUD: create, update, get, list, close
@@ -134,7 +136,7 @@ case "${1:-}" in
     shift
     exec "$SCRIPT_DIR/claude-diagnose.sh" "$@"
     ;;
-  solvr-register)
+  register|solvr-register)
     shift
     exec "$SCRIPT_DIR/solvr-register.sh" "$@"
     ;;
