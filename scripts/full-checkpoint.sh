@@ -16,6 +16,10 @@ SECRETS_FILE="$HOME/.amcp/secrets-full.json"
 KEEP_CHECKPOINTS="${KEEP_CHECKPOINTS:-5}"
 AGENT_NAME="${AGENT_NAME:-ClaudiusThePirateEmperor}"
 
+# Define CONTENT_DIR early (needed by functions below)
+# This is re-defined later with more accurate workspace detection, but we need a default now
+CONTENT_DIR="${CONTENT_DIR:-$HOME/.openclaw/workspace}"
+
 DRY_RUN=false
 NOTIFY=false
 FORCE_CHECKPOINT=""
@@ -331,7 +335,7 @@ print('b' + cid_b32)
   fi
 }
 
-compute_ontology_cid
+# NOTE: compute_ontology_cid is called later, after CONTENT_DIR is defined
 
 # ===========================================
 # SOUL.md drift detection
@@ -432,6 +436,9 @@ get_workspace() {
 }
 WORKSPACE_DIR=$(get_workspace)
 CONTENT_DIR="${CONTENT_DIR:-$WORKSPACE_DIR}"
+
+# Compute ontology CID now that CONTENT_DIR is defined
+compute_ontology_cid
 
 # Extract redacted config metadata (structural info only, no secrets)
 extract_config_metadata() {
