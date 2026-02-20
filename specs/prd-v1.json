@@ -1405,7 +1405,7 @@
       "Display config summary",
       "Verify: status shows all info correctly"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "P4-CLI-02",

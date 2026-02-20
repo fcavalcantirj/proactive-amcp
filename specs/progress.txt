@@ -1753,3 +1753,37 @@
     5. Verify: tampered file auto-restored ✓ (dedicated integration test)
   - File sizes: memory-auto-restore.ts=258, memory-integrity.ts=574,
     memory-auto-restore.test.ts=383, index.ts=460 (all under 800)
+
+## Task: P4-CLI-01 — Implement 'openclaw amcp status' command (DONE)
+- Created `src/cli/status-command.ts` (307 lines) — full status command implementation
+  - `gatherStatus()`: queries identity, last checkpoint, monitor states, config from real sources
+  - `formatStatus()`: human-readable multi-section display (identity, checkpoint, monitors, config)
+  - `createStatusHandler()`: CLI handler supporting `--json` flag for machine-readable output
+- Identity display: loads `identity.json`, validates KERI AID format, shows AID + created date
+- Last checkpoint display: loads `last-checkpoint.json`, shows CID (with pinataCid/solvrCid fallback), timestamp, size, pinning service
+- Monitor status: queries `amcp-context-monitor`, `amcp-memory-integrity`, `amcp-resurrection-detector` services via `status()` method
+- Config summary: autoCheckpoint, contextThreshold, ipfsPinningService, memoryIntegrity, promptInjectionScan, autoRestore, checkpointIntervalMs
+- Updated `src/index.ts` (498 lines):
+  - Added `CliRegistrationDeps` interface with config, services, identityPath, lastCheckpointPath
+  - Refactored `registerCliCommands()` to accept deps and wire real status handler
+  - Collected all services into `allServices` array before registration for CLI access
+  - Added exports for `gatherStatus`, `formatStatus`, `createStatusHandler`
+- Updated `src/integration.test.ts`: changed status command test to verify real output (AMCP Status display)
+- Created `src/cli/status-command.test.ts` (405 lines) — 15 tests:
+  - Identity: valid identity display, missing file, sha256 AID rejection
+  - Checkpoint: CID+timestamp+size display, missing file, pinataCid fallback
+  - Monitors: running services, missing services, stopped services
+  - Config: all fields present, custom config values reflected
+  - Format: identity section with AID, invalid identity display
+  - Handler: JSON mode output, human-readable default
+- Verification:
+  - vitest: all 368 tests pass (15 new + 353 existing)
+  - TypeScript: `tsc --noEmit` passes cleanly
+  - All 5 PRD steps verified:
+    1. Register 'amcp status' CLI command ✓ (registered with real handler in index.ts)
+    2. Display identity (name, prefix, created date) ✓ (AID, created, valid/invalid status)
+    3. Display last checkpoint (CID, timestamp, size) ✓ (with fallback CID resolution)
+    4. Display monitor status (context, memory, resurrection) ✓ (queries service.status())
+    5. Display config summary ✓ (8 config fields)
+    6. Verify: status shows all info correctly ✓ (15 tests)
+  - File sizes: status-command.ts=307, status-command.test.ts=405, index.ts=498 (all under 800)

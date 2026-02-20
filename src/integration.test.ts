@@ -288,13 +288,13 @@ describe("integration: CLI commands", () => {
     ).toBe(true);
   });
 
-  it("command handlers log invocation without args", async () => {
+  it("status command outputs AMCP status display", async () => {
     const cmd = state.commands.get("status")!;
     await cmd.handler([]);
 
     expect(
       state.logs.info.some(
-        (l) => l.includes("amcp status") && l.includes("(no args)"),
+        (l) => l.includes("=== AMCP Status ===") || l.includes("Identity:"),
       ),
     ).toBe(true);
   });

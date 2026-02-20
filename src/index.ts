@@ -22,6 +22,7 @@ import {
   createMemoryIntegrityMonitor,
   DEFAULT_BASELINE_PATH,
 } from "./monitors/memory-integrity.js";
+import { createStatusHandler } from "./cli/status-command.js";
 import type {
   AmcpPlugin,
   AmcpPluginConfig,
@@ -184,12 +185,35 @@ function registerHooks(
   });
 }
 
+/** Options for registering CLI commands with real implementations. */
+interface CliRegistrationDeps {
+  config: AmcpPluginConfig;
+  services: PluginService[];
+  identityPath: string;
+  lastCheckpointPath: string;
+}
+
 /**
  * Register CLI commands under the 'amcp' namespace.
  */
-function registerCliCommands(api: PluginApi): void {
-  const commands = [
-    { name: "status", description: "Show AMCP status, last checkpoint, identity" },
+function registerCliCommands(api: PluginApi, deps: CliRegistrationDeps): void {
+  // 'amcp status' — fully implemented (P4-CLI-01)
+  const statusHandler = createStatusHandler({
+    logger: api.logger,
+    config: deps.config,
+    identityPath: deps.identityPath,
+    lastCheckpointPath: deps.lastCheckpointPath,
+    services: deps.services,
+  });
+
+  api.registerCommand("amcp", {
+    name: "status",
+    description: "Show AMCP status, last checkpoint, identity",
+    handler: statusHandler,
+  });
+
+  // Placeholder commands — will be implemented in P4-CLI-02 through P4-CLI-06
+  const placeholderCommands = [
     { name: "checkpoint", description: "Create a manual checkpoint" },
     { name: "resurrect", description: "Restore from a checkpoint" },
     { name: "identity", description: "Identity management (show, rotate, verify, export)" },
@@ -197,7 +221,7 @@ function registerCliCommands(api: PluginApi): void {
     { name: "verify", description: "Verify checkpoint integrity" },
   ];
 
-  for (const cmd of commands) {
+  for (const cmd of placeholderCommands) {
     api.registerCommand("amcp", {
       name: cmd.name,
       description: cmd.description,
@@ -344,22 +368,33 @@ async function register(api: PluginApi): Promise<void> {
     contentDir,
   });
 
-  api.registerService(contextMonitor);
-  api.registerService(valueMonitor);
-  api.registerService(memoryMonitor);
-  api.registerService(identityService);
-  api.registerService(keyRotationService);
-  api.registerService(resurrectionIdentityService);
-  api.registerService(resurrectionDetector);
-  api.registerService(multiIdentityService);
-  api.registerService(recoveryPromptInjector);
-  api.registerService(partialResurrectionService);
+  const allServices: PluginService[] = [
+    contextMonitor,
+    valueMonitor,
+    memoryMonitor,
+    identityService,
+    keyRotationService,
+    resurrectionIdentityService,
+    resurrectionDetector,
+    multiIdentityService,
+    recoveryPromptInjector,
+    partialResurrectionService,
+  ];
+
+  for (const svc of allServices) {
+    api.registerService(svc);
+  }
 
   // Register lifecycle hooks
   registerHooks(api, config);
 
-  // Register CLI commands
-  registerCliCommands(api);
+  // Register CLI commands — status command needs access to services and paths
+  registerCliCommands(api, {
+    config,
+    services: allServices,
+    identityPath,
+    lastCheckpointPath,
+  });
 
   api.logger.info("amcp: plugin registered successfully");
 }
@@ -455,4 +490,9 @@ export {
   hasSnapshot,
   removeSnapshot,
 } from "./monitors/memory-auto-restore.js";
+export {
+  gatherStatus,
+  formatStatus,
+  createStatusHandler,
+} from "./cli/status-command.js";
 export type * from "./types.js";
