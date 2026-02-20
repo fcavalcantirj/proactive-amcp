@@ -1808,7 +1808,7 @@
       "Differentiate from 'session_corrupted' (file-level) vs 'session_stuck' (logic-level)",
       "Verify: Induce 400 error loop → diagnose.sh reports session_stuck (not healthy)"
     ],
-    "passes": false,
+    "passes": true,
     "phase": 5
   },
   {

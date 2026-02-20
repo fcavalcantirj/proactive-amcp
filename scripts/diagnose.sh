@@ -314,6 +314,175 @@ check_config_semantic() {
 }
 
 # ============================================================
+# Check 4c: Session health — detect stuck sessions (logic-level, not file-level)
+# ============================================================
+check_session_health() {
+  if [ ! -d "$SESSION_DIR" ]; then
+    return 0
+  fi
+
+  local sessions_json="$SESSION_DIR/sessions.json"
+  if [ ! -f "$sessions_json" ]; then
+    return 0
+  fi
+
+  # Use Python to check recent turns for error patterns indicating a stuck session
+  local result
+  result=$(SESSION_DIR="$SESSION_DIR" python3 << 'PYEOF'
+import json, os, glob, time
+
+session_dir = os.environ["SESSION_DIR"]
+sessions_json = os.path.join(session_dir, "sessions.json")
+
+if not os.path.exists(sessions_json):
+    print("no_sessions")
+    exit(0)
+
+# Find active session IDs
+try:
+    with open(sessions_json) as f:
+        sessions = json.load(f)
+except (json.JSONDecodeError, IOError):
+    print("no_sessions")
+    exit(0)
+
+session_ids = []
+for key, val in sessions.items():
+    if isinstance(val, dict) and "sessionId" in val:
+        session_ids.append(val["sessionId"])
+
+if not session_ids:
+    files = sorted(glob.glob(os.path.join(session_dir, "*.jsonl")),
+                   key=os.path.getmtime, reverse=True)[:3]
+    session_ids = [os.path.splitext(os.path.basename(f))[0] for f in files]
+
+if not session_ids:
+    print("no_sessions")
+    exit(0)
+
+# Error patterns indicating a stuck session (logic-level, not file corruption)
+ERROR_PATTERNS = [
+    "400",
+    "rate_limit",
+    "rate limit",
+    "overloaded",
+    "capacity",
+    "internal_error",
+    "server_error",
+    "context_length_exceeded",
+    "invalid_request_error",
+]
+
+# Check the most recent N turns of each active session
+RECENT_TURNS = 20
+ERROR_THRESHOLD = 10  # If >= this many of recent turns are errors, session is stuck
+
+stuck_sessions = []
+
+for sid in session_ids:
+    filepath = os.path.join(session_dir, f"{sid}.jsonl")
+    if not os.path.exists(filepath):
+        continue
+
+    # Read all turns
+    turns = []
+    with open(filepath) as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+                turns.append(obj)
+            except (json.JSONDecodeError, ValueError):
+                continue
+
+    if len(turns) < 5:
+        # Too few turns to judge
+        continue
+
+    # Look at the most recent turns
+    recent = turns[-RECENT_TURNS:]
+    error_count = 0
+    success_count = 0
+    error_types = set()
+
+    for turn in recent:
+        msg = turn.get("message", {})
+        role = msg.get("role", "")
+
+        # Check for error messages
+        err = msg.get("errorMessage", "") or ""
+        stop_reason = msg.get("stop_reason", "") or turn.get("stopReason", "") or ""
+
+        has_error = False
+        for pattern in ERROR_PATTERNS:
+            if pattern in err.lower():
+                has_error = True
+                error_types.add(pattern)
+                break
+
+        # Also check for HTTP error status in tool results
+        content = msg.get("content", [])
+        if isinstance(content, list):
+            for block in content:
+                if isinstance(block, dict):
+                    text = block.get("text", "") or ""
+                    for pattern in ERROR_PATTERNS:
+                        if pattern in text.lower():
+                            has_error = True
+                            error_types.add(pattern)
+                            break
+
+        if has_error:
+            error_count += 1
+        elif role == "assistant" and content:
+            success_count += 1
+
+    # Stuck = high error rate in recent turns AND low success rate
+    if error_count >= ERROR_THRESHOLD and success_count <= 2:
+        stuck_sessions.append({
+            "session_id": sid,
+            "path": filepath,
+            "error_count": error_count,
+            "success_count": success_count,
+            "recent_turns": len(recent),
+            "error_types": sorted(error_types)
+        })
+
+if stuck_sessions:
+    print(json.dumps(stuck_sessions))
+else:
+    print("healthy")
+PYEOF
+  )
+
+  if [ "$result" = "healthy" ] || [ "$result" = "no_sessions" ]; then
+    return 0
+  fi
+
+  # Parse each stuck session and add findings
+  local count
+  count=$(echo "$result" | python3 -c "import json,sys; print(len(json.load(sys.stdin)))")
+  local i=0
+  while [ "$i" -lt "$count" ]; do
+    local session_id err_count err_types
+    session_id=$(echo "$result" | python3 -c "import json,sys; print(json.load(sys.stdin)[$i]['session_id'])")
+    err_count=$(echo "$result" | python3 -c "import json,sys; print(json.load(sys.stdin)[$i]['error_count'])")
+    err_types=$(echo "$result" | python3 -c "import json,sys; print(', '.join(json.load(sys.stdin)[$i]['error_types']))")
+
+    add_finding "session_stuck" "critical" \
+      "Session $session_id is stuck: $err_count errors in last 20 turns (patterns: $err_types)" \
+      "$SESSION_DIR" \
+      "$SCRIPT_DIR/session-fix.sh --fix --session-dir $SESSION_DIR --session-id $session_id"
+
+    i=$((i + 1))
+  done
+
+  return 1
+}
+
+# ============================================================
 # Check 5: Disk space
 # ============================================================
 check_disk() {
@@ -358,6 +527,7 @@ if [ "$has_issues" = false ]; then
   check_gateway_health || has_issues=true
 fi
 check_session_corruption || has_issues=true
+check_session_health || has_issues=true
 config_json_ok=true
 check_config || { has_issues=true; config_json_ok=false; }
 # Only run semantic validation if JSON syntax is valid
@@ -394,7 +564,7 @@ findings = json.loads('''$findings_json''')
 result = {
     'status': '$status',
     'findings': findings,
-    'checks_run': 7,
+    'checks_run': 8,
     'findings_count': len(findings)
 }
 print(json.dumps(result, indent=2))

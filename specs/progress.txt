@@ -2247,3 +2247,18 @@
   - Logging present for all found/not-found paths
   - File sizes: solvr-integration.sh=342, resuscitate.sh=627 (both under 800)
   - log() defined at line 161 in resuscitate.sh, source solvr-integration.sh at line 193 (correct order)
+
+## Task P5-07: diagnose — Add session health check (session_stuck detection) (DONE)
+- Added `check_session_health()` function to `diagnose.sh` (Check 4c)
+- Scans recent 20 turns of each active session for logic-level error patterns:
+  - 400, rate_limit, overloaded, capacity, internal_error, server_error, context_length_exceeded, invalid_request_error
+- Session is "stuck" when >= 10 of last 20 turns are errors AND <= 2 successful assistant turns
+- Adds finding type `session_stuck` (severity: critical) with fix_command pointing to session-fix.sh
+- Distinct from `session_corrupted` (file-level: partialJson, bad tool_use_id) vs `session_stuck` (logic-level: error loops)
+- Wired into check execution section (runs after check_session_corruption)
+- Updated checks_run count from 7 to 8
+- Verification:
+  - `bash -n` syntax check passes
+  - `grep` confirms both `session_corrupted` and `session_stuck` as distinct finding types
+  - `grep` confirms `check_session_health` defined and called
+  - File size: diagnose.sh=576 lines (under 800)
