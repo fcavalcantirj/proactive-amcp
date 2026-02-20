@@ -3,11 +3,10 @@
 # Usage: ./watchdog.sh [--continuous]
 #
 # Uses diagnose.sh to detect issues, then routes to the right fix:
-#   session_corrupted       → session-fix.sh + gateway restart (lightweight)
-#   gateway_down            → full resurrection
-#   gateway_unresponsive    → gateway restart
-#   config_invalid          → resurrection (config fix tier)
-#   config_semantic_invalid → openclaw doctor --fix
+#   session_corrupted → session-fix.sh + gateway restart (lightweight)
+#   gateway_down      → full resurrection
+#   gateway_unresponsive → gateway restart
+#   config_invalid    → resurrection (config fix tier)
 
 set -euo pipefail
 
@@ -386,27 +385,6 @@ do_check() {
   has_session_corrupt=$(has_finding "$diag_json" "session_corrupted")
   local has_gateway_down
   has_gateway_down=$(has_finding "$diag_json" "gateway_down")
-  local has_config_semantic
-  has_config_semantic=$(has_finding "$diag_json" "config_semantic_invalid")
-
-  # Semantic config errors — try openclaw doctor --fix before escalating
-  if [ "$has_config_semantic" = "yes" ]; then
-    echo "🔍 Diagnosis: semantic config errors detected"
-    local fix_cmd
-    fix_cmd=$(get_fix_command "$diag_json" "config_semantic_invalid")
-    if [ -n "$fix_cmd" ]; then
-      echo "🔧 Running: $fix_cmd"
-      if eval "$fix_cmd" 2>&1; then
-        echo "✅ Config fix applied, restarting gateway..."
-        if systemctl --user restart openclaw-gateway 2>/dev/null; then
-          update_state "HEALTHY" 0 ""
-          [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "✅ [$AGENT_NAME] Semantic config errors auto-fixed via openclaw doctor"
-          return 0
-        fi
-      fi
-      echo "❌ Config fix failed, continuing with other checks"
-    fi
-  fi
 
   # Session corruption with gateway still running = lightweight fix
   if [ "$has_session_corrupt" = "yes" ] && [ "$has_gateway_down" != "yes" ]; then

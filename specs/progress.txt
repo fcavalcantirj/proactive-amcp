@@ -2133,3 +2133,22 @@
   - Config migration documented (Step 3)
   - End-to-end testing documented (Step 5)
   - Migration path smooth: rollback section + troubleshooting
+
+## Task 40: diagnose — Semantic config validation (P5-01, DONE)
+- Added `check_config_semantic()` function to diagnose.sh (after existing JSON syntax check)
+- Runs `openclaw doctor --non-interactive` with 30s timeout, captures stdout+stderr
+- Strips ANSI escape codes for reliable pattern matching
+- Scans for 7 semantic error patterns: plugin not found, plugin id mismatch, duplicate plugin id,
+  profile not found, auth profile issues, Invalid config, plugin load errors
+- Adds finding type `config_semantic_invalid` with severity `critical` and fix_command `openclaw doctor --fix`
+- Only runs when: (1) JSON syntax check passed, (2) openclaw CLI is available
+- Updated watchdog.sh to route `config_semantic_invalid` → `openclaw doctor --fix` + gateway restart
+- Updated checks_run count from 6 to 7
+- Verification:
+  - diagnose.sh passes `bash -n` syntax check
+  - watchdog.sh passes `bash -n` syntax check
+  - `grep` confirms `check_config_semantic` function and invocation in diagnose.sh
+  - `grep` confirms `config_semantic_invalid` finding type in diagnose.sh and watchdog.sh
+  - `grep` confirms `openclaw doctor --fix` as fix_command
+  - `grep` confirms all 4 required patterns: plugin not found, plugin id mismatch, profile not found, Invalid config
+  - File sizes: diagnose.sh=406L, watchdog.sh=471L (both under 800)

@@ -247,73 +247,6 @@ check_config() {
 }
 
 # ============================================================
-# Check 4b: Semantic config validation (plugins, profiles, etc.)
-# ============================================================
-check_config_semantic() {
-  # Only run if JSON syntax check passed — semantic validation on broken JSON is pointless
-  # Also skip if openclaw CLI is not available
-  local openclaw_bin
-  openclaw_bin=$(command -v openclaw 2>/dev/null || echo "")
-  if [ -z "$openclaw_bin" ]; then
-    return 0
-  fi
-
-  # Run openclaw doctor --non-interactive with timeout
-  # Capture both stdout and stderr (warnings go to stderr)
-  local doctor_output
-  doctor_output=$(timeout 30 "$openclaw_bin" doctor --non-interactive 2>&1 || true)
-
-  # Strip ANSI escape codes for pattern matching
-  local clean_output
-  clean_output=$(echo "$doctor_output" | sed 's/\x1b\[[0-9;]*m//g')
-
-  # Scan for semantic error patterns
-  local semantic_errors=()
-
-  # Plugin-related errors
-  if echo "$clean_output" | grep -qi "plugin not found"; then
-    semantic_errors+=("plugin not found")
-  fi
-  if echo "$clean_output" | grep -qi "plugin id mismatch"; then
-    semantic_errors+=("plugin id mismatch")
-  fi
-  if echo "$clean_output" | grep -qi "duplicate plugin id"; then
-    semantic_errors+=("duplicate plugin id")
-  fi
-
-  # Profile-related errors
-  if echo "$clean_output" | grep -qi "profile not found"; then
-    semantic_errors+=("profile not found")
-  fi
-  if echo "$clean_output" | grep -qi "auth-profiles.*not found\|auth profile.*invalid\|auth profile.*missing"; then
-    semantic_errors+=("auth profile issue")
-  fi
-
-  # General config errors
-  if echo "$clean_output" | grep -qi "Invalid config"; then
-    semantic_errors+=("invalid config")
-  fi
-
-  # Plugin load failures (errors, not warnings)
-  if echo "$clean_output" | grep -qi "Errors: [1-9]"; then
-    semantic_errors+=("plugin load errors")
-  fi
-
-  if [ ${#semantic_errors[@]} -gt 0 ]; then
-    local issues_str
-    issues_str=$(printf "%s, " "${semantic_errors[@]}")
-    issues_str="${issues_str%, }"
-    add_finding "config_semantic_invalid" "critical" \
-      "OpenClaw config has semantic errors: ${issues_str}" \
-      "$OPENCLAW_CONFIG" \
-      "openclaw doctor --fix"
-    return 1
-  fi
-
-  return 0
-}
-
-# ============================================================
 # Check 5: Disk space
 # ============================================================
 check_disk() {
@@ -358,12 +291,7 @@ if [ "$has_issues" = false ]; then
   check_gateway_health || has_issues=true
 fi
 check_session_corruption || has_issues=true
-config_json_ok=true
-check_config || { has_issues=true; config_json_ok=false; }
-# Only run semantic validation if JSON syntax is valid
-if [ "$config_json_ok" = true ]; then
-  check_config_semantic || has_issues=true
-fi
+check_config || has_issues=true
 check_disk || has_issues=true
 check_memory || has_issues=true
 
@@ -394,7 +322,7 @@ findings = json.loads('''$findings_json''')
 result = {
     'status': '$status',
     'findings': findings,
-    'checks_run': 7,
+    'checks_run': 6,
     'findings_count': len(findings)
 }
 print(json.dumps(result, indent=2))

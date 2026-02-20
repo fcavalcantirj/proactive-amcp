@@ -1,0 +1,622 @@
+#!/bin/bash
+# resuscitate.sh - Full resurrection flow
+# Usage: ./resuscitate.sh [--from-cid <cid>]
+#
+# Solvr: SEARCH only (read-only). Agent posts after alive.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+AMCP_CLI="${AMCP_CLI:-$(command -v amcp 2>/dev/null || echo "$HOME/bin/amcp")}"
+IDENTITY_PATH="${IDENTITY_PATH:-$HOME/.amcp/identity.json}"
+LAST_CHECKPOINT_FILE="$HOME/.amcp/last-checkpoint.json"
+CONTENT_DIR="${CONTENT_DIR:-$HOME/.openclaw/workspace}"
+AGENT_NAME="${AGENT_NAME:-Agent}"
+RECOVERY_LOG="$HOME/.amcp/recovery-$(date +%Y%m%d-%H%M%S).log"
+LOCK_FILE="$HOME/.amcp/resurrection.lock"
+GATEWAY_SETTLE_TIME="${GATEWAY_SETTLE_TIME:-5}"
+
+# Solvr config
+SOLVR_BASE="https://api.solvr.dev/v1"
+CURRENT_DEATH_PROBLEM_FILE="$HOME/.amcp/current-death-problem.json"
+CURRENT_APPROACH_FILE="$HOME/.amcp/current-approach.json"
+
+# Resolve SOLVR_API_KEY from env or config.json
+if [ -z "${SOLVR_API_KEY:-}" ]; then
+  SOLVR_API_KEY=$(python3 -c "
+import json, os
+p = os.path.expanduser('$HOME/.amcp/config.json')
+if not os.path.isfile(p): exit()
+d = json.load(open(p))
+key = (d.get('solvr',{}).get('apiKey') or
+       d.get('pinning',{}).get('solvr',{}).get('apiKey') or '')
+if key: print(key)
+" 2>/dev/null || echo "")
+fi
+
+# Track temp files for cleanup
+TEMP_FILES=()
+cleanup() {
+  rm -f "$LOCK_FILE"
+  for f in "${TEMP_FILES[@]}"; do
+    rm -rf "$f" 2>/dev/null || true
+  done
+}
+trap cleanup EXIT
+
+# --- Lock file: prevent concurrent resurrection ---
+acquire_lock() {
+  if [ -f "$LOCK_FILE" ]; then
+    local existing_pid
+    existing_pid=$(cat "$LOCK_FILE" 2>/dev/null || echo "")
+    if [ -n "$existing_pid" ] && kill -0 "$existing_pid" 2>/dev/null; then
+      echo "Resurrection already running (PID $existing_pid), exiting"
+      # Exit without triggering cleanup trap (don't remove their lock)
+      trap - EXIT
+      exit 0
+    fi
+    # Stale lock — take over
+    echo "Removing stale lock (PID $existing_pid)"
+  fi
+  mkdir -p "$(dirname "$LOCK_FILE")"
+  echo $$ > "$LOCK_FILE"
+}
+
+# --- Gateway detection (single source of truth, matches watchdog patterns) ---
+is_gateway_running() {
+  if pgrep -f "openclaw-gateway" > /dev/null 2>&1; then
+    return 0
+  fi
+  if pgrep -f "openclaw.*gateway" > /dev/null 2>&1; then
+    return 0
+  fi
+  return 1
+}
+
+# Parse args
+FROM_CID=""
+PREFERRED_GATEWAY=""
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --from-cid) FROM_CID="$2"; shift 2 ;;
+    --content-dir) CONTENT_DIR="$2"; shift 2 ;;
+    --agent-name) AGENT_NAME="$2"; shift 2 ;;
+    --gateway) PREFERRED_GATEWAY="$2"; shift 2 ;;
+    *) shift ;;
+  esac
+done
+
+# Validate CID format if provided (alphanumeric, starts with Qm or bafy)
+if [ -n "$FROM_CID" ]; then
+  if ! echo "$FROM_CID" | grep -qE '^(Qm[a-zA-Z0-9]{44}|bafy[a-zA-Z0-9]{55,})$'; then
+    echo "ERROR: Invalid CID format: $FROM_CID"
+    echo "CIDs should start with 'Qm' (CIDv0) or 'bafy' (CIDv1)"
+    exit 1
+  fi
+fi
+
+# ============================================================
+# Identity pre-flight — validate before operating
+# ============================================================
+validate_identity() {
+  if [ ! -f "$IDENTITY_PATH" ]; then
+    echo "FATAL: Invalid AMCP identity — run amcp identity create or amcp identity validate for details"
+    exit 1
+  fi
+  if ! "$AMCP_CLI" identity validate --identity "$IDENTITY_PATH" 2>/dev/null; then
+    echo "FATAL: Invalid AMCP identity — run amcp identity create or amcp identity validate for details"
+    exit 1
+  fi
+}
+
+validate_identity
+
+# Warn if secrets found in identity.json (they belong in config.json)
+warn_identity_secrets() {
+  python3 -c "
+import json, os, sys
+p = os.path.expanduser('$IDENTITY_PATH')
+if not os.path.exists(p): sys.exit(0)
+d = json.load(open(p))
+bad = [k for k in d if k in ('pinata_jwt','pinata_api_key','solvr_api_key','api_key','apiKey','jwt','token','secret','password','mnemonic','email','notifyTarget')]
+if bad:
+    print(f'WARNING: Secrets found in identity.json: {\", \".join(bad)}', file=sys.stderr)
+    print('  Migrate with: proactive-amcp config set <key> <value>', file=sys.stderr)
+" 2>&1 || true
+}
+warn_identity_secrets
+
+# Generate open problem summary for agent context (post-resurrection)
+surface_open_problems() {
+  # Check config toggle (default: true)
+  local enabled
+  enabled=$(python3 -c "
+import json, os
+p = os.path.expanduser('$HOME/.amcp/config.json')
+if os.path.isfile(p):
+    d = json.load(open(p))
+    print(d.get('learning',{}).get('resurrection',{}).get('surfaceProblems', True))
+else:
+    print(True)
+" 2>/dev/null || echo 'True')
+
+  if [ "$enabled" = "False" ] || [ "$enabled" = "false" ]; then
+    log "Problem surfacing disabled (config: learning.resurrection.surfaceProblems=false)"
+    return 0
+  fi
+
+  local summary_file="$HOME/.amcp/open-problems-summary.md"
+  if [ -f "$SCRIPT_DIR/generate-problem-summary.py" ]; then
+    log "Generating open problem summary..."
+    python3 "$SCRIPT_DIR/generate-problem-summary.py" --output "$summary_file" 2>&1 | tee -a "$RECOVERY_LOG" || true
+    if [ -f "$summary_file" ] && [ -s "$summary_file" ]; then
+      log "Open problems written to $summary_file"
+    fi
+  fi
+}
+
+# Acquire lock before doing anything
+acquire_lock
+
+mkdir -p "$(dirname "$RECOVERY_LOG")"
+
+log() {
+  echo "[$(date -Iseconds)] $1" | tee -a "$RECOVERY_LOG"
+}
+
+# Send email summary on resurrection completion
+send_resurrection_email() {
+  local status="$1"  # "success" or "failed"
+  local method="$2"  # recovery method used
+  local downtime="$3"  # seconds
+  local log_file="$4"  # path to recovery log
+
+  local subject="Agent Resurrection: $AGENT_NAME - ${status^^}"
+  local body="
+=== Agent Resurrection Report ===
+
+Agent: $AGENT_NAME
+Status: ${status^^}
+Recovery Method: $method
+Downtime: ${downtime}s
+Timestamp: $(date -Iseconds)
+
+=== Recovery Log ===
+$(tail -50 "$log_file" 2>/dev/null || echo "Log not available")
+"
+
+  [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "$body" --email "$subject"
+}
+
+# --- Solvr integration (sourced from solvr-integration.sh) ---
+# Provides: solvr_search_problem, try_solvr_solutions, solvr_create_problem,
+#           solvr_start_approach, solvr_update_approach, solvr_post_failed_approach
+# shellcheck source=solvr-integration.sh
+source "$SCRIPT_DIR/solvr-integration.sh"
+
+# Fetch checkpoint from IPFS gateways (tries multiple in priority order)
+fetch_from_gateways() {
+  local cid="$1"
+  local output="$2"
+
+  # Gateway URLs in priority order: Solvr > Pinata > IPFS.io > Cloudflare
+  local -a gateways=(
+    "solvr|https://ipfs.solvr.dev/ipfs/$cid"
+    "pinata|https://gateway.pinata.cloud/ipfs/$cid"
+    "ipfs.io|https://ipfs.io/ipfs/$cid"
+    "cloudflare|https://cloudflare-ipfs.com/ipfs/$cid"
+  )
+
+  # If --gateway flag specified, try that one first
+  if [ -n "$PREFERRED_GATEWAY" ]; then
+    local preferred_url=""
+    for gw in "${gateways[@]}"; do
+      local name="${gw%%|*}"
+      local url="${gw#*|}"
+      if [ "$name" = "$PREFERRED_GATEWAY" ]; then
+        preferred_url="$url"
+        break
+      fi
+    done
+    if [ -n "$preferred_url" ]; then
+      log "Trying preferred gateway: $PREFERRED_GATEWAY"
+      if curl -sf --max-time 120 "$preferred_url" -o "$output" 2>/dev/null && [ -s "$output" ]; then
+        log "Checkpoint retrieved from $PREFERRED_GATEWAY gateway"
+        return 0
+      fi
+      log "Preferred gateway $PREFERRED_GATEWAY failed, trying others..."
+    fi
+  fi
+
+  # Try each gateway in order
+  for gw in "${gateways[@]}"; do
+    local name="${gw%%|*}"
+    local url="${gw#*|}"
+
+    # Skip preferred if already tried
+    if [ "$name" = "$PREFERRED_GATEWAY" ]; then
+      continue
+    fi
+
+    log "Trying gateway: $name"
+    if curl -sf --max-time 120 "$url" -o "$output" 2>/dev/null && [ -s "$output" ]; then
+      log "Checkpoint retrieved from $name gateway"
+      return 0
+    fi
+    log "Gateway $name failed"
+  done
+
+  return 1
+}
+
+# Recovery attempts
+try_restart_gateway() {
+  log "Attempting: restart gateway"
+
+  # Try systemctl first
+  if systemctl --user restart openclaw-gateway 2>/dev/null; then
+    sleep "$GATEWAY_SETTLE_TIME"
+    if is_gateway_running; then
+      log "Gateway restarted via systemctl"
+      return 0
+    fi
+  fi
+
+  # Try direct restart
+  if command -v openclaw &>/dev/null; then
+    pkill -f "openclaw-gateway" 2>/dev/null || true
+    sleep 2
+    nohup openclaw gateway start > /tmp/openclaw-gateway.log 2>&1 &
+    sleep "$GATEWAY_SETTLE_TIME"
+    if is_gateway_running; then
+      log "Gateway restarted directly"
+      return 0
+    fi
+  fi
+
+  return 1
+}
+
+try_fix_config() {
+  # Gate: if gateway came up from a previous tier, skip
+  if is_gateway_running; then
+    log "Gateway already running, skipping config fix"
+    return 0
+  fi
+
+  log "Attempting: fix config from backup"
+
+  # Check for config backups
+  local backup_dir="$HOME/.amcp/config-backups"
+  if [ -d "$backup_dir" ]; then
+    local latest_backup=$(ls -1t "$backup_dir"/openclaw-*.json 2>/dev/null | head -1)
+    if [ -f "$latest_backup" ]; then
+      log "Found backup: $latest_backup"
+
+      # Validate JSON before restoring
+      if jq . "$latest_backup" > /dev/null 2>&1; then
+        cp "$HOME/.openclaw/openclaw.json" "$HOME/.openclaw/openclaw.json.pre-recovery" 2>/dev/null || true
+        cp "$latest_backup" "$HOME/.openclaw/openclaw.json"
+        log "Restored openclaw.json"
+
+        # Try restart again
+        if try_restart_gateway; then
+          return 0
+        fi
+      else
+        log "Backup JSON invalid, skipping"
+      fi
+    fi
+  fi
+
+  return 1
+}
+
+try_rehydrate() {
+  local cid="$1"
+
+  # Gate: if gateway came up from a previous tier, skip
+  if is_gateway_running; then
+    log "Gateway already running, skipping rehydrate"
+    return 0
+  fi
+
+  log "Attempting: rehydrate from checkpoint ${cid:-local}"
+
+  # Fetch from IPFS if CID provided
+  local checkpoint_path=""
+  if [ -n "$cid" ]; then
+    checkpoint_path="/tmp/checkpoint-$cid.amcp"
+    TEMP_FILES+=("$checkpoint_path")
+    log "Fetching from IPFS: $cid"
+    if ! fetch_from_gateways "$cid" "$checkpoint_path"; then
+      log "Failed to fetch from all IPFS gateways"
+      return 1
+    fi
+  else
+    # Use local checkpoint
+    if [ -f "$LAST_CHECKPOINT_FILE" ]; then
+      checkpoint_path=$(jq -r '.localPath // empty' "$LAST_CHECKPOINT_FILE" 2>/dev/null)
+    fi
+
+    # Fallback: find latest local checkpoint
+    if [ -z "$checkpoint_path" ] || [ ! -f "$checkpoint_path" ]; then
+      checkpoint_path=$(ls -1t "$HOME/.amcp/checkpoints"/*.amcp 2>/dev/null | head -1)
+    fi
+  fi
+
+  if [ -z "$checkpoint_path" ] || [ ! -f "$checkpoint_path" ]; then
+    log "No checkpoint found"
+    return 1
+  fi
+
+  log "Using checkpoint: $checkpoint_path"
+
+  # Verify AMCP CLI exists
+  if [ ! -x "$AMCP_CLI" ]; then
+    log "AMCP CLI not found at $AMCP_CLI"
+    return 1
+  fi
+
+  # Resuscitate (verify + decrypt)
+  local secrets_file="/tmp/secrets-$$.json"
+  local content_dir="/tmp/restored-$$"
+  TEMP_FILES+=("$secrets_file" "$content_dir")
+
+  if ! $AMCP_CLI resuscitate \
+       --checkpoint "$checkpoint_path" \
+       --identity "$IDENTITY_PATH" \
+       --out-content "$content_dir" \
+       --out-secrets "$secrets_file" 2>&1 | tee -a "$RECOVERY_LOG"; then
+    log "Resuscitate command failed"
+    return 1
+  fi
+
+  log "Checkpoint verified and decrypted"
+
+  # Restore content to workspace
+  if [ -d "$content_dir" ]; then
+    log "Restoring content to $CONTENT_DIR..."
+    mkdir -p "$CONTENT_DIR"
+
+    # Restore workspace files (memory/, AGENTS.md, etc.)
+    # Be careful not to overwrite code repos
+    for item in "$content_dir"/*; do
+      if [ -e "$item" ]; then
+        local basename=$(basename "$item")
+        # Skip directories that look like code repos
+        if [[ "$basename" =~ ^(solvr|amcp-protocol|openclaw-|proactive-)$ ]]; then
+          log "Skipping code repo: $basename"
+          continue
+        fi
+        cp -r "$item" "$CONTENT_DIR/" 2>/dev/null || true
+        log "Restored: $basename"
+      fi
+    done
+  fi
+
+  # Inject secrets
+  if [ -f "$secrets_file" ] && [ -s "$secrets_file" ]; then
+    log "Injecting secrets..."
+    if [ -x "$SCRIPT_DIR/inject-secrets.sh" ]; then
+      "$SCRIPT_DIR/inject-secrets.sh" "$secrets_file" 2>&1 | tee -a "$RECOVERY_LOG" || true
+    else
+      log "inject-secrets.sh not found, skipping"
+    fi
+  fi
+
+  # Validate learning storage JSONL format (if present)
+  local learning_dir="$CONTENT_DIR/memory/learning"
+  if [ -d "$learning_dir" ]; then
+    log "Validating learning storage..."
+    python3 -c "
+import json, os, sys
+learning_dir = '$learning_dir'
+for fname in ('problems.jsonl', 'learnings.jsonl'):
+    fpath = os.path.join(learning_dir, fname)
+    if not os.path.isfile(fpath):
+        continue
+    errors = 0
+    with open(fpath) as f:
+        for i, line in enumerate(f, 1):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                json.loads(line)
+            except json.JSONDecodeError:
+                errors += 1
+                if errors <= 3:
+                    print(f'WARN: {fname} line {i}: invalid JSON', file=sys.stderr)
+    if errors:
+        print(f'WARN: {fname} has {errors} invalid line(s)', file=sys.stderr)
+    else:
+        print(f'  {fname}: OK')
+# Validate stats.json
+stats_path = os.path.join(learning_dir, 'stats.json')
+if os.path.isfile(stats_path):
+    try:
+        json.load(open(stats_path))
+        print('  stats.json: OK')
+    except json.JSONDecodeError:
+        print('WARN: stats.json: invalid JSON', file=sys.stderr)
+" 2>&1 | tee -a "$RECOVERY_LOG" || echo "WARN: learning validation failed" | tee -a "$RECOVERY_LOG"
+  fi
+
+  # Validate ontology graph (if present)
+  local ontology_graph="$CONTENT_DIR/memory/ontology/graph.jsonl"
+  if [ -f "$ontology_graph" ] && [ -f "$SCRIPT_DIR/validate-ontology.py" ]; then
+    log "Validating ontology graph..."
+    python3 "$SCRIPT_DIR/validate-ontology.py" "$ontology_graph" 2>&1 | tee -a "$RECOVERY_LOG" || echo "WARN: ontology validation failed" | tee -a "$RECOVERY_LOG"
+  fi
+
+  # Recreate virtual environments from manifest (if present)
+  local venvs_manifest="$CONTENT_DIR/memory/venvs-manifest.json"
+  if [ -x "$SCRIPT_DIR/recreate-venvs.sh" ]; then
+    log "Checking for venv manifest..."
+    "$SCRIPT_DIR/recreate-venvs.sh" "$venvs_manifest" 2>&1 | tee -a "$RECOVERY_LOG" || echo "WARN: venv recreation failed" | tee -a "$RECOVERY_LOG"
+  fi
+
+  # Cleanup temp files
+  rm -rf "$content_dir" "$secrets_file"
+  [ -n "$cid" ] && rm -f "$checkpoint_path"
+
+  # Restart gateway with restored config
+  if try_restart_gateway; then
+    return 0
+  fi
+
+  log "Gateway failed to start after rehydration"
+  return 1
+}
+
+# Main resurrection flow
+main() {
+  local start_time=$(date +%s)
+
+  log "========================================="
+  log "=== AMCP Resurrection Started ==="
+  log "========================================="
+  log "Agent: $AGENT_NAME"
+  log "Identity: $IDENTITY_PATH"
+  log "Content dir: $CONTENT_DIR"
+  log "Recovery log: $RECOVERY_LOG"
+
+  # Notify start
+  if [ -x "$SCRIPT_DIR/notify.sh" ]; then
+    "$SCRIPT_DIR/notify.sh" "🔄 [$AGENT_NAME] Starting resurrection..."
+  fi
+
+  # Step 1: Search Solvr for similar problems
+  log ""
+  log "=== Step 1: Search Solvr for solutions ==="
+  local solvr_result
+  solvr_result=$(solvr_search_problem)
+
+  # Step 1b: Try Solvr solutions before generic recovery
+  log ""
+  log "=== Step 1b: Try Solvr-suggested solutions ==="
+  if try_solvr_solutions "$solvr_result"; then
+    local end_time=$(date +%s)
+    local downtime=$((end_time - start_time))
+    log "✅ Recovery succeeded via Solvr solution (${downtime}s)"
+    [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "✅ [$AGENT_NAME] Alive! Downtime: ${downtime}s. Method: Solvr solution"
+
+    echo "{\"method\":\"solvr_solution\",\"downtime\":$downtime,\"timestamp\":\"$(date -Iseconds)\"}" > "$HOME/.amcp/last-recovery.json"
+
+    surface_open_problems
+    send_resurrection_email "success" "solvr_solution" "$downtime" "$RECOVERY_LOG"
+    return 0
+  fi
+  log "Solvr solutions exhausted or unavailable"
+
+  # Step 1c: Create Solvr problem if no match found (for tracking approaches)
+  local solvr_count
+  solvr_count=$(echo "$solvr_result" | jq '.data | length' 2>/dev/null || echo "0")
+  if [ "$solvr_count" = "0" ] || [ "$solvr_count" = "null" ]; then
+    solvr_create_problem
+  fi
+
+  # Step 2: Try recovery hierarchy (lightweight first)
+  log ""
+  log "=== Step 2: Recovery attempts ==="
+
+  # 2a: Restart gateway
+  log ""
+  log "--- Attempt 1: Restart gateway ---"
+  [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "🔄 [$AGENT_NAME] Trying: restart gateway"
+  solvr_start_approach "restart" "Restart gateway via systemctl or direct"
+
+  if try_restart_gateway; then
+    solvr_update_approach "succeeded"
+    local end_time=$(date +%s)
+    local downtime=$((end_time - start_time))
+    log "✅ Recovery succeeded: restart gateway (${downtime}s)"
+    [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "✅ [$AGENT_NAME] Alive! Downtime: ${downtime}s. Method: restart"
+
+    # Write recovery summary for agent to post to Solvr
+    echo "{\"method\":\"restart\",\"downtime\":$downtime,\"timestamp\":\"$(date -Iseconds)\"}" > "$HOME/.amcp/last-recovery.json"
+
+    surface_open_problems
+
+    # Send email summary
+    send_resurrection_email "success" "restart" "$downtime" "$RECOVERY_LOG"
+    return 0
+  fi
+  solvr_update_approach "failed"
+  log "❌ Restart gateway failed"
+
+  # 2b: Fix config
+  log ""
+  log "--- Attempt 2: Fix config ---"
+  [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "🔄 [$AGENT_NAME] Trying: fix config"
+  solvr_start_approach "config_fix" "Restore openclaw.json from config backup"
+
+  if try_fix_config; then
+    solvr_update_approach "succeeded"
+    local end_time=$(date +%s)
+    local downtime=$((end_time - start_time))
+    log "✅ Recovery succeeded: fix config (${downtime}s)"
+    [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "✅ [$AGENT_NAME] Alive! Downtime: ${downtime}s. Method: config fix"
+
+    echo "{\"method\":\"config_fix\",\"downtime\":$downtime,\"timestamp\":\"$(date -Iseconds)\"}" > "$HOME/.amcp/last-recovery.json"
+
+    surface_open_problems
+
+    # Send email summary
+    send_resurrection_email "success" "config_fix" "$downtime" "$RECOVERY_LOG"
+    return 0
+  fi
+  solvr_update_approach "failed"
+  log "❌ Fix config failed"
+
+  # 2c: Rehydrate from checkpoint
+  local cid="$FROM_CID"
+  if [ -z "$cid" ] && [ -f "$LAST_CHECKPOINT_FILE" ]; then
+    cid=$(jq -r '.cid // empty' "$LAST_CHECKPOINT_FILE" 2>/dev/null)
+  fi
+
+  log ""
+  log "--- Attempt 3: Rehydrate from checkpoint ---"
+  [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "🔄 [$AGENT_NAME] Trying: rehydrate from checkpoint ${cid:-local}"
+  solvr_start_approach "rehydrate" "Full rehydrate from IPFS checkpoint ${cid:-local}"
+
+  if try_rehydrate "$cid"; then
+    solvr_update_approach "succeeded"
+    local end_time=$(date +%s)
+    local downtime=$((end_time - start_time))
+    log "✅ Recovery succeeded: rehydrate (${downtime}s)"
+    [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "✅ [$AGENT_NAME] Alive! Downtime: ${downtime}s. Method: checkpoint"
+
+    echo "{\"method\":\"rehydrate\",\"cid\":\"$cid\",\"downtime\":$downtime,\"timestamp\":\"$(date -Iseconds)\"}" > "$HOME/.amcp/last-recovery.json"
+
+    surface_open_problems
+
+    # Send email summary
+    send_resurrection_email "success" "rehydrate" "$downtime" "$RECOVERY_LOG"
+    return 0
+  fi
+  solvr_update_approach "failed"
+  log "❌ Rehydrate failed"
+
+  # All recovery methods failed
+  local end_time=$(date +%s)
+  local downtime=$((end_time - start_time))
+
+  log ""
+  log "========================================="
+  log "❌ ALL RECOVERY METHODS FAILED"
+  log "Elapsed: ${downtime}s"
+  log "Human intervention required"
+  log "========================================="
+
+  [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "❌ [$AGENT_NAME] Resurrection FAILED! Need human. Log: $RECOVERY_LOG"
+
+  echo "{\"method\":\"failed\",\"downtime\":$downtime,\"timestamp\":\"$(date -Iseconds)\",\"log\":\"$RECOVERY_LOG\"}" > "$HOME/.amcp/last-recovery.json"
+
+  # Send email summary (critical - always send on failure)
+  send_resurrection_email "failed" "all_methods_exhausted" "$downtime" "$RECOVERY_LOG"
+  return 1
+}
+
+main "$@"

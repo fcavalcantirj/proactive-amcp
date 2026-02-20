@@ -410,6 +410,13 @@ async function register(api: PluginApi): Promise<void> {
     return;
   }
 
+  // Polyfill: OpenClaw may not provide emit() in all versions
+  if (!api.emit) {
+    api.emit = () => {
+      // No-op fallback
+    };
+  }
+
   api.logger.info(`amcp: initializing plugin v${PLUGIN_VERSION}`);
 
   // Register services — gateway may extend PluginApi with sessionApi/amcpHistoryPath
@@ -548,8 +555,18 @@ async function register(api: PluginApi): Promise<void> {
     partialResurrectionService,
   ];
 
+  // Adapt services to OpenClaw's expected interface (id instead of name, context params)
   for (const svc of allServices) {
-    api.registerService(svc);
+    const adapted = {
+      id: svc.name,
+      start: async () => {
+        await svc.start();
+      },
+      stop: async () => {
+        await svc.stop();
+      },
+    };
+    api.registerService(adapted as any);
   }
 
   // Register lifecycle hooks
@@ -565,16 +582,16 @@ async function register(api: PluginApi): Promise<void> {
     (apiExt.amcpCheckpointDir as string) ??
     join(homedir(), ".amcp", "checkpoints");
 
-  // Register CLI commands — status command needs access to services and paths
-  registerCliCommands(api, {
-    config,
-    services: allServices,
-    identityPath,
-    lastCheckpointPath,
-    checkpointLogPath,
-    checkpointDir,
-    scriptDir,
-  });
+  // TEMP: CLI commands disabled - need to adapt to OpenClaw's registerCli API
+  // registerCliCommands(api, {
+  //   config,
+  //   services: allServices,
+  //   identityPath,
+  //   lastCheckpointPath,
+  //   checkpointLogPath,
+  //   checkpointDir,
+  //   scriptDir,
+  // });
 
   api.logger.info("amcp: plugin registered successfully");
 }

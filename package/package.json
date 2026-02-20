@@ -7,7 +7,7 @@
   "types": "dist/index.d.ts",
   "openclaw": {
     "extensions": {
-      "proactive-amcp": "openclaw.plugin.json"
+      "plugin": "openclaw.plugin.json"
     }
   },
   "bin": {

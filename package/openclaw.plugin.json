@@ -1,0 +1,198 @@
+{
+  "id": "proactive-amcp",
+  "name": "Proactive AMCP",
+  "version": "1.0.0",
+  "description": "Agent Memory Continuity Protocol — encrypted checkpoints to IPFS, identity verification, memory integrity, resurrection detection",
+  "homepage": "https://github.com/fcavalcantirj/proactive-amcp",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "skill": "skill/SKILL.md",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": {
+        "type": "boolean",
+        "default": true,
+        "description": "Enable the AMCP plugin (code-level enforcement layer)"
+      },
+      "autoCheckpoint": {
+        "type": "boolean",
+        "default": true,
+        "description": "Automatically create checkpoints on lifecycle events (gateway start, session end, context threshold)"
+      },
+      "checkpointIntervalMs": {
+        "type": "number",
+        "default": 0,
+        "minimum": 0,
+        "description": "Minimum interval between automatic checkpoints in milliseconds. 0 = no time-based checkpoints (event-driven only)"
+      },
+      "contextThreshold": {
+        "type": "number",
+        "default": 70,
+        "minimum": 0,
+        "maximum": 100,
+        "description": "Context usage percentage (0-100) that triggers an automatic checkpoint before compaction"
+      },
+      "ipfsPinningService": {
+        "type": "string",
+        "enum": ["pinata", "solvr", "local"],
+        "default": "solvr",
+        "description": "IPFS pinning provider for checkpoint storage. 'solvr' = free for registered agents, 'pinata' = Pinata cloud, 'local' = filesystem only"
+      },
+      "encryptionKeyPath": {
+        "type": "string",
+        "default": "~/.amcp/identity.json",
+        "description": "Path to KERI identity file used for checkpoint encryption and signing"
+      },
+      "checkpointCooldownMs": {
+        "type": "number",
+        "default": 300000,
+        "minimum": 0,
+        "description": "Minimum cooldown between any two checkpoints in milliseconds (default: 5 minutes)"
+      },
+      "memoryIntegrity": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable memory integrity monitoring (hash baseline + change detection)"
+          },
+          "promptInjectionScan": {
+            "type": "boolean",
+            "default": true,
+            "description": "Scan memory files for prompt injection patterns"
+          },
+          "autoRestore": {
+            "type": "boolean",
+            "default": false,
+            "description": "Automatically restore from checkpoint when tampering is detected"
+          }
+        },
+        "default": {}
+      },
+      "identity": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "autoInject": {
+            "type": "boolean",
+            "default": true,
+            "description": "Automatically inject identity into agent context on start and resurrection"
+          },
+          "verifyOnStart": {
+            "type": "boolean",
+            "default": true,
+            "description": "Verify KERI identity integrity on gateway start (block operations if invalid)"
+          }
+        },
+        "default": {}
+      },
+      "resurrection": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "autoDetect": {
+            "type": "boolean",
+            "default": true,
+            "description": "Automatically detect context wipes and inject recovery instructions"
+          },
+          "injectRecoveryPrompt": {
+            "type": "boolean",
+            "default": true,
+            "description": "Inject recovery prompt into new session after context wipe detection"
+          }
+        },
+        "default": {}
+      }
+    }
+  },
+  "uiHints": {
+    "enabled": {
+      "label": "Enable AMCP",
+      "help": "Master switch for the code-level enforcement layer. Skill layer works independently."
+    },
+    "autoCheckpoint": {
+      "label": "Auto-Checkpoint",
+      "help": "Checkpoint automatically on context threshold, session end, and gateway lifecycle events"
+    },
+    "checkpointIntervalMs": {
+      "label": "Checkpoint Interval (ms)",
+      "help": "Time-based checkpoint interval. Set to 0 for event-driven only. Example: 3600000 = 1 hour",
+      "placeholder": "0"
+    },
+    "contextThreshold": {
+      "label": "Context Threshold (%)",
+      "help": "When context usage exceeds this percentage, trigger a checkpoint before compaction",
+      "placeholder": "70"
+    },
+    "ipfsPinningService": {
+      "label": "IPFS Pinning Service",
+      "help": "Solvr is free for registered agents. Pinata requires a separate account. Local stores on disk only."
+    },
+    "encryptionKeyPath": {
+      "label": "Identity Key Path",
+      "help": "Path to your KERI identity file (identity.json). Loss of this file makes checkpoints unrecoverable.",
+      "placeholder": "~/.amcp/identity.json"
+    },
+    "checkpointCooldownMs": {
+      "label": "Checkpoint Cooldown (ms)",
+      "help": "Minimum time between checkpoints to prevent excessive pinning. Default: 5 minutes",
+      "placeholder": "300000"
+    },
+    "memoryIntegrity.enabled": {
+      "label": "Memory Integrity",
+      "help": "Monitor memory files for unauthorized changes using hash baselines"
+    },
+    "memoryIntegrity.promptInjectionScan": {
+      "label": "Injection Scanning",
+      "help": "Scan memory files for prompt injection patterns (identity hijacking, action directives, etc.)"
+    },
+    "memoryIntegrity.autoRestore": {
+      "label": "Auto-Restore on Tamper",
+      "help": "Automatically restore tampered files from last clean checkpoint. Use with caution."
+    },
+    "identity.autoInject": {
+      "label": "Auto-Inject Identity",
+      "help": "Inject KERI identity into agent context on start and resurrection"
+    },
+    "identity.verifyOnStart": {
+      "label": "Verify Identity on Start",
+      "help": "Validate KERI identity integrity when gateway starts. Blocks operations if invalid."
+    },
+    "resurrection.autoDetect": {
+      "label": "Auto-Detect Context Wipe",
+      "help": "Detect context clears and session restarts to trigger resurrection flow"
+    },
+    "resurrection.injectRecoveryPrompt": {
+      "label": "Inject Recovery Prompt",
+      "help": "Automatically inject recovery instructions with checkpoint CID after context wipe"
+    }
+  },
+  "services": [
+    "amcp-context-monitor",
+    "amcp-memory-monitor"
+  ],
+  "hooks": [
+    "gateway_start",
+    "gateway_stop",
+    "session_start",
+    "session_end",
+    "context_warning",
+    "before_compaction",
+    "before_agent_start"
+  ],
+  "cli": {
+    "namespace": "amcp",
+    "commands": [
+      "status",
+      "checkpoint",
+      "resurrect",
+      "identity",
+      "history",
+      "verify"
+    ]
+  }
+}
