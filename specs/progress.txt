@@ -2309,3 +2309,29 @@
   - `crash_loop_detected` finding present in diagnose.sh
   - `CRASH_LOOP_THRESHOLD` present in both scripts
   - `restart_history` tracked in record_resurrection_launch, cleared on HEALTHY
+
+## Task P5-10: testing — Integration tests for watchdog recovery scenarios (DONE)
+- Created `test/watchdog-recovery.bats` (662 lines) — 17 BATS integration tests
+- Test 1: Gateway down → resurrection launched → recovery detected (HEALTHY → CHECKING → DEAD → HEALTHY)
+- Test 2: Config syntax error → detected as config_invalid → resurrection path → recovery
+- Test 3: Config semantic error → openclaw doctor --fix attempted → healthy
+- Test 4: Config semantic error → backup restore fallback when doctor fails
+- Test 5: Session corruption → session-fix auto-fixes without resurrection
+- Test 6: Session corruption → resuscitate on fix failure
+- Test 7: Session stuck (400 loop) → truncation → healthy
+- Test 8: Session stuck → all tiers fail → escalation
+- Test 9: Crypto.subtle fix — NODE_OPTIONS includes webcrypto flag
+- Test 10: Crypto.subtle fix — preserves existing NODE_OPTIONS
+- Test 11: Crypto.subtle fix — no duplicate flag if already present
+- Test 12: Crash-loop detected → immediate escalation, no auto-recovery
+- Test 13: Crash-loop not triggered when under threshold
+- Test 14: Crash-loop notification includes restart count
+- Test 15: Full end-to-end cycle: HEALTHY → failure → CHECKING → DEAD → fix → HEALTHY
+- Test 16: Error history cleared on recovery
+- Test 17: Config backup created on healthy check
+- All tests run in isolated temp directories with sandboxed script copies
+- Mocked: amcp CLI, pgrep, curl, systemctl, openclaw, resuscitate.sh, notify.sh
+- Verification:
+  - All 17 tests pass with `bats test/watchdog-recovery.bats`
+  - Existing 8 watchdog.bats tests still pass
+  - File size: 662 lines (under 800)

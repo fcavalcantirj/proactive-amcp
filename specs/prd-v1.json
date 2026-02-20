@@ -1860,7 +1860,7 @@
       "Run tests in CI and before releases",
       "Verify: All 7 scenarios pass with auto-recovery in <2 minutes each"
     ],
-    "passes": false,
+    "passes": true,
     "phase": 5
   },
   {
