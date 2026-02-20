@@ -6,6 +6,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import {
   writeFile,
+  readFile,
   rm,
   mkdtemp,
   mkdir,
@@ -20,11 +21,14 @@ import {
   loadBaseline,
   saveBaseline,
   compareToBaseline,
+  buildChangeSummary,
+  appendChangeLog,
   createMemoryIntegrityMonitor,
 } from "./memory-integrity.js";
 import type {
   MemoryBaseline,
   MemoryIntegrityDeps,
+  MemoryChangeAlert,
 } from "./memory-integrity.js";
 import type { AmcpPluginConfig, PluginLogger } from "../types.js";
 
@@ -617,5 +621,22 @@ describe("createMemoryIntegrityMonitor", () => {
     const deps = makeDeps();
     const monitor = createMemoryIntegrityMonitor(deps);
     expect(monitor.name).toBe("amcp-memory-integrity");
+  });
+
+  it("status includes changeLogPath and polling info", async () => {
+    const { contentDir } = await createTestWorkspace(tmpDir);
+    const changeLogPath = join(tmpDir, "changes.jsonl");
+    const deps = makeDeps({ contentDir, changeLogPath, pollIntervalMs: 5000 });
+    const monitor = createMemoryIntegrityMonitor(deps);
+
+    await monitor.start();
+    const statusRunning = await monitor.status();
+    expect(statusRunning.details?.changeLogPath).toBe(changeLogPath);
+    expect(statusRunning.details?.polling).toBe(true);
+    expect(statusRunning.details?.pollIntervalMs).toBe(5000);
+
+    await monitor.stop();
+    const statusStopped = await monitor.status();
+    expect(statusStopped.details?.polling).toBe(false);
   });
 });

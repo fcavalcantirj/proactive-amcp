@@ -436,6 +436,8 @@ export {
   loadBaseline,
   saveBaseline,
   compareToBaseline,
+  buildChangeSummary,
+  appendChangeLog,
   createMemoryIntegrityMonitor,
 } from "./monitors/memory-integrity.js";
 export type * from "./types.js";

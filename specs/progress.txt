@@ -1644,3 +1644,32 @@
     baseline stored in .amcp/memory-baseline.json ✓, baseline updated on refreshBaseline() ✓,
     baseline created correctly (32 tests) ✓
   - File sizes: memory-integrity.ts=344, memory-integrity.test.ts=621, index.ts=441 (all under 800)
+
+## Task: P4-MEM-02 — Alert on unauthorized memory changes (DONE)
+- Extended `src/monitors/memory-integrity.ts` (344→472 lines) with unauthorized change alerting
+- Added `MemoryChangeAlert` interface: timestamp, changed, added, removed, summary
+- Added `MemoryIntegrityDeps.changeLogPath` and `pollIntervalMs` optional fields
+- Added `buildChangeSummary()`: human-readable diff summary ("modified: X; added: Y; removed: Z")
+- Added `appendChangeLog()`: append alert entries to JSONL change log file
+- Added `pollOnce()` method to monitor: check integrity → build alert → log → emit event
+- Added periodic polling via `setInterval` in `start()`, cleared in `stop()`
+- Emits `amcp:memory:unauthorized_change` event with changed/added/removed/summary/timestamp
+- Logs warning via `logger.warn()` on unauthorized change detection
+- Status includes `changeLogPath`, `polling`, `pollIntervalMs` fields
+- Exported `MemoryIntegrityMonitor` type, `buildChangeSummary`, `appendChangeLog` from index.ts
+- Created `src/monitors/memory-integrity-alerting.test.ts` (410 lines) — 17 tests:
+  - buildChangeSummary: 5 tests (changed, added, removed, all together, empty)
+  - appendChangeLog: 3 tests (JSONL append, multiple entries, mkdir -p)
+  - pollOnce: 9 tests (no baseline, no changes, external modification emits alert,
+    external addition, external removal, change log written, warning logged,
+    polling timer starts on start, polling timer clears on stop)
+- Updated `src/monitors/memory-integrity.test.ts` (621→640 lines):
+  - Added status test for new changeLogPath/polling/pollIntervalMs fields
+- Verification:
+  - vitest run passes: 299 tests, 15 test files, 0 failures
+  - All 5 PRD steps verified: periodic comparison ✓, external modification detection ✓,
+    alert via plugin API (amcp:memory:unauthorized_change event) ✓,
+    log changes with diff summary (JSONL + buildChangeSummary) ✓,
+    external modification triggers alert (test verified) ✓
+  - File sizes: memory-integrity.ts=472, memory-integrity.test.ts=640,
+    memory-integrity-alerting.test.ts=410, index.ts=443 (all under 800)

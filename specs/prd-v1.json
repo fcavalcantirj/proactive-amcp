@@ -1362,7 +1362,7 @@
       "Log changes with diff summary",
       "Verify: external modification triggers alert"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "P4-MEM-03",
