@@ -213,19 +213,39 @@ function registerHooks(
     api.emit("amcp:checkpoint:requested", { trigger: "gateway_stop" });
   });
 
-  api.registerHook("session_end", (_event: LifecycleEvent) => {
+  api.registerHook("session_end", async (event: LifecycleEvent) => {
+    // Check if session had meaningful activity before triggering checkpoint.
+    // The gateway may provide activity data via event.data (e.g. usedTokens,
+    // messageCount, toolCalls). If provided and all are zero, skip checkpoint.
+    const data = event.data ?? {};
+    const usedTokens = typeof data.usedTokens === "number" ? data.usedTokens : -1;
+    const messageCount = typeof data.messageCount === "number" ? data.messageCount : -1;
+    const hasActivityMetrics = usedTokens >= 0 || messageCount >= 0;
+    const hadActivity = !hasActivityMetrics
+      || (usedTokens > 0)
+      || (messageCount > 0);
+
+    if (!hadActivity) {
+      api.logger.info("amcp: session_end — no meaningful activity, skipping checkpoint");
+      return;
+    }
+
     api.logger.info("amcp: session_end — checkpoint queued");
     const entry: CheckpointLogEntry = {
       timestamp: new Date().toISOString(),
       trigger: "session_end",
-      contextPercent: 0,
-      usedTokens: 0,
-      maxTokens: 0,
+      contextPercent: typeof data.contextPercent === "number" ? data.contextPercent : 0,
+      usedTokens: usedTokens > 0 ? usedTokens : 0,
+      maxTokens: typeof data.maxTokens === "number" ? data.maxTokens : 0,
       cooldownMs: config.checkpointCooldownMs,
     };
-    appendCheckpointLog(checkpointLogPath, entry).catch((err) =>
-      api.logger.warn(`amcp: failed to log session_end trigger: ${err}`),
-    );
+
+    // Await the log write to ensure checkpoint is recorded before session terminates.
+    try {
+      await appendCheckpointLog(checkpointLogPath, entry);
+    } catch (err) {
+      api.logger.warn(`amcp: failed to log session_end trigger: ${err}`);
+    }
     api.emit("amcp:checkpoint:requested", { trigger: "session_end" });
   });
 

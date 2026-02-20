@@ -1992,3 +1992,24 @@
   - File sizes: index.ts=662, integration.test.ts=517 (both under 800)
   - Structural grep: appendCheckpointLog called 4 times in hooks (one per hook)
   - CheckpointLogEntry import confirmed in index.ts
+
+## Task: P4-HOOK-02 — Implement session_end hook with activity check (DONE)
+- Enhanced `session_end` hook in `src/index.ts` (lines 216-250):
+  - Hook is now `async` — awaits log write to ensure checkpoint is recorded before session terminates
+  - Checks `event.data` for meaningful activity metrics (`usedTokens`, `messageCount`)
+  - If activity metrics provided and all are zero → skips checkpoint (logs "no meaningful activity")
+  - If no activity data provided → backwards compatible, fires checkpoint (safe default)
+  - If any activity metric > 0 → fires checkpoint normally
+  - Extracts `contextPercent`, `usedTokens`, `maxTokens` from event data into CheckpointLogEntry
+  - Uses `await appendCheckpointLog()` with try/catch instead of `.catch()` for guaranteed completion
+- Updated `src/integration.test.ts` with 4 tests:
+  - Test: "session_end hook emits checkpoint when no activity data provided" — backwards compatibility
+  - Test: "session_end hook emits checkpoint when session had meaningful activity" — usedTokens=5000, messageCount=10
+  - Test: "session_end hook skips checkpoint when session had no activity" — usedTokens=0, messageCount=0
+  - Test: "session_end hook writes to checkpoint-log.jsonl before returning" — verifies usedTokens/contextPercent/maxTokens in JSONL
+- Updated "all hooks write to checkpoint-log.jsonl" test to await session_end handler
+- Verification:
+  - TypeScript: `tsc --noEmit` passes cleanly
+  - vitest: all 498 tests pass (32 integration), 0 failures
+  - File sizes: index.ts=682, integration.test.ts=574 (both under 800)
+  - Structural grep: "meaningful activity" check present, `await appendCheckpointLog` confirmed

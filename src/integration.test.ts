@@ -216,14 +216,71 @@ describe("integration: lifecycle hooks", () => {
     });
   });
 
-  it("session_end hook emits checkpoint requested event", () => {
+  it("session_end hook emits checkpoint when no activity data provided", async () => {
     const handlers = state.hooks.get("session_end")!;
-    handlers[0](makeEvent("session_end"));
+    await handlers[0](makeEvent("session_end"));
 
     expect(state.emissions).toContainEqual({
       event: "amcp:checkpoint:requested",
       data: { trigger: "session_end" },
     });
+  });
+
+  it("session_end hook emits checkpoint when session had meaningful activity", async () => {
+    const handlers = state.hooks.get("session_end")!;
+    const event: LifecycleEvent = {
+      type: "session_end",
+      timestamp: new Date().toISOString(),
+      data: { usedTokens: 5000, messageCount: 10, contextPercent: 45, maxTokens: 200000 },
+    };
+    await handlers[0](event);
+
+    expect(state.emissions).toContainEqual({
+      event: "amcp:checkpoint:requested",
+      data: { trigger: "session_end" },
+    });
+    expect(state.logs.info.some((l) => l.includes("checkpoint queued"))).toBe(true);
+  });
+
+  it("session_end hook skips checkpoint when session had no activity", async () => {
+    const handlers = state.hooks.get("session_end")!;
+    const event: LifecycleEvent = {
+      type: "session_end",
+      timestamp: new Date().toISOString(),
+      data: { usedTokens: 0, messageCount: 0 },
+    };
+    await handlers[0](event);
+
+    const sessionEndEmissions = state.emissions.filter(
+      (e) => e.data?.trigger === "session_end",
+    );
+    expect(sessionEndEmissions).toHaveLength(0);
+    expect(state.logs.info.some((l) => l.includes("no meaningful activity"))).toBe(true);
+  });
+
+  it("session_end hook writes to checkpoint-log.jsonl before returning", async () => {
+    const handlers = state.hooks.get("session_end")!;
+    const event: LifecycleEvent = {
+      type: "session_end",
+      timestamp: new Date().toISOString(),
+      data: { usedTokens: 1200, maxTokens: 200000, contextPercent: 12 },
+    };
+    await handlers[0](event);
+
+    // No need to wait — the hook awaits the log write
+    const logContent = await readFile(checkpointLogPath, "utf-8");
+    const entries = logContent
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line));
+
+    const sessionEntry = entries.find(
+      (e: Record<string, unknown>) => e.trigger === "session_end",
+    );
+    expect(sessionEntry).toBeDefined();
+    expect(sessionEntry.usedTokens).toBe(1200);
+    expect(sessionEntry.contextPercent).toBe(12);
+    expect(sessionEntry.maxTokens).toBe(200000);
   });
 
   it("before_compaction hook emits high-priority checkpoint event", () => {
@@ -252,10 +309,10 @@ describe("integration: lifecycle hooks", () => {
 
   it("all hooks write to checkpoint-log.jsonl", async () => {
     for (const [, handlers] of state.hooks.entries()) {
-      handlers[0](makeEvent("test"));
+      await handlers[0](makeEvent("test"));
     }
 
-    // Wait for async file writes to complete
+    // Wait briefly for any fire-and-forget writes (gateway_start/stop/before_compaction)
     await new Promise((resolve) => setTimeout(resolve, 200));
 
     const logContent = await readFile(checkpointLogPath, "utf-8");
