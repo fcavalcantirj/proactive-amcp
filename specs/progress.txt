@@ -1480,3 +1480,31 @@
   - vitest run passes: 150 tests, 8 test files, 0 failures
   - All 5 PRD steps verified via structural grep
   - File sizes: resurrection-identity.ts=280, resurrection-identity.test.ts=354, index.ts=360, integration.test.ts=416 (all under 800)
+
+## Task (P4-ID-04): Support multiple agent identities (DONE)
+- Created `src/multi-identity.ts` (411 lines) — multi-identity manager at plugin level
+  - `listIdentities()`: reads all stored identities from ~/.amcp/identities/<aid>/identity.json
+  - `getActiveAid()`: reads active-identity marker, falls back to main identity.json
+  - `storeIdentity()`: copies validated identity to identities/<aid>/ directory
+  - `switchIdentity()`: copies target identity to main path, updates active-identity marker
+  - `getCheckpointPathForAid()`: returns per-identity last-checkpoint.json path
+  - `validateCheckpointOwnership()`: compares checkpoint AID to expected AID, blocks cross-identity resurrection
+  - `createMultiIdentityService()`: plugin service with start/stop/status, identity switching, cross-identity guard
+- Created `src/multi-identity.test.ts` (532 lines) — 25 tests covering:
+  - listIdentities: empty dir, nonexistent dir, lists stored identities, skips invalid
+  - getActiveAid: reads marker, falls back to identity.json, returns null when neither exists
+  - storeIdentity: stores valid identity, returns null for invalid, provides per-identity checkpoint path
+  - switchIdentity: switches to stored identity, updates marker + main path, returns null for nonexistent
+  - getCheckpointPathForAid: returns correct per-identity path, different per agent
+  - validateCheckpointOwnership: allows matching AID, blocks mismatched AID, handles nested identity.aid, allows legacy (no AID), allows missing checkpoint
+  - createMultiIdentityService: start/stop lifecycle, identity switching with events, cross-identity resurrection blocked, error on nonexistent switch, graceful start without identity
+- Updated `src/index.ts` (382 lines):
+  - Imports and registers createMultiIdentityService as "amcp-multi-identity" service
+  - Reads amcpIdentitiesDir from PluginApi extension, defaults to ~/.amcp/identities
+  - Exports: listIdentities, getActiveAid, storeIdentity, switchIdentity, getCheckpointPathForAid, validateCheckpointOwnership, createMultiIdentityService
+- Updated `src/integration.test.ts` (417 lines): service count 6→7 in 3 assertions, added amcp-multi-identity name check
+- Verification:
+  - tsc --noEmit passes with zero errors
+  - vitest run passes: 175 tests, 9 test files, 0 failures
+  - All 5 PRD steps verified: store by AID (identities/<aid>/), CLI switching (switchIdentity), per-identity checkpoint history (getCheckpointPathForAid), cross-identity prevention (validateCheckpointOwnership), multi-agent works (25 tests pass)
+  - File sizes: multi-identity.ts=411, multi-identity.test.ts=532, index.ts=382, integration.test.ts=417 (all under 800)

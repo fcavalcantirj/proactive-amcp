@@ -1277,7 +1277,7 @@
       "Prevent cross-identity resurrection",
       "Verify: multi-agent setup works correctly"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "P4-RES-01",

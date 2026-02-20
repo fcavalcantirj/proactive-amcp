@@ -14,6 +14,7 @@ import { createValueMonitor } from "./monitors/value-monitor.js";
 import { createIdentityService } from "./identity-manager.js";
 import { createKeyRotationService } from "./key-rotation.js";
 import { createResurrectionIdentityService } from "./monitors/resurrection-identity.js";
+import { createMultiIdentityService } from "./multi-identity.js";
 import type {
   AmcpPlugin,
   AmcpPluginConfig,
@@ -304,12 +305,24 @@ async function register(api: PluginApi): Promise<void> {
     lastCheckpointPath,
   });
 
+  // Multi-identity — stores identities by AID, supports switching, blocks cross-identity resurrection
+  const identitiesDir =
+    (apiExt.amcpIdentitiesDir as string) ??
+    join(homedir(), ".amcp", "identities");
+  const multiIdentityService = createMultiIdentityService({
+    logger: api.logger,
+    emit: api.emit.bind(api),
+    identitiesDir,
+    identityPath,
+  });
+
   api.registerService(contextMonitor);
   api.registerService(valueMonitor);
   api.registerService(memoryMonitor);
   api.registerService(identityService);
   api.registerService(keyRotationService);
   api.registerService(resurrectionIdentityService);
+  api.registerService(multiIdentityService);
 
   // Register lifecycle hooks
   registerHooks(api, config);
@@ -357,4 +370,13 @@ export {
   verifyAndInjectIdentity,
   createResurrectionIdentityService,
 } from "./monitors/resurrection-identity.js";
+export {
+  listIdentities,
+  getActiveAid,
+  storeIdentity,
+  switchIdentity,
+  getCheckpointPathForAid,
+  validateCheckpointOwnership,
+  createMultiIdentityService,
+} from "./multi-identity.js";
 export type * from "./types.js";
