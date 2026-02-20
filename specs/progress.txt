@@ -1892,3 +1892,39 @@
     4. Register 'amcp identity export' ✓ (validate + copy to --out path)
     5. Verify: all identity commands work ✓ (25 tests cover all subcommands)
   - File sizes: identity-command.ts=575, identity-command.test.ts=530, index.ts=557 (all under 800)
+
+## Task: P4-CLI-05 — Implement 'openclaw amcp history' command (DONE)
+- Created `src/cli/history-command.ts` (317 lines) — checkpoint history CLI command
+- Reads checkpoint-log.jsonl (append-only JSONL written by context/value monitors)
+- Returns entries in reverse chronological order (newest first)
+- Enriches entries with CID from last-checkpoint.json when timestamps match
+- Supports --limit N flag (default: 10) to control output count
+- Supports --json flag for machine-readable JSON output
+- Human-readable table format with Timestamp, Trigger, Context %, CID columns
+- CIDs truncated for display (first 12 + ... + last 4 chars)
+- Graceful handling: missing files, empty logs, malformed JSON lines skipped
+- Created `src/cli/history-command.test.ts` (672 lines) — 28 vitest tests:
+  - Reads entries from checkpoint-log.jsonl (single, multiple, reverse order)
+  - Handles empty file, missing file, malformed lines
+  - --limit controls output count (limits, exceeds total, defaults to 10, newest first)
+  - CID enrichment from last-checkpoint.json (matching timestamp, mismatched, missing, pinataCid fallback)
+  - formatHistoryResult (table headers, empty state, error, showing/total, CID truncation, dash for null CID)
+  - Handler: --json output, human-readable default, --limit via handler, invalid --limit rejected, combined flags
+  - P4-CLI-05 verification: all checkpoints shown, includes CID + timestamp + trigger reason
+- Updated `src/index.ts`:
+  - Import `createHistoryHandler` from `./cli/history-command.js`
+  - Added `checkpointLogPath` to CliRegistrationDeps interface
+  - Replaced placeholder history command with real handler using `createHistoryHandler()`
+  - Added 3 exports from history-command module (runHistory, formatHistoryResult, createHistoryHandler)
+  - Placeholder list reduced to 1 (verify — P4-CLI-06)
+- Verification:
+  - vitest: all 28 new tests pass
+  - TypeScript: `tsc --noEmit` passes cleanly
+  - npm run build: succeeds
+  - All 5 PRD steps verified:
+    1. Register 'amcp history' CLI command ✓
+    2. List recent checkpoints with CID, timestamp, trigger reason ✓
+    3. Support --limit to control output ✓
+    4. Support --json for machine-readable output ✓
+    5. Verify: history shows all checkpoints ✓
+  - File sizes: history-command.ts=317, history-command.test.ts=672, index.ts=590 (all under 800)

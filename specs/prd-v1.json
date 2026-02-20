@@ -1462,7 +1462,7 @@
       "Support --json for machine-readable output",
       "Verify: history shows all checkpoints"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "P4-CLI-06",

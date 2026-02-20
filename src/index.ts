@@ -26,6 +26,7 @@ import { createStatusHandler } from "./cli/status-command.js";
 import { createCheckpointHandler } from "./cli/checkpoint-command.js";
 import { createResurrectHandler } from "./cli/resurrect-command.js";
 import { createIdentityHandler } from "./cli/identity-command.js";
+import { createHistoryHandler } from "./cli/history-command.js";
 import type {
   AmcpPlugin,
   AmcpPluginConfig,
@@ -194,6 +195,7 @@ interface CliRegistrationDeps {
   services: PluginService[];
   identityPath: string;
   lastCheckpointPath: string;
+  checkpointLogPath: string;
   scriptDir: string;
 }
 
@@ -258,9 +260,22 @@ function registerCliCommands(api: PluginApi, deps: CliRegistrationDeps): void {
     handler: identityHandler,
   });
 
-  // Placeholder commands — will be implemented in P4-CLI-05 through P4-CLI-06
+  // 'amcp history' — fully implemented (P4-CLI-05)
+  const historyHandler = createHistoryHandler({
+    logger: api.logger,
+    config: deps.config,
+    checkpointLogPath: deps.checkpointLogPath,
+    lastCheckpointPath: deps.lastCheckpointPath,
+  });
+
+  api.registerCommand("amcp", {
+    name: "history",
+    description: "Show checkpoint history",
+    handler: historyHandler,
+  });
+
+  // Placeholder commands — will be implemented in P4-CLI-06
   const placeholderCommands = [
-    { name: "history", description: "Show checkpoint history" },
     { name: "verify", description: "Verify checkpoint integrity" },
   ];
 
@@ -442,6 +457,7 @@ async function register(api: PluginApi): Promise<void> {
     services: allServices,
     identityPath,
     lastCheckpointPath,
+    checkpointLogPath,
     scriptDir,
   });
 
@@ -566,4 +582,9 @@ export {
   formatExportResult,
   createIdentityHandler,
 } from "./cli/identity-command.js";
+export {
+  runHistory,
+  formatHistoryResult,
+  createHistoryHandler,
+} from "./cli/history-command.js";
 export type * from "./types.js";
