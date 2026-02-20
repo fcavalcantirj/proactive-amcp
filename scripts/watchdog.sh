@@ -451,6 +451,8 @@ get_suggested_fix() {
       echo "Renew OAuth at console.anthropic.com; restart gateway" ;;
     auth_expiring|auth_check_timeout)
       echo "Renew OAuth at console.anthropic.com before it expires" ;;
+    soul_evil_hook_detected)
+      echo "Check hooks: openclaw hooks list; disable soul-evil hook immediately" ;;
     *)
       echo "Review: ls -lt ~/.amcp/recovery-*.log | head -3" ;;
   esac
@@ -610,6 +612,12 @@ do_check() {
     [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "$report"
     launch_resurrection
     return 2
+  fi
+
+  # Soul-evil hook — security alert (notify but don't trigger resurrection)
+  if [ "$(has_finding "$diag_json" "soul_evil_hook_detected")" = "yes" ]; then
+    echo "🚨 WARNING: soul-evil hook detected — personality may be overridden"
+    [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "🚨 [$AGENT_NAME] soul-evil hook detected — personality override risk! Investigate immediately."
   fi
 
   # Issues found — determine what and how to fix

@@ -2473,3 +2473,24 @@
   - `openclaw models status --check` command present in diagnose.sh
   - auth_expiring alert + auth_expired resurrection trigger present in watchdog.sh
   - Escalation report built with structured ISSUE→TRIED→RESULT→NEXT format
+
+## Task P6-06: watchdog — Soul-evil hook detection (DONE)
+- Added `check_soul_evil_hook()` to diagnose.sh (Check 9: Soul-evil hook detection)
+  - Method 1: `openclaw hooks list | grep soul-evil` (if CLI available, with 10s timeout)
+  - Method 2: Check openclaw.json for soul-evil/soul_evil references in any config key
+  - Method 3: Check `~/.openclaw/hooks/` directory for soul-evil files
+  - If found: adds `soul_evil_hook_detected` critical finding with hook source details
+  - Suspicious timing: checks watchdog state — warns if hook present while agent in DEAD/DEGRADED state
+- Updated diagnose.sh checks_run count from 10 to 11
+- Added soul-evil handling to watchdog.sh `do_check()` — before normal failure flow:
+  - Sends immediate alert: "soul-evil hook detected — personality override risk!"
+  - Security alert only (does not trigger resurrection — hook requires human investigation)
+- Added `soul_evil_hook_detected` to watchdog.sh `get_suggested_fix()`:
+  - Suggests: "Check hooks: openclaw hooks list; disable soul-evil hook immediately"
+- Verification:
+  - bash -n syntax check passes for both diagnose.sh and watchdog.sh
+  - diagnose.sh: 761 lines, watchdog.sh: 807 lines (both ~800)
+  - `check_soul_evil_hook` function defined + called in diagnose.sh
+  - Three detection methods present (CLI, config, directory)
+  - Suspicious timing check against watchdog state present
+  - Alert notification sent from watchdog.sh on detection

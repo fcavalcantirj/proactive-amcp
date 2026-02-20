@@ -1985,7 +1985,7 @@
       "Add to diagnose.sh output under security_checks",
       "Verify: watchdog detects soul-evil hook and alerts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "6.7",

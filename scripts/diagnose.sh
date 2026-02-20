@@ -627,6 +627,78 @@ check_auth_status() {
 }
 
 # ============================================================
+# Check 9: Soul-evil hook detection (personality override risk)
+# ============================================================
+check_soul_evil_hook() {
+  local openclaw_bin
+  openclaw_bin=$(command -v openclaw 2>/dev/null || echo "")
+  local hook_found=false
+  local hook_source=""
+
+  # Method 1: openclaw hooks list (if CLI available)
+  if [ -n "$openclaw_bin" ]; then
+    local hooks_output
+    hooks_output=$(timeout 10 "$openclaw_bin" hooks list 2>/dev/null || true)
+    if echo "$hooks_output" | grep -qi "soul-evil"; then
+      hook_found=true
+      hook_source="openclaw hooks list"
+    fi
+  fi
+
+  # Method 2: Check openclaw.json for soul-evil references
+  if [ "$hook_found" = false ] && [ -f "$OPENCLAW_CONFIG" ]; then
+    if DIAGNOSE_CONFIG="$OPENCLAW_CONFIG" python3 -c "
+import json, os, sys
+try:
+    c = json.load(open(os.environ['DIAGNOSE_CONFIG']))
+    text = json.dumps(c).lower()
+    sys.exit(0 if 'soul-evil' in text or 'soul_evil' in text else 1)
+except:
+    sys.exit(1)
+" 2>/dev/null; then
+      hook_found=true
+      hook_source="openclaw.json config"
+    fi
+  fi
+
+  # Method 3: Check hooks directory for soul-evil files
+  if [ "$hook_found" = false ]; then
+    local hooks_dir="$HOME/.openclaw/hooks"
+    if [ -d "$hooks_dir" ] && ls "$hooks_dir" 2>/dev/null | grep -qi "soul-evil"; then
+      hook_found=true
+      hook_source="hooks directory"
+    fi
+  fi
+
+  if [ "$hook_found" = false ]; then
+    return 0
+  fi
+
+  # Suspicious timing: is hook present while agent is in unhealthy state?
+  local timing_note=""
+  if [ -f "$STATE_FILE" ]; then
+    timing_note=$(DIAGNOSE_STATE="$STATE_FILE" python3 -c "
+import json, os
+try:
+    s = json.load(open(os.environ['DIAGNOSE_STATE']))
+    state = s.get('state', 'HEALTHY')
+    if state in ('DEAD', 'DEGRADED'):
+        lh = s.get('lastHealthy', 'unknown')
+        print('. Suspicious: hook present while agent in ' + state + ' state (last healthy: ' + lh + ')')
+except:
+    pass
+" 2>/dev/null || true)
+  fi
+
+  add_finding "soul_evil_hook_detected" "critical" \
+    "soul-evil hook detected via ${hook_source} — personality may be overridden${timing_note}" \
+    "" \
+    ""
+
+  return 1
+}
+
+# ============================================================
 # Run all checks
 # ============================================================
 has_issues=false
@@ -648,6 +720,7 @@ check_disk || has_issues=true
 check_memory || has_issues=true
 check_crash_loop || has_issues=true
 check_auth_status || has_issues=true
+check_soul_evil_hook || has_issues=true
 
 # ============================================================
 # Output structured JSON
@@ -676,7 +749,7 @@ findings = json.loads('''$findings_json''')
 result = {
     'status': '$status',
     'findings': findings,
-    'checks_run': 10,
+    'checks_run': 11,
     'findings_count': len(findings)
 }
 print(json.dumps(result, indent=2))
