@@ -1389,3 +1389,37 @@
   - npm run build (tsc) passes with zero errors
   - npm test passes: 93 tests (22 + 13 + 27 + 20 + 11), 5 test files, 0 failures
   - File sizes: value-monitor.ts=239, value-monitor.test.ts=399, types.ts=193, index.ts=277 (all under 800)
+
+## Task: P4-ID-01 — Implement system-level KERI identity validation (DONE)
+- Created `src/identity-manager.ts` (451 lines) — KERI identity validation for the plugin layer
+- `validateIdentity(path?)`: loads ~/.amcp/identity.json, validates AID format, public key, KEL chain
+  - AID validation: must match KERI format "B" + base64url(Ed25519 public key), 44-45 chars
+  - Public key validation: non-empty, base64/base64url encoded, 40-50 char range
+  - KEL chain validation: first event must be "inception" with matching AID, subsequent events "rotation"
+  - Pre-rotation commitment detection: warns when nextKeyHash present (full hash verification requires amcp CLI)
+  - Legacy identity rejection: sha256 hex AIDs (64-char hex) flagged as invalid
+  - Secret detection: warns if pinata_jwt, solvr_api_key, etc. found in identity.json
+- `getIdentity(logger, path?)`: loads and validates identity, logs errors/warnings, returns AmcpIdentity or null
+- `createIdentityService(deps)`: plugin service with start/stop/status/getIdentity/isValid
+  - On start: validates identity, emits `amcp:identity:validated` or `amcp:identity:invalid`
+  - Invalid identity: logs "checkpoints blocked until resolved", emits alert
+  - status() reports: running, identityValid, aid, errors
+- Returns `IdentityValidationResult`: { valid, identity, errors[], warnings[] }
+- Integrated into `src/index.ts` (320 lines):
+  - Imports createIdentityService, registers as "amcp-identity-manager" service
+  - Identity path configurable via gateway-provided amcpIdentityPath
+  - Exported: validateIdentity, getIdentity, createIdentityService from index.ts
+- Created `src/identity-manager.test.ts` (469 lines) — 22 vitest tests:
+  - validateIdentity: valid KERI identity, missing file, invalid JSON, no B prefix, short AID
+  - validateIdentity: sha256 legacy rejection, missing AID, missing publicKey, secrets warning
+  - validateIdentity: no KEL (valid), empty KEL (valid), wrong inception type, mismatched inception AID
+  - validateIdentity: inception + rotation chain, non-rotation after inception
+  - getIdentity: valid file, invalid file, secrets warning logged
+  - createIdentityService: valid identity start, invalid identity alert, legacy sha256 alert, clean stop
+- Updated `src/integration.test.ts`: service count 3→4 in 3 assertions (identity-manager added)
+- Verification:
+  - npm run build (tsc) passes with zero errors
+  - npm test passes: 115 tests (22 + 22 + 13 + 27 + 20 + 11), 6 test files, 0 failures
+  - File sizes: identity-manager.ts=451, identity-manager.test.ts=469, index.ts=320, integration.test.ts=414 (all under 800)
+  - Structural grep: validateIdentity (10 refs), getIdentity (5 refs), createIdentityService (4 refs)
+  - amcp:identity:invalid emitted on invalid identity (3 refs in tests)

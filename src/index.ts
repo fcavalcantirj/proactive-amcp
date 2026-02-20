@@ -11,6 +11,7 @@ import { join } from "node:path";
 import { homedir } from "node:os";
 import { createContextMonitor } from "./monitors/context-monitor.js";
 import { createValueMonitor } from "./monitors/value-monitor.js";
+import { createIdentityService } from "./identity-manager.js";
 import type {
   AmcpPlugin,
   AmcpPluginConfig,
@@ -265,9 +266,21 @@ async function register(api: PluginApi): Promise<void> {
   });
 
   const memoryMonitor = createMemoryMonitor(config, api.logger);
+
+  // Identity manager — validates KERI identity on start, blocks checkpoints if invalid
+  const identityPath =
+    (apiExt.amcpIdentityPath as string) ??
+    join(homedir(), ".amcp", "identity.json");
+  const identityService = createIdentityService({
+    logger: api.logger,
+    emit: api.emit.bind(api),
+    identityPath,
+  });
+
   api.registerService(contextMonitor);
   api.registerService(valueMonitor);
   api.registerService(memoryMonitor);
+  api.registerService(identityService);
 
   // Register lifecycle hooks
   registerHooks(api, config);
@@ -299,4 +312,9 @@ export {
 };
 export { createContextMonitor } from "./monitors/context-monitor.js";
 export { createValueMonitor } from "./monitors/value-monitor.js";
+export {
+  validateIdentity,
+  getIdentity,
+  createIdentityService,
+} from "./identity-manager.js";
 export type * from "./types.js";

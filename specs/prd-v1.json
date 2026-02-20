@@ -1235,7 +1235,7 @@
       "Export validateIdentity(), getIdentity() functions",
       "Verify: invalid identity triggers alert, blocks checkpoint"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "P4-ID-02",
