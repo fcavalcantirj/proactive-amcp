@@ -1548,7 +1548,7 @@
       "Add troubleshooting section",
       "Verify: README covers all features"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "P4-DOC-02",

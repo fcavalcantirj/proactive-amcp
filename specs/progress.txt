@@ -2064,3 +2064,27 @@
   - TypeScript: `tsc --noEmit` passes cleanly
   - vitest: all 507 tests pass (36 integration), 0 failures
   - File sizes: index.ts=710, integration.test.ts=658 (both under 800)
+
+## Task: P4-DOC-01 — Write plugin README (DONE)
+- Created `docs/PLUGIN.md` (391 lines)
+- Document structure:
+  1. Introduction: two-layer defense model (plugin + skill), requirements
+  2. Installation: npm install, git clone, clawhub, build from source
+  3. OpenClaw gateway config: ~/.openclaw/openclaw.json plugin section with example
+  4. Config options: all 11 options documented with types, defaults, descriptions
+     - Top-level: enabled, autoCheckpoint, checkpointIntervalMs, contextThreshold, ipfsPinningService, encryptionKeyPath, checkpointCooldownMs
+     - Nested: memoryIntegrity (3), identity (2), resurrection (2)
+     - Full example JSON config included
+  5. CLI commands: all 6 documented (status, checkpoint, resurrect, identity, history, verify) with usage examples
+  6. Lifecycle hooks: all 6 documented (gateway_start, gateway_stop, session_end, context_warning, before_compaction, before_agent_start)
+  7. Monitors: all 10 services documented (context, value, memory integrity, identity, key rotation, resurrection identity, resurrection detector, multi-identity, recovery prompt injector, partial resurrection)
+  8. Events: 16 custom events on amcp:* namespace with data schemas
+  9. State files: 14 files/directories documented with format and purpose
+  10. Troubleshooting: 12 problem/solution entries
+  11. Skill layer integration: responsibility matrix (plugin vs skill)
+- Verification:
+  - grep confirms installation (npm install, clawhub install) documented
+  - grep confirms openclaw.json config documented
+  - grep confirms all 6 CLI commands documented (status, checkpoint, resurrect, identity, history, verify)
+  - grep confirms troubleshooting section present
+  - File size: 391 lines (under 800)
