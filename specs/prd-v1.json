@@ -1718,7 +1718,7 @@
       "Log escalation decisions with clear reasoning for debugging",
       "Verify: Introduce persistent config error → watchdog escalates after 5 failures (not 112)"
     ],
-    "passes": false,
+    "passes": true,
     "phase": 5
   },
   {

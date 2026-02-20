@@ -22,6 +22,7 @@ CHECK_INTERVAL="${CHECK_INTERVAL:-60}"  # seconds
 FAIL_THRESHOLD="${FAIL_THRESHOLD:-2}"   # consecutive failures before DEAD
 RETRY_DELAY_INITIAL="${RETRY_DELAY_INITIAL:-300}"  # 5 min initial retry delay
 RETRY_DELAY_MAX="${RETRY_DELAY_MAX:-1800}"          # 30 min max retry delay
+ESCALATION_THRESHOLD="${ESCALATION_THRESHOLD:-5}"   # same error N times → escalate
 
 # ============================================================
 # Identity pre-flight — validate before operating
@@ -172,10 +173,19 @@ state["state"] = new_state
 state["consecutiveFailures"] = failures
 state["lastCheck"] = datetime.now().isoformat()
 state["errors"] = errors_str.split() if errors_str else []
+
+# Track error history for stuck-state detection (keep last 20 entries)
+if "errorHistory" not in state:
+    state["errorHistory"] = []
+if errors_str:
+    state["errorHistory"].append(errors_str)
+    state["errorHistory"] = state["errorHistory"][-20:]
+
 if new_state == "HEALTHY":
     state["lastHealthy"] = datetime.now().isoformat()
     state["retryDelay"] = 0
     state["resurrectionPid"] = None
+    state["errorHistory"] = []
 
 tmp = state_file + ".tmp"
 with open(tmp, "w") as f:
@@ -202,6 +212,71 @@ try:
 except (json.JSONDecodeError, FileNotFoundError):
     print(0)
 "
+}
+
+# ============================================================
+# Error history — track stability to detect stuck states
+# ============================================================
+
+# Read last N error summaries from state file
+get_previous_errors() {
+  local count="${1:-$ESCALATION_THRESHOLD}"
+  WATCHDOG_STATE_FILE="$STATE_FILE" \
+  WATCHDOG_COUNT="$count" \
+  python3 << 'PYEOF'
+import json, os
+state_file = os.environ["WATCHDOG_STATE_FILE"]
+count = int(os.environ["WATCHDOG_COUNT"])
+try:
+    with open(state_file) as f:
+        state = json.load(f)
+    history = state.get("errorHistory", [])
+    for entry in history[-count:]:
+        print(entry)
+except (json.JSONDecodeError, FileNotFoundError):
+    pass
+PYEOF
+}
+
+# Check if same error has persisted for N consecutive checks
+# Returns 0 (true) if stuck, 1 (false) if not
+# Prints the stuck error type to stdout when stuck
+check_error_stability() {
+  local current_errors="$1"
+  WATCHDOG_STATE_FILE="$STATE_FILE" \
+  WATCHDOG_THRESHOLD="$ESCALATION_THRESHOLD" \
+  WATCHDOG_CURRENT="$current_errors" \
+  python3 << 'PYEOF'
+import json, os, sys
+
+state_file = os.environ["WATCHDOG_STATE_FILE"]
+threshold = int(os.environ["WATCHDOG_THRESHOLD"])
+current = os.environ["WATCHDOG_CURRENT"]
+
+try:
+    with open(state_file) as f:
+        state = json.load(f)
+    history = state.get("errorHistory", [])
+except (json.JSONDecodeError, FileNotFoundError):
+    sys.exit(1)
+
+if not current or not history:
+    sys.exit(1)
+
+# Count consecutive matching errors from end of history
+consecutive = 0
+for entry in reversed(history):
+    if entry == current:
+        consecutive += 1
+    else:
+        break
+
+# Current check makes it consecutive+1
+if consecutive + 1 >= threshold:
+    print(current)
+    sys.exit(0)
+sys.exit(1)
+PYEOF
 }
 
 # ============================================================
@@ -419,6 +494,50 @@ do_check() {
       return 0
     fi
     echo "❌ Session fix failed, escalating to resurrection"
+  fi
+
+  # Check for stuck state — same error persisting beyond escalation threshold
+  local stuck_errors=""
+  stuck_errors=$(check_error_stability "$errors") || true
+
+  if [ -n "$stuck_errors" ]; then
+    echo "🚨 STUCK STATE: Same errors for $ESCALATION_THRESHOLD+ checks: $stuck_errors"
+    echo "🚨 Escalating — restarts won't fix this, trying config-level recovery"
+
+    # Route by stuck error type
+    if echo "$stuck_errors" | grep -q "config_semantic_invalid"; then
+      echo "🔧 Escalation: config_semantic_invalid → skipping restart, direct config restoration"
+      if [ -x "$SCRIPT_DIR/try-fix-config.sh" ]; then
+        if "$SCRIPT_DIR/try-fix-config.sh" 2>&1; then
+          echo "✅ Config restored via escalation"
+          update_state "HEALTHY" 0 ""
+          [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "✅ [$AGENT_NAME] Stuck config error auto-fixed via escalation (after $failures failures)"
+          return 0
+        fi
+      fi
+      echo "❌ Config fix escalation failed, proceeding to resurrection"
+    fi
+
+    if echo "$stuck_errors" | grep -q "gateway_unresponsive"; then
+      echo "🔧 Escalation: gateway_unresponsive → trying config fix before resurrection"
+      if [ -x "$SCRIPT_DIR/try-fix-config.sh" ]; then
+        if "$SCRIPT_DIR/try-fix-config.sh" 2>&1; then
+          echo "✅ Config restored via escalation (gateway was unresponsive)"
+          update_state "HEALTHY" 0 ""
+          [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "✅ [$AGENT_NAME] Stuck gateway error auto-fixed via config restoration (after $failures failures)"
+          return 0
+        fi
+      fi
+      echo "❌ Config fix didn't help, proceeding to resurrection"
+    fi
+
+    # Stuck and escalation fixes failed — force resurrection regardless of threshold
+    update_state "DEAD" "$failures" "$errors"
+    local condensed_errors
+    condensed_errors=$(condense_error_msg "$errors")
+    [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "🚨 [$AGENT_NAME] STUCK ($failures failures, same error): $condensed_errors. Escalating to resurrection..."
+    launch_resurrection
+    return 2
   fi
 
   # Gateway down or fix failed — use threshold + resurrection flow

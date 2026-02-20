@@ -2152,3 +2152,28 @@
   - `grep` confirms `openclaw doctor --fix` as fix_command
   - `grep` confirms all 4 required patterns: plugin not found, plugin id mismatch, profile not found, Invalid config
   - File sizes: diagnose.sh=406L, watchdog.sh=471L (both under 800)
+
+## Task: P5-02 — Add escalation path for persistent same-error failures (DONE)
+- Added ESCALATION_THRESHOLD env var (default 5) to watchdog.sh
+- Added get_previous_errors() function: reads last N error summaries from errorHistory in state file
+- Added check_error_stability() function: compares current errors against history, returns stuck error type
+  - Counts consecutive matching errors from end of history
+  - If consecutive + 1 (current) >= threshold, returns the stuck error string (exit 0)
+  - Otherwise exits 1 (not stuck)
+- Updated update_state() to track errorHistory in watchdog-state.json:
+  - Appends current error summary to errorHistory array (kept to last 20 entries)
+  - Clears errorHistory on HEALTHY transition
+- Added stuck-state detection in do_check():
+  - After normal fix attempts (config semantic, session corruption), checks for stuck state
+  - If stuck on config_semantic_invalid: tries try-fix-config.sh for direct config restoration
+  - If stuck on gateway_unresponsive: tries try-fix-config.sh before falling through to resurrection
+  - If stuck and escalation fixes fail: forces resurrection with STUCK notification
+  - Logs escalation decisions with clear reasoning (🚨 STUCK STATE, 🔧 Escalation, ❌ failure)
+- Notifications include failure count and stuck context for human intervention
+- Verification:
+  - watchdog.sh passes `bash -n` syntax check
+  - File size: 590 lines (under 800)
+  - `grep` confirms ESCALATION_THRESHOLD (4 refs), get_previous_errors (1 def), check_error_stability (2 refs)
+  - `grep` confirms errorHistory (6 refs in update_state + functions)
+  - `grep` confirms escalation routing for config_semantic_invalid and gateway_unresponsive
+  - `grep` confirms try-fix-config.sh guard pattern ([ -x ... ])
