@@ -2229,3 +2229,21 @@
   - All 4 scripts pass `bash -n` syntax check
   - `grep` confirms `experimental-global-webcrypto` present in all 4 scripts (8 matches)
   - File sizes: resuscitate.sh=637, checkpoint.sh=376, full-checkpoint.sh=800, watchdog.sh=600 (all ≤800)
+
+## Task P5-06: solvr — Fix Solvr API key discovery fallback chain (DONE)
+- Added `_resolve_solvr_api_key()` function to `solvr-integration.sh` with 5-location fallback chain:
+  1. SOLVR_API_KEY env var (already set)
+  2. ~/.amcp/config.json → apiKeys.solvr
+  3. ~/.amcp/config.json → solvr.apiKey
+  4. ~/.amcp/config.json → pinning.solvr.apiKey
+  5. ~/.config/solvr/credentials.json → apiKey
+- Logs which location key was found (for debugging): "Solvr: API key found from <location>"
+- If no key found: logs clear message "Solvr: No API key found in any location — Solvr features disabled"
+- Auto-resolves when sourced (called at bottom of function definitions)
+- Removed duplicate key resolution from resuscitate.sh (lines 32-43) — now handled by solvr-integration.sh
+- Verification:
+  - Both scripts pass `bash -n` syntax check
+  - All 5 fallback locations present in code (apiKeys.solvr, solvr.apiKey, pinning.solvr.apiKey, credentials.json)
+  - Logging present for all found/not-found paths
+  - File sizes: solvr-integration.sh=342, resuscitate.sh=627 (both under 800)
+  - log() defined at line 161 in resuscitate.sh, source solvr-integration.sh at line 193 (correct order)

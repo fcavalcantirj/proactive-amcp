@@ -1791,7 +1791,7 @@
       "If no key found, log clear message but don't fail (Solvr is optional)",
       "Verify: Remove SOLVR_API_KEY env → resuscitate.sh still finds key from config.json"
     ],
-    "passes": false,
+    "passes": true,
     "phase": 5
   },
   {

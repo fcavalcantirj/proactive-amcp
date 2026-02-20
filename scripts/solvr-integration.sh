@@ -3,9 +3,83 @@
 # Sourced by resuscitate.sh — provides search, solution matching,
 # problem creation, and approach tracking functions.
 #
-# Requires: SOLVR_API_KEY, SOLVR_BASE, RECOVERY_LOG, AGENT_NAME,
+# Requires: SOLVR_BASE, RECOVERY_LOG, AGENT_NAME,
 #           CURRENT_DEATH_PROBLEM_FILE, CURRENT_APPROACH_FILE
 #           and log() function from caller.
+#
+# SOLVR_API_KEY is auto-resolved from a fallback chain when sourced.
+
+# Resolve SOLVR_API_KEY from multiple locations (fallback chain).
+# Checks in order:
+#   1. SOLVR_API_KEY env var (already set)
+#   2. ~/.amcp/config.json → apiKeys.solvr
+#   3. ~/.amcp/config.json → solvr.apiKey
+#   4. ~/.amcp/config.json → pinning.solvr.apiKey
+#   5. ~/.config/solvr/credentials.json → apiKey
+_resolve_solvr_api_key() {
+  # 1. Already set via env var
+  if [ -n "${SOLVR_API_KEY:-}" ]; then
+    log "Solvr: API key found from env var SOLVR_API_KEY"
+    return 0
+  fi
+
+  local config_file="${CONFIG_FILE:-$HOME/.amcp/config.json}"
+
+  # 2-4. Check config.json locations
+  if [ -f "$config_file" ]; then
+    SOLVR_API_KEY=$(python3 -c "
+import json, sys
+try:
+    d = json.load(open('$config_file'))
+    # Check locations in priority order, track which matched
+    locations = [
+        ('apiKeys.solvr', (d.get('apiKeys') or {}).get('solvr', '')),
+        ('solvr.apiKey', (d.get('solvr') or {}).get('apiKey', '')),
+        ('pinning.solvr.apiKey', (d.get('pinning') or {}).get('solvr', {}).get('apiKey', '')),
+    ]
+    for loc, val in locations:
+        if val:
+            print(loc + '|' + val)
+            sys.exit(0)
+except Exception:
+    pass
+" 2>/dev/null || echo "")
+
+    if [ -n "$SOLVR_API_KEY" ]; then
+      local found_location="${SOLVR_API_KEY%%|*}"
+      SOLVR_API_KEY="${SOLVR_API_KEY#*|}"
+      log "Solvr: API key found from $config_file → $found_location"
+      return 0
+    fi
+  fi
+
+  # 5. Check ~/.config/solvr/credentials.json
+  local solvr_creds="$HOME/.config/solvr/credentials.json"
+  if [ -f "$solvr_creds" ]; then
+    SOLVR_API_KEY=$(python3 -c "
+import json
+try:
+    d = json.load(open('$solvr_creds'))
+    key = d.get('apiKey', '')
+    if key: print(key)
+except Exception:
+    pass
+" 2>/dev/null || echo "")
+
+    if [ -n "$SOLVR_API_KEY" ]; then
+      log "Solvr: API key found from $solvr_creds → apiKey"
+      return 0
+    fi
+  fi
+
+  # No key found anywhere
+  log "Solvr: No API key found in any location (env, config.json, credentials.json) — Solvr features disabled"
+  SOLVR_API_KEY=""
+  return 0
+}
+
+# Auto-resolve key when sourced
+_resolve_solvr_api_key
 
 # Extract error signature from gateway logs for Solvr search
 _extract_error_signature() {

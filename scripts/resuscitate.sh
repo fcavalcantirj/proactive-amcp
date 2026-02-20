@@ -29,18 +29,8 @@ SOLVR_BASE="https://api.solvr.dev/v1"
 CURRENT_DEATH_PROBLEM_FILE="$HOME/.amcp/current-death-problem.json"
 CURRENT_APPROACH_FILE="$HOME/.amcp/current-approach.json"
 
-# Resolve SOLVR_API_KEY from env or config.json
-if [ -z "${SOLVR_API_KEY:-}" ]; then
-  SOLVR_API_KEY=$(python3 -c "
-import json, os
-p = os.path.expanduser('$HOME/.amcp/config.json')
-if not os.path.isfile(p): exit()
-d = json.load(open(p))
-key = (d.get('solvr',{}).get('apiKey') or
-       d.get('pinning',{}).get('solvr',{}).get('apiKey') or '')
-if key: print(key)
-" 2>/dev/null || echo "")
-fi
+# SOLVR_API_KEY is resolved automatically by solvr-integration.sh
+# via _resolve_solvr_api_key() fallback chain when sourced below.
 
 # Track temp files for cleanup
 TEMP_FILES=()
