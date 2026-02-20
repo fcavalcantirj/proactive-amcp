@@ -31,6 +31,7 @@ FAIL_THRESHOLD="${FAIL_THRESHOLD:-2}"   # consecutive failures before DEAD
 RETRY_DELAY_INITIAL="${RETRY_DELAY_INITIAL:-300}"  # 5 min initial retry delay
 RETRY_DELAY_MAX="${RETRY_DELAY_MAX:-1800}"          # 30 min max retry delay
 ESCALATION_THRESHOLD="${ESCALATION_THRESHOLD:-5}"   # same error N times → escalate
+SESSION_DIR="${SESSION_DIR:-$HOME/.openclaw/agents/main/sessions}"
 
 # ============================================================
 # Identity pre-flight — validate before operating
@@ -434,6 +435,66 @@ try_fix_session() {
   return 1
 }
 
+restart_gateway() {
+  if systemctl --user restart openclaw-gateway 2>/dev/null; then
+    echo "✅ Gateway restarted"
+    return 0
+  fi
+  echo "⚠️ Gateway restart failed (systemctl)"
+  return 1
+}
+
+# ============================================================
+# Stuck session recovery — 3-tier fix before resurrection
+# ============================================================
+try_fix_stuck_session() {
+  local diag_json="$1"
+
+  # Get the base fix command from the finding (includes session-dir and session-id)
+  local fix_cmd
+  fix_cmd=$(get_fix_command "$diag_json" "session_stuck")
+  if [ -z "$fix_cmd" ]; then
+    echo "⚠️ No fix command for session_stuck finding"
+    return 1
+  fi
+
+  # Tier 1: Truncate trailing error turns from the session
+  echo "🔧 [Stuck Session T1] Truncating error turns..."
+  if eval "$fix_cmd --truncate-errors" 2>&1; then
+    echo "✅ Error turns truncated"
+    if restart_gateway; then
+      return 0
+    fi
+  fi
+
+  # Tier 2: Try gateway session reset via openclaw CLI (if available)
+  echo "🔧 [Stuck Session T2] Attempting session context reset..."
+  local openclaw_bin
+  openclaw_bin=$(command -v openclaw 2>/dev/null || echo "")
+  if [ -n "$openclaw_bin" ]; then
+    if timeout 30 "$openclaw_bin" session reset 2>/dev/null; then
+      echo "✅ Session context reset via openclaw CLI"
+      if restart_gateway; then
+        return 0
+      fi
+    fi
+  else
+    echo "⚠️ openclaw CLI not available, skipping T2"
+  fi
+
+  # Tier 3: Archive stuck session and start fresh (last resort before resurrection)
+  echo "🔧 [Stuck Session T3] Archiving stuck session, starting fresh..."
+  if eval "$fix_cmd --archive" 2>&1; then
+    echo "✅ Session archived"
+    if restart_gateway; then
+      return 0
+    fi
+  fi
+
+  echo "❌ All stuck session tiers failed"
+  return 1
+}
+
 # ============================================================
 # Main check — diagnose then route
 # ============================================================
@@ -504,6 +565,19 @@ do_check() {
       return 0
     fi
     echo "❌ Session fix failed, escalating to resurrection"
+  fi
+
+  # Session stuck (logic errors, 400 loops) with gateway still running = tiered fix
+  local has_session_stuck
+  has_session_stuck=$(has_finding "$diag_json" "session_stuck")
+  if [ "$has_session_stuck" = "yes" ] && [ "$has_gateway_down" != "yes" ]; then
+    echo "🔍 Diagnosis: session stuck (gateway still running)"
+    if try_fix_stuck_session "$diag_json"; then
+      update_state "HEALTHY" 0 ""
+      [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "✅ [$AGENT_NAME] Stuck session auto-fixed"
+      return 0
+    fi
+    echo "❌ Stuck session fix failed, escalating to resurrection"
   fi
 
   # Check for stuck state — same error persisting beyond escalation threshold

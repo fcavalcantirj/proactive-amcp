@@ -2262,3 +2262,27 @@
   - `grep` confirms both `session_corrupted` and `session_stuck` as distinct finding types
   - `grep` confirms `check_session_health` defined and called
   - File size: diagnose.sh=576 lines (under 800)
+
+## Task P5-08: watchdog — Add session_stuck recovery tier (DONE)
+- Added `session_stuck` routing to watchdog.sh `do_check()` (between session_corrupted and stuck-state blocks)
+- Added `restart_gateway()` helper function — restarts openclaw-gateway via systemctl
+- Added `try_fix_stuck_session()` with 3-tier recovery:
+  - Tier 1: `session-fix.sh --fix --truncate-errors` — removes trailing error turns from session JSONL
+  - Tier 2: `openclaw session reset` — resets session context via CLI (guarded: skipped if CLI unavailable)
+  - Tier 3: `session-fix.sh --fix --archive` — archives stuck session file, lets gateway start fresh
+  - Gateway restarted after each successful tier to pick up changes
+- Enhanced `session-fix.sh` with two new modes:
+  - `--truncate-errors`: walks backward through JSONL, removes trailing error turns matching stuck patterns
+  - `--archive`: renames session file with timestamped `.bak` suffix
+  - Both modes require `--session-id` and `--fix` flags
+  - Dry-run supported (omit `--fix`)
+- Error patterns match diagnose.sh check_session_health: 400, rate_limit, overloaded, capacity, etc.
+- Added `SESSION_DIR` variable to watchdog.sh (overridable, matches diagnose.sh)
+- Notification on successful recovery: "Stuck session auto-fixed"
+- On all tiers failing: falls through to existing resurrection escalation path
+- Verification:
+  - Both scripts pass `bash -n` syntax check
+  - All 3 tiers present: T1 (truncate), T2 (gateway reset), T3 (archive)
+  - `restart_gateway` called after each tier
+  - `session_stuck` routing present in `do_check()`
+  - File sizes: session-fix.sh=197, watchdog.sh=674 (both under 800)
