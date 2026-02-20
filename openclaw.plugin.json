@@ -180,6 +180,7 @@
     "gateway_stop",
     "session_start",
     "session_end",
+    "context_warning",
     "before_compaction",
     "before_agent_start"
   ],

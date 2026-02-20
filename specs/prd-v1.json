@@ -1519,7 +1519,7 @@
       "Emit critical at 80% threshold",
       "Verify: warnings fire at thresholds"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "P4-HOOK-04",

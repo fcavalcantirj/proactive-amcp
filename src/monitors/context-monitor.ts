@@ -17,7 +17,12 @@ import type {
   CheckpointLogEntry,
   ContextMonitorDeps,
   ContentHasher,
+  ContextWarningSeverity,
 } from "../types.js";
+
+/** Default context warning thresholds (%). */
+const WARNING_THRESHOLD = 60;
+const CRITICAL_THRESHOLD = 80;
 
 const POLL_INTERVAL_MS = 30_000; // 30 seconds
 
@@ -110,6 +115,8 @@ export function createContextMonitor(deps: ContextMonitorDeps): PluginService {
   let lastCheckpointContentHash: string | null = null;
   let lastIntervalCheckTime = 0;
   let intervalEnabled = false;
+  /** Last emitted context warning severity (to avoid duplicate emissions). */
+  let lastWarningSeverity: ContextWarningSeverity | null = null;
   /** Chain of poll promises — each poll awaits the previous to prevent concurrency. */
   let pollChain: Promise<void> = Promise.resolve();
 
@@ -188,6 +195,32 @@ export function createContextMonitor(deps: ContextMonitorDeps): PluginService {
       );
 
       await appendReading(historyPath, reading);
+
+      // Context warning emissions — two-tier alert system
+      // Emit warnings at 60% and critical at 80% (only on severity escalation)
+      let currentSeverity: ContextWarningSeverity | null = null;
+      if (contextPercent >= CRITICAL_THRESHOLD) {
+        currentSeverity = "critical";
+      } else if (contextPercent >= WARNING_THRESHOLD) {
+        currentSeverity = "warning";
+      }
+
+      if (currentSeverity !== null && currentSeverity !== lastWarningSeverity) {
+        const threshold = currentSeverity === "critical"
+          ? CRITICAL_THRESHOLD
+          : WARNING_THRESHOLD;
+        logger.warn(
+          `amcp-context-monitor: context ${currentSeverity} — ${reading.contextPercent}% (threshold: ${threshold}%)`,
+        );
+        emit("amcp:context:warning", {
+          severity: currentSeverity,
+          contextPercent: reading.contextPercent,
+          usedTokens,
+          maxTokens,
+          threshold,
+        });
+      }
+      lastWarningSeverity = currentSeverity;
 
       // Threshold-based trigger
       if (contextPercent >= config.contextThreshold) {

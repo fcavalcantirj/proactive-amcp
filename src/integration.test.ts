@@ -106,12 +106,13 @@ describe("integration: plugin registration", () => {
     expect(names).toContain("amcp-partial-resurrection");
   });
 
-  it("registers 4 lifecycle hooks", () => {
+  it("registers 5 lifecycle hooks", () => {
     const hookEvents = Array.from(state.hooks.keys());
-    expect(hookEvents).toHaveLength(4);
+    expect(hookEvents).toHaveLength(5);
     expect(hookEvents).toContain("gateway_start");
     expect(hookEvents).toContain("gateway_stop");
     expect(hookEvents).toContain("session_end");
+    expect(hookEvents).toContain("context_warning");
     expect(hookEvents).toContain("before_compaction");
   });
 
@@ -293,6 +294,68 @@ describe("integration: lifecycle hooks", () => {
     });
   });
 
+  it("context_warning hook emits warning at 60% threshold", () => {
+    const handlers = state.hooks.get("context_warning")!;
+    expect(handlers).toHaveLength(1);
+
+    const event: LifecycleEvent = {
+      type: "context_warning",
+      timestamp: new Date().toISOString(),
+      data: { contextPercent: 65 },
+    };
+    handlers[0](event);
+
+    expect(state.emissions).toContainEqual(
+      expect.objectContaining({
+        event: "amcp:context:warning",
+        data: expect.objectContaining({
+          severity: "warning",
+          contextPercent: 65,
+          threshold: 60,
+        }),
+      }),
+    );
+  });
+
+  it("context_warning hook emits critical at 80% threshold", () => {
+    const handlers = state.hooks.get("context_warning")!;
+
+    const event: LifecycleEvent = {
+      type: "context_warning",
+      timestamp: new Date().toISOString(),
+      data: { contextPercent: 85 },
+    };
+    handlers[0](event);
+
+    expect(state.emissions).toContainEqual(
+      expect.objectContaining({
+        event: "amcp:context:warning",
+        data: expect.objectContaining({
+          severity: "critical",
+          contextPercent: 85,
+          threshold: 80,
+        }),
+      }),
+    );
+  });
+
+  it("context_warning hook does not emit below 60% threshold", () => {
+    const handlers = state.hooks.get("context_warning")!;
+
+    const event: LifecycleEvent = {
+      type: "context_warning",
+      timestamp: new Date().toISOString(),
+      data: { contextPercent: 45 },
+    };
+    handlers[0](event);
+
+    const warningEmissions = state.emissions.filter(
+      (e) => e.event === "amcp:context:warning",
+    );
+    expect(warningEmissions).toHaveLength(0);
+    expect(state.logs.info.some((l) => l.includes("below thresholds"))).toBe(true);
+  });
+
   it("hooks log their trigger reason", () => {
     for (const [event, handlers] of state.hooks.entries()) {
       handlers[0](makeEvent(event));
@@ -307,9 +370,12 @@ describe("integration: lifecycle hooks", () => {
     ).toBe(true);
   });
 
-  it("all hooks write to checkpoint-log.jsonl", async () => {
-    for (const [, handlers] of state.hooks.entries()) {
-      await handlers[0](makeEvent("test"));
+  it("checkpoint hooks write to checkpoint-log.jsonl", async () => {
+    // Fire only the hooks that write checkpoint log entries (not context_warning)
+    const checkpointHooks = ["gateway_start", "gateway_stop", "session_end", "before_compaction"];
+    for (const hookName of checkpointHooks) {
+      const handlers = state.hooks.get(hookName)!;
+      await handlers[0](makeEvent(hookName));
     }
 
     // Wait briefly for any fire-and-forget writes (gateway_start/stop/before_compaction)
@@ -549,7 +615,7 @@ describe("integration: config variations", () => {
 
     // Plugin still registers normally with custom config
     expect(state.services).toHaveLength(10);
-    expect(state.hooks.size).toBe(4);
+    expect(state.hooks.size).toBe(5);
     expect(state.commands.size).toBe(6);
   });
 

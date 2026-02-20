@@ -2013,3 +2013,33 @@
   - vitest: all 498 tests pass (32 integration), 0 failures
   - File sizes: index.ts=682, integration.test.ts=574 (both under 800)
   - Structural grep: "meaningful activity" check present, `await appendCheckpointLog` confirmed
+
+## Task: P4-HOOK-03 — Implement context_warning hook with threshold alerts (DONE)
+- Two-layer implementation: gateway hook + context monitor polling
+- **Hook registration**: Added `context_warning` handler in `registerHooks()` (src/index.ts)
+  - Gateway can fire `context_warning` event with `contextPercent` data
+  - Hook emits `amcp:context:warning` with severity `warning` (>=60%) or `critical` (>=80%)
+  - Below 60%: logs info "below thresholds", no warning emitted
+- **Context monitor polling**: Added two-tier warning emissions in `poll()` (src/monitors/context-monitor.ts)
+  - WARNING_THRESHOLD = 60%, CRITICAL_THRESHOLD = 80%
+  - Tracks `lastWarningSeverity` to avoid duplicate emissions at same severity level
+  - Emits `amcp:context:warning` event with severity, contextPercent, usedTokens, maxTokens, threshold
+  - Severity escalation: emits again when crossing from warning to critical
+- **Types**: Added `ContextWarningSeverity` and `ContextWarningEvent` types (src/types.ts)
+- **Plugin manifest**: Added `context_warning` to hooks list in openclaw.plugin.json
+- Updated integration test hook count: 4 → 5
+- Updated cooldown tests to filter for `amcp:checkpoint:requested` events (context warning events are separate)
+- Created `src/monitors/context-monitor-warnings.test.ts` (228 lines) — 5 dedicated tests:
+  - Emits warning at 60% threshold
+  - Emits critical at 80% threshold
+  - No warning below 60%
+  - No duplicate warning at same severity (65% then 68% = 1 emission)
+  - Escalates from warning to critical (65% then 85% = 2 emissions)
+- Added 3 integration tests for context_warning hook:
+  - Hook emits warning at 60% threshold
+  - Hook emits critical at 80% threshold
+  - Hook does not emit below 60% threshold
+- Verification:
+  - TypeScript: `tsc --noEmit` passes cleanly
+  - vitest: all 506 tests pass (35 integration + 22 context-monitor + 5 warnings), 0 failures
+  - File sizes: context-monitor.ts=333, context-monitor-warnings.test.ts=228, index.ts=706, types.ts=229, integration.test.ts=640 (all under 800)

@@ -361,14 +361,15 @@ describe("context-monitor: cooldown", () => {
     });
 
     await monitor.start();
-    expect(emissions).toHaveLength(1);
+    const checkpointEmissions = () => emissions.filter((e) => e.event === "amcp:checkpoint:requested");
+    expect(checkpointEmissions()).toHaveLength(1);
 
     // Advance 30s — still within 300s cooldown
     await vi.advanceTimersByTimeAsync(30_000);
     // The timer fires poll() but cooldown prevents another trigger.
     // Wait a tick for the fire-and-forget poll to complete:
     await vi.advanceTimersByTimeAsync(1);
-    expect(emissions).toHaveLength(1); // no duplicate
+    expect(checkpointEmissions()).toHaveLength(1); // no duplicate
 
     await monitor.stop();
   });
@@ -391,9 +392,11 @@ describe("context-monitor: cooldown", () => {
       checkpointLogPath,
     });
 
+    const checkpointEmissions = () => emissions.filter((e) => e.event === "amcp:checkpoint:requested");
+
     // First trigger at t=0
     await monitor1.start();
-    expect(emissions).toHaveLength(1);
+    expect(checkpointEmissions()).toHaveLength(1);
     await monitor1.stop();
 
     // Advance past cooldown
@@ -412,7 +415,7 @@ describe("context-monitor: cooldown", () => {
     });
 
     await monitor2.start();
-    expect(emissions).toHaveLength(2); // second trigger after cooldown
+    expect(checkpointEmissions()).toHaveLength(2); // second trigger after cooldown
     await monitor2.stop();
   });
 
@@ -435,7 +438,8 @@ describe("context-monitor: cooldown", () => {
       checkpointLogPath,
     });
     await monitor1.start(); // triggers checkpoint
-    expect(emissions).toHaveLength(1);
+    const checkpointEmissions = () => emissions.filter((e) => e.event === "amcp:checkpoint:requested");
+    expect(checkpointEmissions()).toHaveLength(1);
     await monitor1.stop();
 
     // Advance 30s — still within 300s cooldown
@@ -466,7 +470,7 @@ describe("context-monitor: cooldown", () => {
 
     // Verify: the second monitor does NOT know about the first monitor's cooldown,
     // so it triggers independently. That's correct — cooldown is per-instance.
-    expect(emissions).toHaveLength(2);
+    expect(checkpointEmissions()).toHaveLength(2);
   });
 
   it("respects custom cooldown from config", async () => {
@@ -478,6 +482,8 @@ describe("context-monitor: cooldown", () => {
       emissions.push({ event: e, data: d });
     const sessionApi = makeSessionApi(90_000, 100_000);
 
+    const checkpointEmissions = () => emissions.filter((e) => e.event === "amcp:checkpoint:requested");
+
     // First monitor triggers at t=0
     const monitor1 = createContextMonitor({
       config,
@@ -488,7 +494,7 @@ describe("context-monitor: cooldown", () => {
       checkpointLogPath,
     });
     await monitor1.start();
-    expect(emissions).toHaveLength(1);
+    expect(checkpointEmissions()).toHaveLength(1);
     await monitor1.stop();
 
     // Advance past 90s cooldown
@@ -504,7 +510,7 @@ describe("context-monitor: cooldown", () => {
       checkpointLogPath,
     });
     await monitor2.start();
-    expect(emissions).toHaveLength(2);
+    expect(checkpointEmissions()).toHaveLength(2);
     await monitor2.stop();
   });
 
@@ -687,4 +693,5 @@ describe("context-monitor: checkpoint log", () => {
   });
 });
 
+// Context warning tests are in context-monitor-warnings.test.ts
 // Time-based interval trigger tests are in context-monitor-interval.test.ts

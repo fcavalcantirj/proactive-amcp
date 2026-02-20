@@ -154,6 +154,18 @@ export interface ContentHasher {
   getContentHash(): Promise<string>;
 }
 
+/** Context warning severity levels. */
+export type ContextWarningSeverity = "warning" | "critical";
+
+/** Context warning event data emitted when thresholds are crossed. */
+export interface ContextWarningEvent {
+  severity: ContextWarningSeverity;
+  contextPercent: number;
+  usedTokens: number;
+  maxTokens: number;
+  threshold: number;
+}
+
 export interface ContextMonitorDeps {
   config: AmcpPluginConfig;
   logger: PluginLogger;

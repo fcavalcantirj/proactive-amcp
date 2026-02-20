@@ -249,6 +249,30 @@ function registerHooks(
     api.emit("amcp:checkpoint:requested", { trigger: "session_end" });
   });
 
+  // context_warning — gateway may fire this if it detects context threshold.
+  // The context monitor also polls and emits amcp:context:warning independently.
+  api.registerHook("context_warning", (event: LifecycleEvent) => {
+    const data = event.data ?? {};
+    const contextPercent = typeof data.contextPercent === "number" ? data.contextPercent : 0;
+    const severity =
+      contextPercent >= 80 ? "critical" : contextPercent >= 60 ? "warning" : null;
+
+    if (severity) {
+      api.logger.warn(
+        `amcp: context_warning hook — ${severity} at ${contextPercent}%`,
+      );
+      api.emit("amcp:context:warning", {
+        severity,
+        contextPercent,
+        threshold: severity === "critical" ? 80 : 60,
+      });
+    } else {
+      api.logger.info(
+        `amcp: context_warning hook — ${contextPercent}% (below thresholds)`,
+      );
+    }
+  });
+
   api.registerHook("before_compaction", (_event: LifecycleEvent) => {
     api.logger.info("amcp: before_compaction — emergency checkpoint queued");
     const entry: CheckpointLogEntry = {
