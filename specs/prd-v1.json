@@ -1877,7 +1877,7 @@
       "Link from SKILL.md and README.md",
       "Verify: New user can understand recovery flow from docs alone"
     ],
-    "passes": false,
+    "passes": true,
     "phase": 5
   },
   {

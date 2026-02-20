@@ -174,6 +174,7 @@ proactive-amcp config set pinning.provider both
 
 - [RECONSTRUCTION.md](RECONSTRUCTION.md) — Canonical loading order for agent memory during resurrection (the Uncanny Seam)
 - [docs/ONTOLOGY-INTEGRATION-CONTEXT.md](docs/ONTOLOGY-INTEGRATION-CONTEXT.md) — Research synthesis: three-layer memory model (ontology + AMCP + phenomenological), entity types, academic references (AriGraph, Zep/Graphiti, A-MEM)
+- [docs/WATCHDOG-RECOVERY.md](docs/WATCHDOG-RECOVERY.md) — Watchdog recovery tiers, failure modes, escalation ladder, troubleshooting
 
 ## Related
 

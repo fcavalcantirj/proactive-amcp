@@ -2335,3 +2335,32 @@
   - All 17 tests pass with `bats test/watchdog-recovery.bats`
   - Existing 8 watchdog.bats tests still pass
   - File size: 662 lines (under 800)
+
+## Task P5-11: docs — Document watchdog recovery tiers and failure modes (DONE)
+- Created `docs/WATCHDOG-RECOVERY.md` — comprehensive recovery architecture documentation
+- Overview section with diagnose-route-fix-verify ASCII flow diagram
+- State machine section with ASCII diagram: HEALTHY → CHECKING → DEAD → recovery/halt
+- State transitions table (all transitions with triggers)
+- Diagnostic checks table: all 9 finding types with severity, detection method, auto-fix status
+- Finding JSON format example
+- Recovery tiers documented in full:
+  - Pre-Tier: Solvr solutions search (before standard recovery)
+  - Tier 1: Lightweight fixes (gateway restart, session corruption repair, session stuck 3-tier, semantic config fix)
+  - Tier 2: Config restoration (backup restore → doctor → minimal config)
+  - Tier 3: Full rehydration from IPFS (9-step sequence with gateway priority order)
+  - All tiers exhausted: failure path with notifications
+- Escalation thresholds section:
+  - FAIL_THRESHOLD (default 2) — consecutive failures before DEAD
+  - ESCALATION_THRESHOLD (default 5) — stuck error escalation
+  - CRASH_LOOP_THRESHOLD (default 10) — restarts per hour before halt
+- Cooldown and backoff table: 5 attempts with delay progression (0 → 300s → 600s → 1200s → 1800s cap)
+- Concurrency control: lock file + PID tracking + stale detection
+- State file reference: watchdog-state.json and last-recovery.json with field tables
+- Troubleshooting section: 8 common symptoms with checks and fixes
+- Manual recovery steps (6 escalating actions)
+- Resetting watchdog state (one-liner command)
+- Environment variables table: all 9 configurable parameters with defaults
+- Linked from SKILL.md (More Info section) and README.md (Memory Architecture section)
+- Verification:
+  - Document covers all 7 PRD steps (recovery ladder, finding types, thresholds, troubleshooting, architecture diagram, links, readability)
+  - Links added to SKILL.md and README.md

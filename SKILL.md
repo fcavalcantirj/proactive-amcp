@@ -367,6 +367,7 @@ bash SKILL_DIR/scripts/proactive-amcp.sh config set notify.agentmailInbox your@a
 
 - Protocol spec: https://github.com/fcavalcantirj/amcp-protocol
 - Solvr: https://solvr.dev
+- [Watchdog Recovery Architecture](docs/WATCHDOG-RECOVERY.md) — Recovery tiers, escalation thresholds, troubleshooting
 
 ---
 
