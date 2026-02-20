@@ -1422,4 +1422,37 @@
   - npm test passes: 115 tests (22 + 22 + 13 + 27 + 20 + 11), 6 test files, 0 failures
   - File sizes: identity-manager.ts=451, identity-manager.test.ts=469, index.ts=320, integration.test.ts=414 (all under 800)
   - Structural grep: validateIdentity (10 refs), getIdentity (5 refs), createIdentityService (4 refs)
+
+## Task: P4-ID-02 — Handle pre-rotation keys at plugin level (DONE)
+- Created `src/key-rotation.ts` (381 lines) — pre-rotation key handling module:
+  - `readNextKeyHash(identity)`: reads nextKeyHash from top-level field or last KEL event's next/nextKeyHash
+  - `detectRotationNeed(identity, opts)`: checks for compromise flag, scheduled rotation (maxAgeDays, default 90)
+  - `rotateKey(trigger, opts)`: validates identity, verifies nextKeyHash exists, calls `amcp identity rotate`,
+    validates post-rotation identity, appends rotation record to key-rotations.jsonl
+  - `loadRotationHistory(path)`: reads append-only JSONL rotation log
+  - `createKeyRotationService(deps)`: plugin service with start/stop/status, checkRotationNeed(), rotate(), getHistory()
+  - Emits events: amcp:rotation:needed, amcp:rotation:completed, amcp:rotation:failed
+- Updated `src/types.ts` (217 lines):
+  - Added `nextKeyHash?: string` to AmcpIdentity interface
+  - Added `RotationTrigger` type: "compromise" | "scheduled" | "manual"
+  - Added `RotationRecord` interface: timestamp, trigger, previousAid, newAid, previousPublicKey, newPublicKey, kelSequenceNumber, nextKeyHash
+- Updated `src/identity-manager.ts` (465 lines):
+  - validateIdentity() now extracts nextKeyHash from identity.json (top-level or KEL event next/nextKeyHash fields)
+  - Parsed identity includes nextKeyHash in the returned AmcpIdentity object
+- Updated `src/index.ts` (339 lines):
+  - Imports and registers createKeyRotationService as "amcp-key-rotation" service
+  - Exports: readNextKeyHash, detectRotationNeed, rotateKey, loadRotationHistory, createKeyRotationService
+- Created `src/key-rotation.test.ts` (575 lines) — 23 vitest tests:
+  - readNextKeyHash: top-level field, KEL "next" field, absent (null)
+  - validateIdentity nextKeyHash extraction: top-level, KEL "next", absent (undefined)
+  - detectRotationNeed: compromise trigger, scheduled (old identity), fresh (no need), compromise priority, default 90d
+  - rotateKey: invalid identity, missing nextKeyHash, missing CLI, successful rotation with mock amcp CLI
+  - loadRotationHistory: nonexistent file, empty file, multi-line JSONL
+  - createKeyRotationService: start + status, rotation:needed for old identity, checkRotationNeed, getHistory, stop
+- Updated `src/integration.test.ts`: service count 4→5 in 3 assertions (key-rotation service added)
+- Verification:
+  - tsc --noEmit passes with zero errors
+  - vitest run passes: 138 tests, 7 test files, 0 failures
+  - File sizes: key-rotation.ts=381, key-rotation.test.ts=575, types.ts=217, identity-manager.ts=465, index.ts=339 (all under 800)
+  - Rotation history stored in ~/.amcp/key-rotations.jsonl (append-only JSONL)
   - amcp:identity:invalid emitted on invalid identity (3 refs in tests)

@@ -106,6 +106,22 @@ export interface AmcpIdentity {
   publicKey: string;
   created: string;
   kel?: unknown[];
+  nextKeyHash?: string;
+}
+
+// --- Key Rotation ---
+
+export type RotationTrigger = "compromise" | "scheduled" | "manual";
+
+export interface RotationRecord {
+  timestamp: string;
+  trigger: RotationTrigger;
+  previousAid: string;
+  newAid: string;
+  previousPublicKey: string;
+  newPublicKey: string;
+  kelSequenceNumber: number;
+  nextKeyHash: string;
 }
 
 // --- Context Monitor ---

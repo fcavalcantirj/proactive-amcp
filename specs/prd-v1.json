@@ -1249,7 +1249,7 @@
       "Store rotation history in .amcp/key-rotations.jsonl",
       "Verify: key rotation updates identity correctly"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "P4-ID-03",

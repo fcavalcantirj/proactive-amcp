@@ -12,6 +12,7 @@ import { homedir } from "node:os";
 import { createContextMonitor } from "./monitors/context-monitor.js";
 import { createValueMonitor } from "./monitors/value-monitor.js";
 import { createIdentityService } from "./identity-manager.js";
+import { createKeyRotationService } from "./key-rotation.js";
 import type {
   AmcpPlugin,
   AmcpPluginConfig,
@@ -277,10 +278,21 @@ async function register(api: PluginApi): Promise<void> {
     identityPath,
   });
 
+  // Key rotation — handles pre-rotation keys, detects rotation need, performs rotation
+  const amcpCli =
+    (apiExt.amcpCli as string) ?? undefined;
+  const keyRotationService = createKeyRotationService({
+    logger: api.logger,
+    emit: api.emit.bind(api),
+    identityPath,
+    amcpCli,
+  });
+
   api.registerService(contextMonitor);
   api.registerService(valueMonitor);
   api.registerService(memoryMonitor);
   api.registerService(identityService);
+  api.registerService(keyRotationService);
 
   // Register lifecycle hooks
   registerHooks(api, config);
@@ -317,4 +329,11 @@ export {
   getIdentity,
   createIdentityService,
 } from "./identity-manager.js";
+export {
+  readNextKeyHash,
+  detectRotationNeed,
+  rotateKey,
+  loadRotationHistory,
+  createKeyRotationService,
+} from "./key-rotation.js";
 export type * from "./types.js";

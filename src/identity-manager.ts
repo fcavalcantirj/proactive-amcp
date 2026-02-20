@@ -312,12 +312,26 @@ export async function validateIdentity(
 
   const valid = errors.length === 0;
 
+  // Extract nextKeyHash from identity or from last KEL event
+  let nextKeyHash: string | undefined;
+  if (typeof raw.nextKeyHash === "string" && raw.nextKeyHash.length > 0) {
+    nextKeyHash = raw.nextKeyHash;
+  } else if (Array.isArray(raw.kel) && raw.kel.length > 0) {
+    const lastEvent = raw.kel[raw.kel.length - 1] as Record<string, unknown>;
+    if (typeof lastEvent?.nextKeyHash === "string" && lastEvent.nextKeyHash.length > 0) {
+      nextKeyHash = lastEvent.nextKeyHash;
+    } else if (typeof lastEvent?.next === "string" && lastEvent.next.length > 0) {
+      nextKeyHash = lastEvent.next;
+    }
+  }
+
   const identity: AmcpIdentity | null = valid
     ? {
         aid: raw.aid as string,
         publicKey: raw.publicKey as string,
         created: (raw.created as string) ?? new Date().toISOString(),
         kel: raw.kel as unknown[] | undefined,
+        nextKeyHash,
       }
     : null;
 

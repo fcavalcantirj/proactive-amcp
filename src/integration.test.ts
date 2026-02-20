@@ -86,13 +86,14 @@ describe("integration: plugin registration", () => {
     await plugin.register(api);
   });
 
-  it("registers exactly 4 services", () => {
-    expect(state.services).toHaveLength(4);
+  it("registers exactly 5 services", () => {
+    expect(state.services).toHaveLength(5);
     const names = state.services.map((s) => s.name);
     expect(names).toContain("amcp-context-monitor");
     expect(names).toContain("amcp-value-monitor");
     expect(names).toContain("amcp-memory-monitor");
     expect(names).toContain("amcp-identity-manager");
+    expect(names).toContain("amcp-key-rotation");
   });
 
   it("registers 4 lifecycle hooks", () => {
@@ -218,7 +219,7 @@ describe("integration: lifecycle hooks", () => {
     const mock = createMockApi({ autoCheckpoint: false });
     await register(mock.api);
 
-    expect(mock.state.services).toHaveLength(4);
+    expect(mock.state.services).toHaveLength(5);
   });
 });
 
@@ -388,7 +389,7 @@ describe("integration: config variations", () => {
     await register(api);
 
     // Plugin still registers normally with custom config
-    expect(state.services).toHaveLength(4);
+    expect(state.services).toHaveLength(5);
     expect(state.hooks.size).toBe(4);
     expect(state.commands.size).toBe(6);
   });
