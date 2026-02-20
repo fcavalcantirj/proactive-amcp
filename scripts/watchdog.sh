@@ -430,6 +430,56 @@ condense_error_msg() {
 }
 
 # ============================================================
+# Escalation context — structured reports for human notifications
+# ============================================================
+
+# Map finding types to suggested manual fixes
+get_suggested_fix() {
+  local finding_type="$1"
+  case "$finding_type" in
+    gateway_down)
+      echo "systemctl --user status openclaw-gateway; journalctl --user -u openclaw-gateway --since '1h ago'" ;;
+    gateway_unresponsive)
+      echo "curl -sf http://localhost:18789/health; jq . ~/.openclaw/openclaw.json" ;;
+    config_invalid|config_semantic_invalid)
+      echo "jq . ~/.openclaw/openclaw.json; ls ~/.amcp/config-backups/ and restore latest" ;;
+    session_corrupted|session_stuck)
+      echo "proactive-amcp session-fix; systemctl --user restart openclaw-gateway" ;;
+    crash_loop_detected)
+      echo "STOP auto-recovery. Review ~/.amcp/recovery-*.log for root cause" ;;
+    *)
+      echo "Review: ls -lt ~/.amcp/recovery-*.log | head -3" ;;
+  esac
+}
+
+# Build structured ISSUE → TRIED → RESULT → NEXT report for notifications
+build_escalation_report() {
+  local icon="$1"
+  local agent="$2"
+  local issues="$3"
+  local tried="$4"
+  local result="$5"
+  local failures="$6"
+
+  local report="${icon} [${agent}] Recovery Report"
+  report+=$'\n'"ISSUE: ${issues}"
+  report+=$'\n'"TRIED: ${tried}"
+  report+=$'\n'"RESULT: ${result}"
+  report+=$'\n'"FAILURES: ${failures} consecutive"
+
+  # Suggested manual fix based on primary finding type
+  local primary
+  primary=$(echo "$issues" | awk '{print $1}')
+  if [ -n "$primary" ]; then
+    local suggestion
+    suggestion=$(get_suggested_fix "$primary")
+    report+=$'\n'"MANUAL FIX: ${suggestion}"
+  fi
+
+  echo "$report"
+}
+
+# ============================================================
 # Fix routing — pick the right fix based on diagnosis
 # ============================================================
 try_fix_session() {
@@ -549,7 +599,12 @@ do_check() {
     update_state "DEAD" "$failures" "crash_loop_detected $errors"
     local condensed_errors
     condensed_errors=$(condense_error_msg "$errors")
-    [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "🚨🔁 [$AGENT_NAME] CRASH-LOOP DETECTED! Restarts exceed ${CRASH_LOOP_THRESHOLD}/hour. Automatic recovery PAUSED. Errors: $condensed_errors. Manual intervention required."
+    local report
+    report=$(build_escalation_report "🚨🔁" "$AGENT_NAME" \
+      "crash_loop_detected $condensed_errors" \
+      "Automatic recovery PAUSED (exceeded ${CRASH_LOOP_THRESHOLD}/hour)" \
+      "Manual intervention required" "$failures")
+    [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "$report"
     return 2
   fi
 
@@ -644,7 +699,12 @@ do_check() {
     update_state "DEAD" "$failures" "$errors"
     local condensed_errors
     condensed_errors=$(condense_error_msg "$errors")
-    [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "🚨 [$AGENT_NAME] STUCK ($failures failures, same error): $condensed_errors. Escalating to resurrection..."
+    local report
+    report=$(build_escalation_report "🚨" "$AGENT_NAME" \
+      "$condensed_errors" \
+      "Escalation fixes failed, launching full resurrection" \
+      "Stuck state ($ESCALATION_THRESHOLD+ same failures)" "$failures")
+    [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "$report"
     launch_resurrection
     return 2
   fi
@@ -656,7 +716,12 @@ do_check() {
       update_state "DEAD" "$failures" "$errors"
       local condensed_errors
       condensed_errors=$(condense_error_msg "$errors")
-      [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "☠️ [$AGENT_NAME] DEAD! Errors: $condensed_errors. Starting recovery..."
+      local report
+      report=$(build_escalation_report "☠️" "$AGENT_NAME" \
+        "$condensed_errors" \
+        "Starting resurrection (restart → config fix → rehydrate)" \
+        "Recovery in progress" "$failures")
+      [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "$report"
       launch_resurrection
       return 2
     fi
@@ -666,7 +731,14 @@ do_check() {
     if ! is_resurrection_running; then
       if should_retry_resurrection; then
         echo "🔄 Retrying resurrection (previous attempt failed)"
-        [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "🔄 [$AGENT_NAME] Retrying resurrection..."
+        local condensed_errors
+        condensed_errors=$(condense_error_msg "$errors")
+        local report
+        report=$(build_escalation_report "🔄" "$AGENT_NAME" \
+          "$condensed_errors" \
+          "Retrying resurrection (previous attempt failed)" \
+          "Retry in progress" "$failures")
+        [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "$report"
         launch_resurrection
       fi
     fi

@@ -192,6 +192,115 @@ $(tail -50 "$log_file" 2>/dev/null || echo "Log not available")
 # shellcheck source=solvr-integration.sh
 source "$SCRIPT_DIR/solvr-integration.sh"
 
+# ============================================================
+# Attempt tracking — record what was tried for notifications
+# ============================================================
+ATTEMPTS_FILE=$(mktemp)
+TEMP_FILES+=("$ATTEMPTS_FILE")
+
+record_attempt() {
+  local method="$1"
+  local result="$2"
+  local detail="${3:-}"
+  echo "{\"method\":\"$method\",\"result\":\"$result\",\"detail\":\"$detail\",\"timestamp\":\"$(date -Iseconds)\"}" >> "$ATTEMPTS_FILE"
+}
+
+# Write last-recovery.json with attempts_summary
+write_recovery_json() {
+  local method="$1"
+  local downtime="$2"
+  local cid="${3:-}"
+
+  AMCP_RECOVERY_FILE="$HOME/.amcp/last-recovery.json" \
+  AMCP_ATTEMPTS_FILE="$ATTEMPTS_FILE" \
+  AMCP_METHOD="$method" \
+  AMCP_DOWNTIME="$downtime" \
+  AMCP_CID="$cid" \
+  AMCP_LOG="$RECOVERY_LOG" \
+  python3 << 'PYEOF'
+import json, os
+from datetime import datetime
+
+recovery_file = os.environ["AMCP_RECOVERY_FILE"]
+attempts_file = os.environ["AMCP_ATTEMPTS_FILE"]
+method = os.environ["AMCP_METHOD"]
+downtime = int(os.environ["AMCP_DOWNTIME"])
+cid = os.environ.get("AMCP_CID", "")
+log_path = os.environ.get("AMCP_LOG", "")
+
+attempts = []
+try:
+    with open(attempts_file) as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                attempts.append(json.loads(line))
+except (FileNotFoundError, json.JSONDecodeError):
+    pass
+
+recovery = {
+    "method": method,
+    "downtime": downtime,
+    "timestamp": datetime.now().isoformat(),
+    "attempts_summary": attempts
+}
+if cid:
+    recovery["cid"] = cid
+if log_path:
+    recovery["log"] = log_path
+
+with open(recovery_file, "w") as f:
+    json.dump(recovery, f, indent=2)
+PYEOF
+}
+
+# Format notification with attempt context: ISSUE → TRIED → RESULT
+format_recovery_notification() {
+  local icon="$1"
+  local status="$2"
+  local method="$3"
+  local downtime="$4"
+
+  AMCP_ICON="$icon" \
+  AMCP_STATUS="$status" \
+  AMCP_AGENT="$AGENT_NAME" \
+  AMCP_METHOD="$method" \
+  AMCP_DOWNTIME="$downtime" \
+  AMCP_ATTEMPTS_FILE="$ATTEMPTS_FILE" \
+  python3 << 'PYEOF'
+import json, os
+
+icon = os.environ["AMCP_ICON"]
+status = os.environ["AMCP_STATUS"]
+agent = os.environ["AMCP_AGENT"]
+method = os.environ["AMCP_METHOD"]
+downtime = os.environ["AMCP_DOWNTIME"]
+attempts_file = os.environ["AMCP_ATTEMPTS_FILE"]
+
+lines = [f"{icon} [{agent}] {status}"]
+lines.append(f"METHOD: {method}")
+lines.append(f"DOWNTIME: {downtime}s")
+
+attempts = []
+try:
+    with open(attempts_file) as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                attempts.append(json.loads(line))
+except (FileNotFoundError, json.JSONDecodeError):
+    pass
+
+if attempts:
+    lines.append("ATTEMPTS:")
+    for a in attempts:
+        aicon = "\u2705" if a["result"] == "succeeded" else "\u274c"
+        lines.append(f"  {aicon} {a['method']}: {a.get('detail', '')}")
+
+print("\n".join(lines))
+PYEOF
+}
+
 # Fetch checkpoint from IPFS gateways (tries multiple in priority order)
 fetch_from_gateways() {
   local cid="$1"
@@ -502,17 +611,19 @@ main() {
   log ""
   log "=== Step 1b: Try Solvr-suggested solutions ==="
   if try_solvr_solutions "$solvr_result"; then
+    record_attempt "solvr_solution" "succeeded" "Matched Solvr solution"
     local end_time=$(date +%s)
     local downtime=$((end_time - start_time))
     log "✅ Recovery succeeded via Solvr solution (${downtime}s)"
-    [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "✅ [$AGENT_NAME] Alive! Downtime: ${downtime}s. Method: Solvr solution"
-
-    echo "{\"method\":\"solvr_solution\",\"downtime\":$downtime,\"timestamp\":\"$(date -Iseconds)\"}" > "$HOME/.amcp/last-recovery.json"
-
+    local report
+    report=$(format_recovery_notification "✅" "Alive!" "solvr_solution" "$downtime")
+    [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "$report"
+    write_recovery_json "solvr_solution" "$downtime"
     surface_open_problems
     send_resurrection_email "success" "solvr_solution" "$downtime" "$RECOVERY_LOG"
     return 0
   fi
+  record_attempt "solvr_solution" "failed" "No matching solutions or unavailable"
   log "Solvr solutions exhausted or unavailable"
 
   # Step 1c: Create Solvr problem if no match found (for tracking approaches)
@@ -533,21 +644,20 @@ main() {
   solvr_start_approach "restart" "Restart gateway via systemctl or direct"
 
   if try_restart_gateway; then
+    record_attempt "restart" "succeeded" "Gateway restarted"
     solvr_update_approach "succeeded"
     local end_time=$(date +%s)
     local downtime=$((end_time - start_time))
     log "✅ Recovery succeeded: restart gateway (${downtime}s)"
-    [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "✅ [$AGENT_NAME] Alive! Downtime: ${downtime}s. Method: restart"
-
-    # Write recovery summary for agent to post to Solvr
-    echo "{\"method\":\"restart\",\"downtime\":$downtime,\"timestamp\":\"$(date -Iseconds)\"}" > "$HOME/.amcp/last-recovery.json"
-
+    local report
+    report=$(format_recovery_notification "✅" "Alive!" "restart" "$downtime")
+    [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "$report"
+    write_recovery_json "restart" "$downtime"
     surface_open_problems
-
-    # Send email summary
     send_resurrection_email "success" "restart" "$downtime" "$RECOVERY_LOG"
     return 0
   fi
+  record_attempt "restart" "failed" "systemctl and direct restart both failed"
   solvr_update_approach "failed"
   log "❌ Restart gateway failed"
 
@@ -558,20 +668,20 @@ main() {
   solvr_start_approach "config_fix" "Restore openclaw.json from config backup"
 
   if try_fix_config; then
+    record_attempt "config_fix" "succeeded" "Config restored"
     solvr_update_approach "succeeded"
     local end_time=$(date +%s)
     local downtime=$((end_time - start_time))
     log "✅ Recovery succeeded: fix config (${downtime}s)"
-    [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "✅ [$AGENT_NAME] Alive! Downtime: ${downtime}s. Method: config fix"
-
-    echo "{\"method\":\"config_fix\",\"downtime\":$downtime,\"timestamp\":\"$(date -Iseconds)\"}" > "$HOME/.amcp/last-recovery.json"
-
+    local report
+    report=$(format_recovery_notification "✅" "Alive!" "config_fix" "$downtime")
+    [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "$report"
+    write_recovery_json "config_fix" "$downtime"
     surface_open_problems
-
-    # Send email summary
     send_resurrection_email "success" "config_fix" "$downtime" "$RECOVERY_LOG"
     return 0
   fi
+  record_attempt "config_fix" "failed" "Config fix exhausted all tiers"
   solvr_update_approach "failed"
   log "❌ Fix config failed"
 
@@ -587,20 +697,20 @@ main() {
   solvr_start_approach "rehydrate" "Full rehydrate from IPFS checkpoint ${cid:-local}"
 
   if try_rehydrate "$cid"; then
+    record_attempt "rehydrate" "succeeded" "Restored from checkpoint ${cid:-local}"
     solvr_update_approach "succeeded"
     local end_time=$(date +%s)
     local downtime=$((end_time - start_time))
     log "✅ Recovery succeeded: rehydrate (${downtime}s)"
-    [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "✅ [$AGENT_NAME] Alive! Downtime: ${downtime}s. Method: checkpoint"
-
-    echo "{\"method\":\"rehydrate\",\"cid\":\"$cid\",\"downtime\":$downtime,\"timestamp\":\"$(date -Iseconds)\"}" > "$HOME/.amcp/last-recovery.json"
-
+    local report
+    report=$(format_recovery_notification "✅" "Alive!" "rehydrate" "$downtime")
+    [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "$report"
+    write_recovery_json "rehydrate" "$downtime" "$cid"
     surface_open_problems
-
-    # Send email summary
     send_resurrection_email "success" "rehydrate" "$downtime" "$RECOVERY_LOG"
     return 0
   fi
+  record_attempt "rehydrate" "failed" "Rehydration failed"
   solvr_update_approach "failed"
   log "❌ Rehydrate failed"
 
@@ -615,9 +725,12 @@ main() {
   log "Human intervention required"
   log "========================================="
 
-  [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "❌ [$AGENT_NAME] Resurrection FAILED! Need human. Log: $RECOVERY_LOG"
-
-  echo "{\"method\":\"failed\",\"downtime\":$downtime,\"timestamp\":\"$(date -Iseconds)\",\"log\":\"$RECOVERY_LOG\"}" > "$HOME/.amcp/last-recovery.json"
+  local report
+  report=$(format_recovery_notification "❌" "Resurrection FAILED" "all_methods_exhausted" "$downtime")
+  report+=$'\n'"LOG: $RECOVERY_LOG"
+  report+=$'\n'"NEXT: Manual intervention required. Review: tail -50 $RECOVERY_LOG"
+  [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "$report"
+  write_recovery_json "failed" "$downtime"
 
   # Send email summary (critical - always send on failure)
   send_resurrection_email "failed" "all_methods_exhausted" "$downtime" "$RECOVERY_LOG"

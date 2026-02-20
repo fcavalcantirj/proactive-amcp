@@ -2364,3 +2364,33 @@
 - Verification:
   - Document covers all 7 PRD steps (recovery ladder, finding types, thresholds, troubleshooting, architecture diagram, links, readability)
   - Links added to SKILL.md and README.md
+
+## Task: notification — Enhance notification with escalation context (DONE)
+- Added `get_suggested_fix()` to watchdog.sh — maps 6 finding types to human-readable manual fix commands
+  - gateway_down, gateway_unresponsive, config_invalid/config_semantic_invalid, session_corrupted/session_stuck, crash_loop_detected
+- Added `build_escalation_report()` to watchdog.sh — structured ISSUE → TRIED → RESULT → FAILURES → MANUAL FIX format
+- Updated 4 watchdog notification points to use structured report:
+  - Crash-loop detection: includes finding types, paused status, manual fix
+  - Stuck-state escalation: includes condensed errors, escalation context, failure count
+  - DEAD transition: includes errors, recovery tiers being attempted, failure count
+  - Retry resurrection: includes errors, retry context, failure count
+- Added `record_attempt()` to resuscitate.sh — tracks each recovery attempt (method, result, detail, timestamp) via JSONL temp file
+- Added `write_recovery_json()` to resuscitate.sh — writes last-recovery.json with `attempts_summary` array
+  - Records all attempted methods and their outcomes (solvr_solution, restart, config_fix, rehydrate)
+  - Includes CID and log path when applicable
+- Added `format_recovery_notification()` to resuscitate.sh — structured METHOD → DOWNTIME → ATTEMPTS format
+  - Each attempt shown with ✅/❌ icon, method name, and detail
+- Updated all 5 notification+recovery-json points in resuscitate.sh (4 success paths + 1 failure path)
+- Failure notification includes LOG path and NEXT (manual intervention steps)
+- Groq condense integration verified: condense_error_msg() called at 5 points in watchdog.sh before report building
+- Verification:
+  - bash -n passes on both scripts
+  - File sizes: watchdog.sh=771, resuscitate.sh=740 (both under 800)
+  - build_escalation_report: 5 occurrences (1 def + 4 calls)
+  - get_suggested_fix: 2 occurrences (1 def + 1 call in report builder)
+  - ISSUE/TRIED/RESULT/MANUAL FIX: all 4 fields present in report format
+  - attempts_summary: 2 occurrences (field in write_recovery_json)
+  - record_attempt: 9 occurrences (1 def + 8 calls — all methods × success/fail)
+  - write_recovery_json: 6 occurrences (1 def + 5 calls)
+  - format_recovery_notification: 6 occurrences (1 def + 5 calls)
+  - condense_error_msg: 5 occurrences (still used for Groq error condensing)
