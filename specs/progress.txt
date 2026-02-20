@@ -2196,3 +2196,24 @@
   - `grep` confirms config-backups/backup-config/setup_config_backups in init.sh (4 refs)
   - `grep` confirms backup-config.sh guard in watchdog.sh (1 ref)
   - File sizes: backup-config.sh=260, proactive-amcp.sh=201, init.sh=714, watchdog.sh=592 (all under 800)
+
+## Task P5-04: recovery — Create standalone config fix script (DONE)
+- Created `scripts/try-fix-config.sh` (341 lines) — standalone 3-tier config fix, no IPFS/crypto deps
+- Tier A: `tier_a_backup_restore()` — finds latest backup from `~/.amcp/config-backups/`, validates JSON, restores
+- Tier B: `tier_b_doctor_fix()` — runs `openclaw doctor --fix` if openclaw CLI available
+- Tier C: `tier_c_minimal_config()` — generates minimal safe config (port + workspace only, no plugins/skills)
+  - Preserves gateway port and workspace path from broken config if parseable
+  - Adds `_generated`, `_timestamp`, `_note` metadata for audit trail
+- `save_broken_config()` saves broken config as `openclaw.json.broken-YYYYMMDD-HHMMSS` before each tier
+- `restart_gateway()` + `check_gateway_health()` after each tier (matches watchdog/resuscitate patterns)
+- `check_gateway_health()` reads port from config or falls back to 3141/8080/18789
+- `--dry-run` flag shows what would happen without making changes
+- Guard pattern: `[ -x "$SCRIPT_DIR/notify.sh" ] && ...` for notifications (never blocks core logic)
+- Updated `resuscitate.sh`: `try_fix_config()` now delegates to `try-fix-config.sh` (3-tier) with inline fallback
+  - If `try-fix-config.sh` not found, falls back to simple backup restore (backwards compatible)
+- `watchdog.sh` already references `try-fix-config.sh` via guard pattern (added in P5-02)
+- Verification:
+  - Both scripts pass `bash -n` syntax check
+  - `grep` confirms: tier_a/tier_b/tier_c functions (6 refs), broken- save (2 refs), restart+health check (5 refs)
+  - `grep` confirms try-fix-config.sh integrated in resuscitate.sh (4 refs)
+  - File sizes: try-fix-config.sh=341, resuscitate.sh=629 (both under 800)

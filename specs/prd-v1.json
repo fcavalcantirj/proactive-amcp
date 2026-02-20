@@ -1756,7 +1756,7 @@
       "Add to resuscitate.sh: call try-fix-config.sh before full rehydrate tier",
       "Verify: Introduce bad plugin config → try-fix-config.sh restores from backup in <30s"
     ],
-    "passes": false,
+    "passes": true,
     "phase": 5
   },
   {

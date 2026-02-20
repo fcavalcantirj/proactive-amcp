@@ -284,27 +284,34 @@ try_fix_config() {
     return 0
   fi
 
-  log "Attempting: fix config from backup"
+  log "Attempting: fix config via try-fix-config.sh (3-tier)"
 
-  # Check for config backups
-  local backup_dir="$HOME/.amcp/config-backups"
-  if [ -d "$backup_dir" ]; then
-    local latest_backup=$(ls -1t "$backup_dir"/openclaw-*.json 2>/dev/null | head -1)
-    if [ -f "$latest_backup" ]; then
-      log "Found backup: $latest_backup"
-
-      # Validate JSON before restoring
-      if jq . "$latest_backup" > /dev/null 2>&1; then
-        cp "$HOME/.openclaw/openclaw.json" "$HOME/.openclaw/openclaw.json.pre-recovery" 2>/dev/null || true
-        cp "$latest_backup" "$HOME/.openclaw/openclaw.json"
-        log "Restored openclaw.json"
-
-        # Try restart again
-        if try_restart_gateway; then
-          return 0
+  # Delegate to standalone config fix script (Tier A: backup, Tier B: doctor, Tier C: minimal)
+  if [ -x "$SCRIPT_DIR/try-fix-config.sh" ]; then
+    if "$SCRIPT_DIR/try-fix-config.sh" 2>&1 | tee -a "$RECOVERY_LOG"; then
+      log "Config fix succeeded"
+      return 0
+    fi
+    log "Standalone config fix exhausted all tiers"
+  else
+    log "try-fix-config.sh not found, falling back to inline backup restore"
+    # Inline fallback: simple backup restore (in case try-fix-config.sh missing)
+    local backup_dir="$HOME/.amcp/config-backups"
+    if [ -d "$backup_dir" ]; then
+      local latest_backup
+      latest_backup=$(ls -1t "$backup_dir"/openclaw-*.json 2>/dev/null | head -1)
+      if [ -n "$latest_backup" ] && [ -f "$latest_backup" ]; then
+        log "Found backup: $latest_backup"
+        if jq . "$latest_backup" > /dev/null 2>&1; then
+          cp "$HOME/.openclaw/openclaw.json" "$HOME/.openclaw/openclaw.json.pre-recovery" 2>/dev/null || true
+          cp "$latest_backup" "$HOME/.openclaw/openclaw.json"
+          log "Restored openclaw.json from backup"
+          if try_restart_gateway; then
+            return 0
+          fi
+        else
+          log "Backup JSON invalid, skipping"
         fi
-      else
-        log "Backup JSON invalid, skipping"
       fi
     fi
   fi
