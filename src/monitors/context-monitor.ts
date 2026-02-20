@@ -3,8 +3,10 @@
  *
  * Interfaces with OpenClaw session API to poll token counts,
  * computes context % as (usedTokens / maxTokens) * 100,
- * stores readings in .amcp/context-history.jsonl, and
- * emits checkpoint events when thresholds are crossed.
+ * stores readings in .amcp/context-history.jsonl,
+ * enforces cooldown between checkpoint triggers, logs triggers
+ * to .amcp/checkpoint-log.jsonl, and emits checkpoint events
+ * when thresholds are crossed.
  */
 
 import { appendFile, mkdir } from "node:fs/promises";
@@ -12,6 +14,7 @@ import { dirname } from "node:path";
 import type {
   PluginService,
   ContextReading,
+  CheckpointLogEntry,
   ContextMonitorDeps,
 } from "../types.js";
 
@@ -29,13 +32,26 @@ async function appendReading(
 }
 
 /**
+ * Append a checkpoint trigger entry to the checkpoint log.
+ */
+async function appendCheckpointLog(
+  logPath: string,
+  entry: CheckpointLogEntry,
+): Promise<void> {
+  await mkdir(dirname(logPath), { recursive: true });
+  await appendFile(logPath, JSON.stringify(entry) + "\n", "utf-8");
+}
+
+/**
  * Create a context monitor service that polls session context usage.
  */
 export function createContextMonitor(deps: ContextMonitorDeps): PluginService {
-  const { config, logger, emit, sessionApi, historyPath } = deps;
+  const { config, logger, emit, sessionApi, historyPath, checkpointLogPath } =
+    deps;
   let timer: ReturnType<typeof setInterval> | null = null;
   let running = false;
   let lastReading: ContextReading | null = null;
+  let lastCheckpointTriggerTime = 0;
 
   async function poll(): Promise<void> {
     try {
@@ -58,13 +74,37 @@ export function createContextMonitor(deps: ContextMonitorDeps): PluginService {
       await appendReading(historyPath, reading);
 
       if (contextPercent >= config.contextThreshold) {
-        logger.warn(
-          `amcp-context-monitor: threshold ${config.contextThreshold}% exceeded — ${reading.contextPercent}%`,
-        );
-        emit("amcp:checkpoint:requested", {
-          trigger: "context_threshold",
-          contextPercent: reading.contextPercent,
-        });
+        const now = Date.now();
+        const elapsed = now - lastCheckpointTriggerTime;
+        const cooldownMs = config.checkpointCooldownMs;
+
+        if (elapsed >= cooldownMs) {
+          lastCheckpointTriggerTime = now;
+
+          logger.warn(
+            `amcp-context-monitor: threshold ${config.contextThreshold}% exceeded — ${reading.contextPercent}%`,
+          );
+
+          const logEntry: CheckpointLogEntry = {
+            timestamp: reading.timestamp,
+            trigger: "context_threshold",
+            contextPercent: reading.contextPercent,
+            usedTokens,
+            maxTokens,
+            cooldownMs,
+          };
+          await appendCheckpointLog(checkpointLogPath, logEntry);
+
+          emit("amcp:checkpoint:requested", {
+            trigger: "context_threshold",
+            contextPercent: reading.contextPercent,
+          });
+        } else {
+          const remainingMs = cooldownMs - elapsed;
+          logger.info(
+            `amcp-context-monitor: threshold exceeded but in cooldown (${Math.round(remainingMs / 1000)}s remaining)`,
+          );
+        }
       }
     } catch (err) {
       logger.error(
@@ -102,6 +142,11 @@ export function createContextMonitor(deps: ContextMonitorDeps): PluginService {
           lastReading: lastReading ?? undefined,
           pollIntervalMs: POLL_INTERVAL_MS,
           thresholdPercent: config.contextThreshold,
+          cooldownMs: config.checkpointCooldownMs,
+          lastCheckpointTriggerTime:
+            lastCheckpointTriggerTime > 0
+              ? new Date(lastCheckpointTriggerTime).toISOString()
+              : undefined,
         },
       };
     },

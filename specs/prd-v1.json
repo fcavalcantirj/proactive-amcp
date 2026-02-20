@@ -1192,7 +1192,7 @@
       "Emit alert via plugin API",
       "Verify: checkpoint created when context hits 70%"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "P4-CTX-03",

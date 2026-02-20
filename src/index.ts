@@ -85,6 +85,13 @@ function defaultSessionApi(): SessionApi {
 /** Default path for context history JSONL file. */
 const DEFAULT_HISTORY_PATH = join(homedir(), ".amcp", "context-history.jsonl");
 
+/** Default path for checkpoint trigger log. */
+const DEFAULT_CHECKPOINT_LOG_PATH = join(
+  homedir(),
+  ".amcp",
+  "checkpoint-log.jsonl",
+);
+
 /**
  * Placeholder memory monitor service.
  * Watches memory files for unauthorized changes and prompt injection.
@@ -183,6 +190,8 @@ async function register(api: PluginApi): Promise<void> {
     (apiExt.sessionApi as SessionApi) ?? defaultSessionApi();
   const historyPath =
     (apiExt.amcpHistoryPath as string) ?? DEFAULT_HISTORY_PATH;
+  const checkpointLogPath =
+    (apiExt.amcpCheckpointLogPath as string) ?? DEFAULT_CHECKPOINT_LOG_PATH;
 
   const contextMonitor = createContextMonitor({
     config,
@@ -190,6 +199,7 @@ async function register(api: PluginApi): Promise<void> {
     emit: api.emit.bind(api),
     sessionApi,
     historyPath,
+    checkpointLogPath,
   });
   const memoryMonitor = createMemoryMonitor(config, api.logger);
   api.registerService(contextMonitor);
@@ -215,6 +225,13 @@ const plugin: AmcpPlugin = {
 
 export default plugin;
 
-export { register, resolveConfig, DEFAULT_CONFIG, PLUGIN_ID, PLUGIN_VERSION };
+export {
+  register,
+  resolveConfig,
+  DEFAULT_CONFIG,
+  PLUGIN_ID,
+  PLUGIN_VERSION,
+  DEFAULT_CHECKPOINT_LOG_PATH,
+};
 export { createContextMonitor } from "./monitors/context-monitor.js";
 export type * from "./types.js";

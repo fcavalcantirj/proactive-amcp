@@ -121,10 +121,20 @@ export interface SessionApi {
   getContextUsage(): Promise<{ usedTokens: number; maxTokens: number }>;
 }
 
+export interface CheckpointLogEntry {
+  timestamp: string;
+  trigger: string;
+  contextPercent: number;
+  usedTokens: number;
+  maxTokens: number;
+  cooldownMs: number;
+}
+
 export interface ContextMonitorDeps {
   config: AmcpPluginConfig;
   logger: PluginLogger;
   emit: (event: string, data?: Record<string, unknown>) => void;
   sessionApi: SessionApi;
   historyPath: string;
+  checkpointLogPath: string;
 }
