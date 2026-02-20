@@ -1334,7 +1334,7 @@
       "Log partial resurrection details",
       "Verify: partial restore works correctly"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "P4-MEM-01",

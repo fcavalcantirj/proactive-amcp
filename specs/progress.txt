@@ -1572,3 +1572,37 @@
   - vitest run passes: 227 tests, 12 test files, 0 failures
   - All 5 PRD steps verified: scoring (recency+completeness+integrity) ✓, highest score selected ✓, fallback to older on corruption ✓, manual CID override ✓, best checkpoint selected in tests (21 passing) ✓
   - File sizes: checkpoint-selector.ts=468, checkpoint-selector.test.ts=571, recovery-prompt-injector.ts=489, index.ts=421 (all under 800)
+
+## Task: P4-RES-04 — Support partial resurrection (specific memories only) (DONE)
+- Created `src/monitors/partial-resurrection.ts` (298 lines) — selective restore from checkpoint
+  - `patternToRegex()`: converts glob-like patterns to RegExp (supports *, **, ?)
+  - `matchesAnyPattern()`: checks if relative path matches any include pattern
+  - `partialRestore()`: core restore function — decrypted checkpoint content dir + patterns → selective copy
+    - Enumerates all files in checkpoint content directory recursively
+    - Classifies each file as matched (restore) or skipped (preserve current)
+    - Backs up existing workspace files before overwriting (timestamped backup dir)
+    - Tracks hadPrevious flag and backup paths per restored file
+    - Writes JSONL audit log entry with patterns, counts, restored/skipped lists
+    - Supports --dryRun mode (no file copies, no log writes)
+  - `createPartialResurrectionService()`: plugin service wrapper
+    - Exposes `restorePartial()` for on-demand partial restoration
+    - Emits `amcp:partial-resurrection:completed` or `amcp:partial-resurrection:error` events
+    - Tracks last result via `getLastResult()`
+- Created `src/monitors/partial-resurrection.test.ts` (313 lines) — 22 vitest tests:
+  - Pattern matching: exact filename, single wildcard, double wildcard, ?, dot escaping
+  - matchesAnyPattern: multi-pattern matching, no-match case
+  - partialRestore: selective restore (only matched files copied), preserves non-matched files,
+    backs up existing files before overwrite, marks hadPrevious correctly, memory/*.md pattern,
+    multiple patterns, JSONL audit log, no_patterns error, no_matches (success with empty restore),
+    empty checkpoint error, dry run (no side effects)
+  - Service: start/stop, completion event emission, error event emission, getLastResult
+- Updated `src/index.ts`: imported createPartialResurrectionService, registered as service,
+  exported partialRestore, patternToRegex, matchesAnyPattern, createPartialResurrectionService
+- Updated `src/integration.test.ts`: service count 9→10, added amcp-partial-resurrection name check
+- Verification:
+  - tsc --noEmit passes with zero errors
+  - vitest run passes: 249 tests, 13 test files, 0 failures
+  - All 5 PRD steps verified: specifying which files ✓, pattern matching (memory/*.md) ✓,
+    preserve current state for non-restored ✓, log partial resurrection details (JSONL) ✓,
+    partial restore works correctly (22 tests) ✓
+  - File sizes: partial-resurrection.ts=298, partial-resurrection.test.ts=313, index.ts=432, integration.test.ts=420 (all under 800)

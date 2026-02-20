@@ -17,6 +17,7 @@ import { createResurrectionIdentityService } from "./monitors/resurrection-ident
 import { createResurrectionDetector } from "./monitors/resurrection-detector.js";
 import { createMultiIdentityService } from "./multi-identity.js";
 import { createRecoveryPromptInjector } from "./monitors/recovery-prompt-injector.js";
+import { createPartialResurrectionService } from "./monitors/partial-resurrection.js";
 import type {
   AmcpPlugin,
   AmcpPluginConfig,
@@ -341,6 +342,17 @@ async function register(api: PluginApi): Promise<void> {
     lastRecoveryPath,
   });
 
+  // Partial resurrection — restore specific memories from a checkpoint
+  const contentDir =
+    (apiExt.amcpContentDir as string) ??
+    join(homedir(), ".openclaw", "workspace");
+  const partialResurrectionService = createPartialResurrectionService({
+    config,
+    logger: api.logger,
+    emit: api.emit.bind(api),
+    contentDir,
+  });
+
   api.registerService(contextMonitor);
   api.registerService(valueMonitor);
   api.registerService(memoryMonitor);
@@ -350,6 +362,7 @@ async function register(api: PluginApi): Promise<void> {
   api.registerService(resurrectionDetector);
   api.registerService(multiIdentityService);
   api.registerService(recoveryPromptInjector);
+  api.registerService(partialResurrectionService);
 
   // Register lifecycle hooks
   registerHooks(api, config);
@@ -418,4 +431,10 @@ export {
   scoreCheckpoint,
   gatherCheckpoints,
 } from "./monitors/checkpoint-selector.js";
+export {
+  partialRestore,
+  patternToRegex,
+  matchesAnyPattern,
+  createPartialResurrectionService,
+} from "./monitors/partial-resurrection.js";
 export type * from "./types.js";
