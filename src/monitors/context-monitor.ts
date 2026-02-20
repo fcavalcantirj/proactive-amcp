@@ -16,6 +16,7 @@ import type {
   ContextReading,
   CheckpointLogEntry,
   ContextMonitorDeps,
+  ContentHasher,
 } from "../types.js";
 
 const POLL_INTERVAL_MS = 30_000; // 30 seconds
@@ -43,15 +44,130 @@ async function appendCheckpointLog(
 }
 
 /**
+ * Trigger a checkpoint and update shared cooldown state.
+ * Returns true if checkpoint was triggered, false if blocked by cooldown.
+ */
+async function triggerCheckpoint(
+  trigger: string,
+  reading: ContextReading | null,
+  cooldownMs: number,
+  state: { lastCheckpointTriggerTime: number },
+  logger: ContextMonitorDeps["logger"],
+  emit: ContextMonitorDeps["emit"],
+  checkpointLogPath: string,
+  extra?: Record<string, unknown>,
+): Promise<boolean> {
+  const now = Date.now();
+  const elapsed = now - state.lastCheckpointTriggerTime;
+
+  if (elapsed < cooldownMs) {
+    const remainingMs = cooldownMs - elapsed;
+    logger.info(
+      `amcp-context-monitor: ${trigger} but in cooldown (${Math.round(remainingMs / 1000)}s remaining)`,
+    );
+    return false;
+  }
+
+  state.lastCheckpointTriggerTime = now;
+
+  const timestamp = reading?.timestamp ?? new Date().toISOString();
+  const logEntry: CheckpointLogEntry = {
+    timestamp,
+    trigger,
+    contextPercent: reading?.contextPercent ?? 0,
+    usedTokens: reading?.usedTokens ?? 0,
+    maxTokens: reading?.maxTokens ?? 0,
+    cooldownMs,
+  };
+  await appendCheckpointLog(checkpointLogPath, logEntry);
+
+  const eventData: Record<string, unknown> = { trigger, ...extra };
+  if (reading) {
+    eventData.contextPercent = reading.contextPercent;
+  }
+  emit("amcp:checkpoint:requested", eventData);
+
+  return true;
+}
+
+/**
  * Create a context monitor service that polls session context usage.
+ * Supports both threshold-based and time-based checkpoint triggers.
+ *
+ * Time-based triggers are checked during the regular poll cycle
+ * (every 30s) rather than via a separate timer, ensuring reliable
+ * async behavior with fake timers in tests.
  */
 export function createContextMonitor(deps: ContextMonitorDeps): PluginService {
   const { config, logger, emit, sessionApi, historyPath, checkpointLogPath } =
     deps;
-  let timer: ReturnType<typeof setInterval> | null = null;
+  const contentHasher: ContentHasher | undefined = deps.contentHasher;
+
+  let pollTimer: ReturnType<typeof setInterval> | null = null;
   let running = false;
   let lastReading: ContextReading | null = null;
-  let lastCheckpointTriggerTime = 0;
+  const cooldownState = { lastCheckpointTriggerTime: 0 };
+  let lastCheckpointContentHash: string | null = null;
+  let lastIntervalCheckTime = 0;
+  let intervalEnabled = false;
+  /** Chain of poll promises — each poll awaits the previous to prevent concurrency. */
+  let pollChain: Promise<void> = Promise.resolve();
+
+  /**
+   * Check if a time-based interval checkpoint is due.
+   * Called during each poll() to avoid fire-and-forget async issues.
+   */
+  async function checkIntervalTrigger(): Promise<void> {
+    if (!intervalEnabled || config.checkpointIntervalMs <= 0) return;
+
+    const now = Date.now();
+    const elapsed = now - lastIntervalCheckTime;
+    if (elapsed < config.checkpointIntervalMs) return;
+
+    // Check for meaningful changes via content hash
+    if (contentHasher) {
+      const currentHash = await contentHasher.getContentHash();
+      if (
+        lastCheckpointContentHash !== null &&
+        currentHash === lastCheckpointContentHash
+      ) {
+        logger.info(
+          "amcp-context-monitor: interval — skipping, no changes since last checkpoint",
+        );
+        // Still update the interval check time so we check again next period
+        lastIntervalCheckTime = now;
+        return;
+      }
+    }
+
+    const triggered = await triggerCheckpoint(
+      "time_interval",
+      lastReading,
+      config.checkpointCooldownMs,
+      cooldownState,
+      logger,
+      emit,
+      checkpointLogPath,
+      { intervalMs: config.checkpointIntervalMs },
+    );
+    if (triggered) {
+      lastIntervalCheckTime = now;
+      logger.info(
+        `amcp-context-monitor: time-based checkpoint triggered (every ${Math.round(config.checkpointIntervalMs / 60_000)}min)`,
+      );
+      if (contentHasher) {
+        try {
+          lastCheckpointContentHash =
+            await contentHasher.getContentHash();
+        } catch {
+          // non-fatal
+        }
+      }
+    } else {
+      // Cooldown blocked the trigger — still update interval check time
+      lastIntervalCheckTime = now;
+    }
+  }
 
   async function poll(): Promise<void> {
     try {
@@ -73,39 +189,34 @@ export function createContextMonitor(deps: ContextMonitorDeps): PluginService {
 
       await appendReading(historyPath, reading);
 
+      // Threshold-based trigger
       if (contextPercent >= config.contextThreshold) {
-        const now = Date.now();
-        const elapsed = now - lastCheckpointTriggerTime;
-        const cooldownMs = config.checkpointCooldownMs;
-
-        if (elapsed >= cooldownMs) {
-          lastCheckpointTriggerTime = now;
-
+        const triggered = await triggerCheckpoint(
+          "context_threshold",
+          reading,
+          config.checkpointCooldownMs,
+          cooldownState,
+          logger,
+          emit,
+          checkpointLogPath,
+        );
+        if (triggered) {
           logger.warn(
             `amcp-context-monitor: threshold ${config.contextThreshold}% exceeded — ${reading.contextPercent}%`,
           );
-
-          const logEntry: CheckpointLogEntry = {
-            timestamp: reading.timestamp,
-            trigger: "context_threshold",
-            contextPercent: reading.contextPercent,
-            usedTokens,
-            maxTokens,
-            cooldownMs,
-          };
-          await appendCheckpointLog(checkpointLogPath, logEntry);
-
-          emit("amcp:checkpoint:requested", {
-            trigger: "context_threshold",
-            contextPercent: reading.contextPercent,
-          });
-        } else {
-          const remainingMs = cooldownMs - elapsed;
-          logger.info(
-            `amcp-context-monitor: threshold exceeded but in cooldown (${Math.round(remainingMs / 1000)}s remaining)`,
-          );
+          if (contentHasher) {
+            try {
+              lastCheckpointContentHash =
+                await contentHasher.getContentHash();
+            } catch {
+              // non-fatal
+            }
+          }
         }
       }
+
+      // Time-based interval trigger (checked during poll)
+      await checkIntervalTrigger();
     } catch (err) {
       logger.error(
         `amcp-context-monitor: poll failed — ${err instanceof Error ? err.message : String(err)}`,
@@ -113,22 +224,49 @@ export function createContextMonitor(deps: ContextMonitorDeps): PluginService {
     }
   }
 
-  return {
+  const service: PluginService & { waitForPendingPoll(): Promise<void> } = {
     name: "amcp-context-monitor",
+
+    /** Await all pending poll operations (for test use). */
+    async waitForPendingPoll() {
+      await pollChain;
+    },
 
     async start() {
       if (running) return;
       running = true;
       logger.info("amcp-context-monitor: started");
+
+      // Set up time-based interval tracking
+      if (config.checkpointIntervalMs > 0) {
+        intervalEnabled = true;
+        lastIntervalCheckTime = Date.now();
+        logger.info(
+          `amcp-context-monitor: time-based checkpoints enabled (every ${Math.round(config.checkpointIntervalMs / 60_000)}min)`,
+        );
+        // Capture initial content hash for change detection
+        if (contentHasher) {
+          try {
+            lastCheckpointContentHash =
+              await contentHasher.getContentHash();
+          } catch {
+            // non-fatal — hash comparison will be skipped
+          }
+        }
+      }
+
       // Initial poll, then repeat at interval
       await poll();
-      timer = setInterval(() => void poll(), POLL_INTERVAL_MS);
+      pollTimer = setInterval(() => {
+        // Chain polls sequentially to prevent concurrency issues
+        pollChain = pollChain.then(() => poll());
+      }, POLL_INTERVAL_MS);
     },
 
     async stop() {
-      if (timer) {
-        clearInterval(timer);
-        timer = null;
+      if (pollTimer) {
+        clearInterval(pollTimer);
+        pollTimer = null;
       }
       running = false;
       logger.info("amcp-context-monitor: stopped");
@@ -143,12 +281,20 @@ export function createContextMonitor(deps: ContextMonitorDeps): PluginService {
           pollIntervalMs: POLL_INTERVAL_MS,
           thresholdPercent: config.contextThreshold,
           cooldownMs: config.checkpointCooldownMs,
+          checkpointIntervalMs: config.checkpointIntervalMs,
+          intervalEnabled,
           lastCheckpointTriggerTime:
-            lastCheckpointTriggerTime > 0
-              ? new Date(lastCheckpointTriggerTime).toISOString()
+            cooldownState.lastCheckpointTriggerTime > 0
+              ? new Date(
+                  cooldownState.lastCheckpointTriggerTime,
+                ).toISOString()
               : undefined,
+          lastCheckpointContentHash:
+            lastCheckpointContentHash ?? undefined,
         },
       };
     },
   };
+
+  return service;
 }

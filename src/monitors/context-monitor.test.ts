@@ -207,17 +207,19 @@ describe("context-monitor", () => {
       },
     };
     const deps = makeDeps({ tmpDir, sessionApi });
-    const monitor = createContextMonitor(deps);
+    const monitor = createContextMonitor(deps) as ReturnType<typeof createContextMonitor> & { waitForPendingPoll(): Promise<void> };
 
     await monitor.start();
     expect(callCount).toBe(1); // initial poll
 
     // Advance 30 seconds — should trigger another poll
     await vi.advanceTimersByTimeAsync(30_000);
+    await monitor.waitForPendingPoll();
     expect(callCount).toBe(2);
 
     // Advance another 30 seconds
     await vi.advanceTimersByTimeAsync(30_000);
+    await monitor.waitForPendingPoll();
     expect(callCount).toBe(3);
 
     await monitor.stop();
@@ -684,3 +686,5 @@ describe("context-monitor: checkpoint log", () => {
     ).toBe(true);
   });
 });
+
+// Time-based interval trigger tests are in context-monitor-interval.test.ts

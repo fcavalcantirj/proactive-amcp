@@ -130,6 +130,14 @@ export interface CheckpointLogEntry {
   cooldownMs: number;
 }
 
+/**
+ * Returns a hash representing the current workspace content.
+ * Used by time-based triggers to skip checkpoints when nothing changed.
+ */
+export interface ContentHasher {
+  getContentHash(): Promise<string>;
+}
+
 export interface ContextMonitorDeps {
   config: AmcpPluginConfig;
   logger: PluginLogger;
@@ -137,4 +145,5 @@ export interface ContextMonitorDeps {
   sessionApi: SessionApi;
   historyPath: string;
   checkpointLogPath: string;
+  contentHasher?: ContentHasher;
 }

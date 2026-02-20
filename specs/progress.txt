@@ -1331,3 +1331,26 @@
 - 10 tests specifically cover threshold/cooldown/logging behavior across 3 test suites
 - All 22 context-monitor tests pass
 - No code changes needed — all requirements already satisfied
+
+## Task: P4-CTX-03 — Implement time-based triggers — checkpoint every N minutes (configurable) (DONE)
+- Modified src/monitors/context-monitor.ts (300 lines) to add time-based interval checkpoint triggers
+- Reads checkpointIntervalMs from plugin config (default 0 = disabled) — when > 0, triggers periodic checkpoints
+- Time-based triggers checked during the regular 30s poll cycle (not a separate timer) for reliable async behavior
+- Added ContentHasher interface to src/types.ts (149 lines) — optional dependency for change detection
+- Content hash comparison skips checkpoints when workspace hasn't changed since last checkpoint
+- Shares cooldown with threshold-based triggers via extracted triggerCheckpoint() helper function
+- Poll chaining pattern (pollChain = pollChain.then(() => poll())) serializes async callbacks, preventing concurrency issues
+- Added waitForPendingPoll() test helper on service for reliable fake timer testing
+- status() reports intervalEnabled, checkpointIntervalMs, lastCheckpointContentHash
+- Logs "time-based checkpoints enabled (every Nmin)" on start when configured
+- Created src/monitors/context-monitor-interval.test.ts (472 lines) with 13 dedicated interval tests:
+  - Disabled when checkpointIntervalMs=0, triggers at configured interval, multiple intervals
+  - Hash-based skip when no changes, trigger after content change, cooldown enforcement
+  - Works without contentHasher (always triggers), writes to checkpoint-log.jsonl
+  - status() reflects config, logs enabled message, shared cooldown with threshold triggers
+  - No triggers after stop(), P4-CTX-03 verification test (3 checkpoints at 1-min intervals)
+- Split context-monitor.test.ts to stay under 800 lines (690 lines after split)
+- Verification:
+  - npm run lint (tsc --noEmit) passes with zero errors
+  - npm test passes: 73 tests (22 + 13 + 27 + 11), 4 test files, 0 failures
+  - File sizes: context-monitor.ts=300, context-monitor-interval.test.ts=472, context-monitor.test.ts=690, types.ts=149 (all under 800)

@@ -1206,7 +1206,7 @@
       "Respect cooldown period between checkpoints",
       "Verify: checkpoint created every N minutes when configured"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "P4-CTX-04",
