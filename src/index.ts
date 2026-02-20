@@ -14,6 +14,7 @@ import { createValueMonitor } from "./monitors/value-monitor.js";
 import { createIdentityService } from "./identity-manager.js";
 import { createKeyRotationService } from "./key-rotation.js";
 import { createResurrectionIdentityService } from "./monitors/resurrection-identity.js";
+import { createResurrectionDetector } from "./monitors/resurrection-detector.js";
 import { createMultiIdentityService } from "./multi-identity.js";
 import type {
   AmcpPlugin,
@@ -305,6 +306,18 @@ async function register(api: PluginApi): Promise<void> {
     lastCheckpointPath,
   });
 
+  // Resurrection detector — monitors context for sudden drops indicating wipe/compaction
+  const resurrectionLogPath =
+    (apiExt.amcpResurrectionLogPath as string) ??
+    join(homedir(), ".amcp", "resurrection-log.jsonl");
+  const resurrectionDetector = createResurrectionDetector({
+    config,
+    logger: api.logger,
+    emit: api.emit.bind(api),
+    sessionApi,
+    logPath: resurrectionLogPath,
+  });
+
   // Multi-identity — stores identities by AID, supports switching, blocks cross-identity resurrection
   const identitiesDir =
     (apiExt.amcpIdentitiesDir as string) ??
@@ -322,6 +335,7 @@ async function register(api: PluginApi): Promise<void> {
   api.registerService(identityService);
   api.registerService(keyRotationService);
   api.registerService(resurrectionIdentityService);
+  api.registerService(resurrectionDetector);
   api.registerService(multiIdentityService);
 
   // Register lifecycle hooks
@@ -370,6 +384,7 @@ export {
   verifyAndInjectIdentity,
   createResurrectionIdentityService,
 } from "./monitors/resurrection-identity.js";
+export { createResurrectionDetector } from "./monitors/resurrection-detector.js";
 export {
   listIdentities,
   getActiveAid,

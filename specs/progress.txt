@@ -1508,3 +1508,39 @@
   - vitest run passes: 175 tests, 9 test files, 0 failures
   - All 5 PRD steps verified: store by AID (identities/<aid>/), CLI switching (switchIdentity), per-identity checkpoint history (getCheckpointPathForAid), cross-identity prevention (validateCheckpointOwnership), multi-agent works (25 tests pass)
   - File sizes: multi-identity.ts=411, multi-identity.test.ts=532, index.ts=382, integration.test.ts=417 (all under 800)
+
+## Task P4-RES-01: resurrection-detector — Detect context wipe at plugin level (DONE)
+- Created `src/monitors/resurrection-detector.ts` (260 lines) — monitors SessionApi for context wipe/compaction
+  - Polls session context usage at configurable interval (default 10s)
+  - Detects sudden context drop >50% reduction between consecutive readings
+  - Detects session restart (context drops to 0 from meaningful amount)
+  - MIN_TOKENS_FOR_DROP = 1000 (avoids false positives from idle sessions)
+  - Logs detections to `~/.amcp/resurrection-log.jsonl` (append-only JSONL)
+  - Emits `amcp:resurrection:detected` event with type, tokens, dropPercent
+  - Configurable: dropThreshold (default 0.5), pollIntervalMs (default 10_000)
+  - Respects `config.resurrection.autoDetect` toggle
+  - Graceful error handling: sessionApi failures logged, never crash
+  - Exports `createResurrectionDetector()` factory with start/stop/status/waitForPendingPoll/getDetections
+- Created `src/monitors/resurrection-detector.test.ts` (506 lines) — 11 tests covering:
+  - Service start/stop lifecycle
+  - Baseline establishment on first poll (no detection)
+  - Sudden context drop >50% detected with correct event emission
+  - Session restart (to 0 tokens) detected as "session_restart" type
+  - Small changes (<50%) ignored
+  - Low token drops (<1000 previous) ignored (avoids false positives)
+  - autoDetect=false disables monitoring
+  - Custom drop threshold support
+  - SessionApi error handling (graceful, logs error)
+  - Status includes detection details
+  - Context wipe detected within 1 poll cycle
+- Updated `src/index.ts` (397 lines):
+  - Imports and registers createResurrectionDetector as "amcp-resurrection-detector" service
+  - Reads amcpResurrectionLogPath from PluginApi extension, defaults to ~/.amcp/resurrection-log.jsonl
+  - Passes sessionApi to detector (shared with context-monitor)
+  - Exports createResurrectionDetector
+- Updated `src/integration.test.ts`: service count 7→8 in 3 assertions, added amcp-resurrection-detector name check
+- Verification:
+  - tsc --noEmit passes with zero errors
+  - vitest run passes: 186 tests, 10 test files, 0 failures
+  - All 6 PRD steps verified: create resurrection-detector.ts ✓, hook into session events ✓, detect >50% drop ✓, detect session restart ✓, log to resurrection-log.jsonl ✓, context wipe detected within 1 poll cycle ✓
+  - File sizes: resurrection-detector.ts=260, resurrection-detector.test.ts=506, index.ts=397 (all under 800)

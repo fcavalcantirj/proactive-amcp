@@ -1292,7 +1292,7 @@
       "Log detection to .amcp/resurrection-log.jsonl",
       "Verify: context wipe detected within 1 second"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "P4-RES-02",
