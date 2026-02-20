@@ -1969,3 +1969,26 @@
     5. Report integrity status ✓
     6. Verify: corrupt checkpoint detected ✓
   - File sizes: verify-command.ts=673, verify-command.test.ts=602, index.ts=603 (all under 800)
+
+## Task: P4-HOOK-01 — Implement gateway_start hook with checkpoint log persistence (DONE)
+- Hook registration for `gateway_start` already existed in src/index.ts (emits `amcp:checkpoint:requested` event)
+- Added missing checkpoint-log.jsonl persistence: each hook now writes a `CheckpointLogEntry` to the log
+- Created `appendCheckpointLog()` function in src/index.ts (replicates pattern from context-monitor.ts and value-monitor.ts)
+- Updated `registerHooks()` signature: now accepts `checkpointLogPath` parameter
+- All 4 hooks (gateway_start, gateway_stop, session_end, before_compaction) write to checkpoint-log.jsonl:
+  - Each entry includes: timestamp (ISO-8601), trigger name, contextPercent=0, usedTokens=0, maxTokens=0, cooldownMs from config
+  - File writes are fire-and-forget with `.catch()` — log failures never block the hook
+  - On write failure: warns via `api.logger.warn` (graceful degradation)
+- Added `CheckpointLogEntry` type import from types.ts, `appendFile`/`mkdir` from node:fs/promises
+- Updated `register()`: passes `checkpointLogPath` to `registerHooks()` call
+- Updated `src/integration.test.ts`:
+  - Lifecycle hooks test suite now uses temp directory for checkpoint-log.jsonl
+  - Added test: "gateway_start hook logs trigger to checkpoint-log.jsonl" — verifies JSONL entry with trigger, timestamp, cooldownMs
+  - Added test: "all hooks write to checkpoint-log.jsonl" — fires all 4 hooks, verifies 4 JSONL entries with correct triggers
+  - Proper cleanup via afterEach (rm temp dir)
+- Verification:
+  - TypeScript: `tsc --noEmit` passes cleanly (no type errors)
+  - vitest: all 40 tests pass (11 index + 29 integration), 0 failures
+  - File sizes: index.ts=662, integration.test.ts=517 (both under 800)
+  - Structural grep: appendCheckpointLog called 4 times in hooks (one per hook)
+  - CheckpointLogEntry import confirmed in index.ts

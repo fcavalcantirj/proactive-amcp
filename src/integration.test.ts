@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import plugin, { register, DEFAULT_CONFIG } from "./index.js";
@@ -155,11 +155,24 @@ describe("integration: plugin registration", () => {
 
 describe("integration: lifecycle hooks", () => {
   let state: MockState;
+  let tmpDir: string;
+  let checkpointLogPath: string;
 
   beforeEach(async () => {
-    const mock = createMockApi();
+    tmpDir = join(
+      tmpdir(),
+      `amcp-hooks-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    );
+    await mkdir(tmpDir, { recursive: true });
+    checkpointLogPath = join(tmpDir, "checkpoint-log.jsonl");
+
+    const mock = createMockApi({}, { amcpCheckpointLogPath: checkpointLogPath });
     state = mock.state;
     await register(mock.api);
+  });
+
+  afterEach(async () => {
+    await rm(tmpDir, { recursive: true, force: true });
   });
 
   it("gateway_start hook emits checkpoint requested event", () => {
@@ -172,6 +185,25 @@ describe("integration: lifecycle hooks", () => {
       event: "amcp:checkpoint:requested",
       data: { trigger: "gateway_start" },
     });
+  });
+
+  it("gateway_start hook logs trigger to checkpoint-log.jsonl", async () => {
+    const handlers = state.hooks.get("gateway_start")!;
+    handlers[0](makeEvent("gateway_start"));
+
+    // Wait for async file write to complete
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    const logContent = await readFile(checkpointLogPath, "utf-8");
+    const entries = logContent
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line));
+
+    expect(entries).toHaveLength(1);
+    expect(entries[0].trigger).toBe("gateway_start");
+    expect(entries[0].timestamp).toBeTruthy();
+    expect(entries[0].cooldownMs).toBeGreaterThan(0);
   });
 
   it("gateway_stop hook emits checkpoint requested event", () => {
@@ -216,6 +248,28 @@ describe("integration: lifecycle hooks", () => {
     expect(
       state.logs.info.some((l) => l.includes("before_compaction")),
     ).toBe(true);
+  });
+
+  it("all hooks write to checkpoint-log.jsonl", async () => {
+    for (const [, handlers] of state.hooks.entries()) {
+      handlers[0](makeEvent("test"));
+    }
+
+    // Wait for async file writes to complete
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    const logContent = await readFile(checkpointLogPath, "utf-8");
+    const entries = logContent
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line));
+
+    expect(entries).toHaveLength(4);
+    const triggers = entries.map((e: Record<string, unknown>) => e.trigger);
+    expect(triggers).toContain("gateway_start");
+    expect(triggers).toContain("gateway_stop");
+    expect(triggers).toContain("session_end");
+    expect(triggers).toContain("before_compaction");
   });
 
   it("no hooks registered when autoCheckpoint is false", async () => {

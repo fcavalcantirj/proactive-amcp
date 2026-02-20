@@ -1491,7 +1491,7 @@
       "Log checkpoint trigger",
       "Verify: checkpoint on gateway start"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "P4-HOOK-02",

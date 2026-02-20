@@ -9,6 +9,7 @@
 
 import { join, dirname } from "node:path";
 import { homedir } from "node:os";
+import { appendFile, mkdir } from "node:fs/promises";
 import { createContextMonitor } from "./monitors/context-monitor.js";
 import { createValueMonitor } from "./monitors/value-monitor.js";
 import { createIdentityService } from "./identity-manager.js";
@@ -31,6 +32,7 @@ import { createVerifyHandler } from "./cli/verify-command.js";
 import type {
   AmcpPlugin,
   AmcpPluginConfig,
+  CheckpointLogEntry,
   PluginApi,
   PluginService,
   LifecycleEvent,
@@ -158,31 +160,88 @@ function defaultFileWatcher(watchPaths: string[]): FileWatcher {
 }
 
 /**
+ * Append a checkpoint trigger entry to the checkpoint log.
+ */
+async function appendCheckpointLog(
+  logPath: string,
+  entry: CheckpointLogEntry,
+): Promise<void> {
+  await mkdir(dirname(logPath), { recursive: true });
+  await appendFile(logPath, JSON.stringify(entry) + "\n", "utf-8");
+}
+
+/**
  * Register lifecycle hooks for checkpoint triggers.
+ * Each hook logs the trigger to checkpoint-log.jsonl and emits an event.
  */
 function registerHooks(
   api: PluginApi,
   config: AmcpPluginConfig,
+  checkpointLogPath: string,
 ): void {
   if (!config.autoCheckpoint) return;
 
   api.registerHook("gateway_start", (_event: LifecycleEvent) => {
     api.logger.info("amcp: gateway_start — checkpoint queued");
+    const entry: CheckpointLogEntry = {
+      timestamp: new Date().toISOString(),
+      trigger: "gateway_start",
+      contextPercent: 0,
+      usedTokens: 0,
+      maxTokens: 0,
+      cooldownMs: config.checkpointCooldownMs,
+    };
+    appendCheckpointLog(checkpointLogPath, entry).catch((err) =>
+      api.logger.warn(`amcp: failed to log gateway_start trigger: ${err}`),
+    );
     api.emit("amcp:checkpoint:requested", { trigger: "gateway_start" });
   });
 
   api.registerHook("gateway_stop", (_event: LifecycleEvent) => {
     api.logger.info("amcp: gateway_stop — checkpoint queued");
+    const entry: CheckpointLogEntry = {
+      timestamp: new Date().toISOString(),
+      trigger: "gateway_stop",
+      contextPercent: 0,
+      usedTokens: 0,
+      maxTokens: 0,
+      cooldownMs: config.checkpointCooldownMs,
+    };
+    appendCheckpointLog(checkpointLogPath, entry).catch((err) =>
+      api.logger.warn(`amcp: failed to log gateway_stop trigger: ${err}`),
+    );
     api.emit("amcp:checkpoint:requested", { trigger: "gateway_stop" });
   });
 
   api.registerHook("session_end", (_event: LifecycleEvent) => {
     api.logger.info("amcp: session_end — checkpoint queued");
+    const entry: CheckpointLogEntry = {
+      timestamp: new Date().toISOString(),
+      trigger: "session_end",
+      contextPercent: 0,
+      usedTokens: 0,
+      maxTokens: 0,
+      cooldownMs: config.checkpointCooldownMs,
+    };
+    appendCheckpointLog(checkpointLogPath, entry).catch((err) =>
+      api.logger.warn(`amcp: failed to log session_end trigger: ${err}`),
+    );
     api.emit("amcp:checkpoint:requested", { trigger: "session_end" });
   });
 
   api.registerHook("before_compaction", (_event: LifecycleEvent) => {
     api.logger.info("amcp: before_compaction — emergency checkpoint queued");
+    const entry: CheckpointLogEntry = {
+      timestamp: new Date().toISOString(),
+      trigger: "before_compaction",
+      contextPercent: 0,
+      usedTokens: 0,
+      maxTokens: 0,
+      cooldownMs: config.checkpointCooldownMs,
+    };
+    appendCheckpointLog(checkpointLogPath, entry).catch((err) =>
+      api.logger.warn(`amcp: failed to log before_compaction trigger: ${err}`),
+    );
     api.emit("amcp:checkpoint:requested", {
       trigger: "before_compaction",
       priority: "high",
@@ -446,7 +505,7 @@ async function register(api: PluginApi): Promise<void> {
   }
 
   // Register lifecycle hooks
-  registerHooks(api, config);
+  registerHooks(api, config, checkpointLogPath);
 
   // Script directory — resolve from plugin install path or apiExt override
   const scriptDir =
