@@ -13,6 +13,7 @@ import { createContextMonitor } from "./monitors/context-monitor.js";
 import { createValueMonitor } from "./monitors/value-monitor.js";
 import { createIdentityService } from "./identity-manager.js";
 import { createKeyRotationService } from "./key-rotation.js";
+import { createResurrectionIdentityService } from "./monitors/resurrection-identity.js";
 import type {
   AmcpPlugin,
   AmcpPluginConfig,
@@ -288,11 +289,27 @@ async function register(api: PluginApi): Promise<void> {
     amcpCli,
   });
 
+  // Resurrection identity — auto-inject and verify identity after recovery
+  const lastRecoveryPath =
+    (apiExt.amcpLastRecoveryPath as string) ??
+    join(homedir(), ".amcp", "last-recovery.json");
+  const lastCheckpointPath =
+    (apiExt.amcpLastCheckpointPath as string) ??
+    join(homedir(), ".amcp", "last-checkpoint.json");
+  const resurrectionIdentityService = createResurrectionIdentityService({
+    logger: api.logger,
+    emit: api.emit.bind(api),
+    identityPath,
+    lastRecoveryPath,
+    lastCheckpointPath,
+  });
+
   api.registerService(contextMonitor);
   api.registerService(valueMonitor);
   api.registerService(memoryMonitor);
   api.registerService(identityService);
   api.registerService(keyRotationService);
+  api.registerService(resurrectionIdentityService);
 
   // Register lifecycle hooks
   registerHooks(api, config);
@@ -336,4 +353,8 @@ export {
   loadRotationHistory,
   createKeyRotationService,
 } from "./key-rotation.js";
+export {
+  verifyAndInjectIdentity,
+  createResurrectionIdentityService,
+} from "./monitors/resurrection-identity.js";
 export type * from "./types.js";

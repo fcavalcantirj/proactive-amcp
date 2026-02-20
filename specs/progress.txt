@@ -1456,3 +1456,27 @@
   - File sizes: key-rotation.ts=381, key-rotation.test.ts=575, types.ts=217, identity-manager.ts=465, index.ts=339 (all under 800)
   - Rotation history stored in ~/.amcp/key-rotations.jsonl (append-only JSONL)
   - amcp:identity:invalid emitted on invalid identity (3 refs in tests)
+
+## P4-ID-03: identity — Auto-inject identity on resurrection (DONE)
+- Created `src/monitors/resurrection-identity.ts` (280 lines) — plugin-level identity injection on resurrection
+  - loadCheckpointIdentity(): loads identity from last-checkpoint.json (embedded AID/publicKey) or falls back to on-disk identity
+  - verifyIdentityMatch(): compares current identity AID with checkpoint identity AID, flags mismatch
+  - verifyAndInjectIdentity(): full workflow: detect recent recovery → validate current identity → load checkpoint identity → verify match → emit events
+  - isRecentRecovery(): checks if last-recovery.json timestamp is within threshold (default 5 minutes)
+  - createResurrectionIdentityService(): plugin service with start/stop/status/verifyNow/getLastResult
+  - On start: auto-checks for recent recovery and injects identity if found
+  - Events emitted: amcp:identity:injected (success), amcp:identity:mismatch (AID mismatch alert), amcp:identity:invalid (current identity broken)
+- Created `src/monitors/resurrection-identity.test.ts` (354 lines) — 12 vitest tests:
+  - verifyAndInjectIdentity: skips when no recovery, skips old recovery, skips failed recovery
+  - verifyAndInjectIdentity: verifies + injects on matching checkpoint, alerts on AID mismatch, injects current when no checkpoint identity
+  - verifyAndInjectIdentity: errors on invalid current identity, respects custom threshold
+  - createResurrectionIdentityService: start/stop lifecycle, auto-inject on recent recovery, verifyNow on-demand, status includes verification details
+- Updated `src/index.ts` (360 lines):
+  - Imports and registers createResurrectionIdentityService as "amcp-resurrection-identity" service
+  - Exports: verifyAndInjectIdentity, createResurrectionIdentityService
+- Updated `src/integration.test.ts` (416 lines): service count 5→6 in 3 assertions
+- Verification:
+  - tsc --noEmit passes with zero errors
+  - vitest run passes: 150 tests, 8 test files, 0 failures
+  - All 5 PRD steps verified via structural grep
+  - File sizes: resurrection-identity.ts=280, resurrection-identity.test.ts=354, index.ts=360, integration.test.ts=416 (all under 800)

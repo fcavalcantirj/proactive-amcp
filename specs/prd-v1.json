@@ -1263,7 +1263,7 @@
       "Alert if identity mismatch (possible impersonation)",
       "Verify: resurrected agent has correct identity"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "P4-ID-04",
