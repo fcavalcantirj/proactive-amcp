@@ -2088,3 +2088,25 @@
   - grep confirms all 6 CLI commands documented (status, checkpoint, resurrect, identity, history, verify)
   - grep confirms troubleshooting section present
   - File size: 391 lines (under 800)
+
+## Task P4-DOC-02: documentation — Write architecture doc (DONE)
+- Created `docs/ARCHITECTURE.md` (473 lines) — explains plugin + skill two-layer defense model
+- ASCII diagram: gateway → plugin layer → skill layer → IPFS network
+- "Why Two Layers?" section: table comparing plugin vs skill responsibilities (runtime, lifecycle access, monitoring, checkpoint creation, secrets, IPFS, resurrection, failure mode)
+- Plugin Layer section: lifecycle hooks (6), background monitors (10), event bus (12 events), CLI commands (6)
+- Skill Layer section: checkpoint pipeline (13 steps), 3-tier resurrection, watchdog, secret management
+- Data Flow diagrams: checkpoint trigger flow (plugin → skill → IPFS), resurrection flow (plugin detects → skill recovers), standalone operation (cron/systemd without plugin)
+- Security Model section: identity (KERI, Ed25519), encryption (X25519 + ChaCha20-Poly1305), content addressing (CIDv1)
+- Two-Layer Security Benefits table: 7 threats mapped to plugin defense + skill defense
+- Memory Architecture section: three-layer diagram (phenomenological → ontology → AMCP), memory evolution, Groq intelligence
+- Configuration section: plugin config (openclaw.json) + skill config (~/.amcp/config.json)
+- State Files section: 12 files with owner (plugin vs skill) and purpose
+- IPFS Pinning section: Solvr/Pinata/both with retrieval priority
+- Resilience Patterns table: 9 patterns (guard notifications, lock+PID, exponential backoff, tier gating, etc.)
+- Testing section: Vitest (plugin) + BATS (skill)
+- Verification:
+  - Two-layer defense model explained with ASCII diagram
+  - Plugin enforces vs skill executes documented in "Why Two Layers?" table
+  - ASCII diagrams included (architecture overview, data flows, memory layers)
+  - Security benefits documented with 7-threat comparison table
+  - File size: 473 lines (under 800)
