@@ -24,6 +24,7 @@ import {
 } from "./monitors/memory-integrity.js";
 import { createStatusHandler } from "./cli/status-command.js";
 import { createCheckpointHandler } from "./cli/checkpoint-command.js";
+import { createResurrectHandler } from "./cli/resurrect-command.js";
 import type {
   AmcpPlugin,
   AmcpPluginConfig,
@@ -228,9 +229,22 @@ function registerCliCommands(api: PluginApi, deps: CliRegistrationDeps): void {
     handler: checkpointHandler,
   });
 
-  // Placeholder commands — will be implemented in P4-CLI-03 through P4-CLI-06
+  // 'amcp resurrect' — fully implemented (P4-CLI-03)
+  const resurrectHandler = createResurrectHandler({
+    logger: api.logger,
+    config: deps.config,
+    lastCheckpointPath: deps.lastCheckpointPath,
+    scriptDir: deps.scriptDir,
+  });
+
+  api.registerCommand("amcp", {
+    name: "resurrect",
+    description: "Restore from a checkpoint",
+    handler: resurrectHandler,
+  });
+
+  // Placeholder commands — will be implemented in P4-CLI-04 through P4-CLI-06
   const placeholderCommands = [
-    { name: "resurrect", description: "Restore from a checkpoint" },
     { name: "identity", description: "Identity management (show, rotate, verify, export)" },
     { name: "history", description: "Show checkpoint history" },
     { name: "verify", description: "Verify checkpoint integrity" },
@@ -521,4 +535,10 @@ export {
   formatCheckpointResult,
   createCheckpointHandler,
 } from "./cli/checkpoint-command.js";
+export {
+  runResurrect,
+  formatResurrectResult,
+  buildRecoveryPrompt,
+  createResurrectHandler,
+} from "./cli/resurrect-command.js";
 export type * from "./types.js";

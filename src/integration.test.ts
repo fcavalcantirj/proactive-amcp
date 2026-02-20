@@ -6,7 +6,10 @@
  * how the OpenClaw gateway interacts with the plugin at runtime.
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { mkdir, rm, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import plugin, { register, DEFAULT_CONFIG } from "./index.js";
 import type {
   AmcpPluginConfig,
@@ -31,6 +34,7 @@ interface MockState {
 
 function createMockApi(
   configOverrides: Partial<AmcpPluginConfig> = {},
+  apiExtras: Record<string, unknown> = {},
 ): { api: PluginApi; state: MockState } {
   const state: MockState = {
     services: [],
@@ -62,6 +66,7 @@ function createMockApi(
     emit(event: string, data?: Record<string, unknown>) {
       state.emissions.push({ event, data });
     },
+    ...apiExtras,
   };
 
   return { api, state };
@@ -234,11 +239,37 @@ describe("integration: lifecycle hooks", () => {
 
 describe("integration: CLI commands", () => {
   let state: MockState;
+  let mockScriptDir: string;
 
   beforeEach(async () => {
-    const mock = createMockApi();
+    // Create temp script dir with mock scripts so CLI commands resolve fast
+    mockScriptDir = join(
+      tmpdir(),
+      `amcp-integration-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    );
+    await mkdir(mockScriptDir, { recursive: true });
+
+    // Mock full-checkpoint.sh (used by checkpoint command)
+    await writeFile(
+      join(mockScriptDir, "full-checkpoint.sh"),
+      '#!/bin/bash\necho "=== DRY RUN COMPLETE ==="\necho "Would checkpoint 0 secrets and 0K of content"\n',
+      { mode: 0o755 },
+    );
+
+    // Mock resuscitate.sh (used by resurrect command)
+    await writeFile(
+      join(mockScriptDir, "resuscitate.sh"),
+      '#!/bin/bash\necho "=== TIER 1: Restart gateway ==="\necho "=== RESURRECTION COMPLETE ==="\n',
+      { mode: 0o755 },
+    );
+
+    const mock = createMockApi({}, { amcpScriptDir: mockScriptDir });
     state = mock.state;
     await register(mock.api);
+  });
+
+  afterEach(async () => {
+    await rm(mockScriptDir, { recursive: true, force: true });
   });
 
   it("status command handler executes without error", async () => {
@@ -254,7 +285,7 @@ describe("integration: CLI commands", () => {
   it("resurrect command handler executes with CID arg", async () => {
     const cmd = state.commands.get("resurrect")!;
     await expect(
-      cmd.handler(["bafkreiexamplecid"]),
+      cmd.handler(["--from-cid", "bafkreiexamplecid"]),
     ).resolves.toBeUndefined();
   });
 

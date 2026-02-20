@@ -1434,7 +1434,7 @@
       "Inject recovery prompt",
       "Verify: manual resurrection works from CLI"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "P4-CLI-04",
