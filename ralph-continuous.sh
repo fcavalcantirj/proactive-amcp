@@ -241,6 +241,31 @@ while true; do
     echo -e "${GREEN}${BOLD}└───────────────────────────────────────────────────────────────────┘${NC}"
     echo ""
 
+    # CHECK FOR 100% IMMEDIATELY AFTER BATCH (before countdown)
+    progress_output=$(./progress.sh 2>/dev/null)
+    if echo "$progress_output" | grep -q "100%"; then
+      echo ""
+      echo -e "${GREEN}${BOLD}   🎯 ALL TASKS COMPLETE (100%)! Stopping...${NC}"
+      
+      runner_end=$(date +%s)
+      total_time=$((runner_end - runner_start))
+      
+      send_telegram "🏆 *proactive-amcp Ralph* - ALL TASKS COMPLETE!
+
+📦 Total batches: ${batch_count}
+🔄 Total iterations: ${total_iterations}
+⏱️ Total time: $(format_time $total_time)
+📊 ${progress_output}
+
+🛑 Auto-stopped. Mission accomplished! 🏴‍☠️"
+      
+      # Kill the tmux session if we're in one
+      if [ -n "$TMUX" ]; then
+        tmux kill-session 2>/dev/null
+      fi
+      exit 0
+    fi
+
     # Notify via Telegram about batch completion
     send_telegram "✅ *proactive-amcp Ralph* - Batch #${batch_count} Complete
 
