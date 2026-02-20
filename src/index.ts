@@ -25,6 +25,7 @@ import {
 import { createStatusHandler } from "./cli/status-command.js";
 import { createCheckpointHandler } from "./cli/checkpoint-command.js";
 import { createResurrectHandler } from "./cli/resurrect-command.js";
+import { createIdentityHandler } from "./cli/identity-command.js";
 import type {
   AmcpPlugin,
   AmcpPluginConfig,
@@ -243,9 +244,22 @@ function registerCliCommands(api: PluginApi, deps: CliRegistrationDeps): void {
     handler: resurrectHandler,
   });
 
-  // Placeholder commands — will be implemented in P4-CLI-04 through P4-CLI-06
+  // 'amcp identity' — fully implemented (P4-CLI-04)
+  const identityHandler = createIdentityHandler({
+    logger: api.logger,
+    config: deps.config,
+    identityPath: deps.identityPath,
+    scriptDir: deps.scriptDir,
+  });
+
+  api.registerCommand("amcp", {
+    name: "identity",
+    description: "Identity management (show, rotate, verify, export)",
+    handler: identityHandler,
+  });
+
+  // Placeholder commands — will be implemented in P4-CLI-05 through P4-CLI-06
   const placeholderCommands = [
-    { name: "identity", description: "Identity management (show, rotate, verify, export)" },
     { name: "history", description: "Show checkpoint history" },
     { name: "verify", description: "Verify checkpoint integrity" },
   ];
@@ -541,4 +555,15 @@ export {
   buildRecoveryPrompt,
   createResurrectHandler,
 } from "./cli/resurrect-command.js";
+export {
+  gatherIdentityInfo,
+  formatIdentityShow,
+  verifyIdentity,
+  formatVerifyResult,
+  executeRotation,
+  formatRotateResult,
+  exportIdentity,
+  formatExportResult,
+  createIdentityHandler,
+} from "./cli/identity-command.js";
 export type * from "./types.js";

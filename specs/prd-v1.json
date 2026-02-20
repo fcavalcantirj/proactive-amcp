@@ -1448,7 +1448,7 @@
       "Register 'amcp identity export' \u2014 export identity for backup",
       "Verify: all identity commands work"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "P4-CLI-05",

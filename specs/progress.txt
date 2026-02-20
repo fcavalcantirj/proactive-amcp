@@ -1858,3 +1858,37 @@
     5. Inject recovery prompt ✓ (buildRecoveryPrompt generates session context)
     6. Verify: manual resurrection works from CLI ✓ (25 tests with mock scripts)
   - File sizes: resurrect-command.ts=285, resurrect-command.test.ts=595, index.ts=536, integration.test.ts=439 (all under 800)
+
+## Task P4-CLI-04: plugin-cli — Implement 'amcp identity' CLI command (DONE)
+- Created `src/cli/identity-command.ts` (575 lines) — 4 identity management subcommands:
+  - `show` — display current identity (AID, public key, created, KEL length, nextKeyHash, rotation history)
+  - `verify` — run 7 integrity checks (file-readable, valid-json, keri-aid-format, not-legacy-sha256, public-key-present, no-embedded-secrets, kel-chain-integrity) with pass/fail reporting
+  - `rotate` — delegate to key-rotation module with trigger support (manual, compromise, scheduled)
+  - `export --out <path>` — validate identity then copy to backup path, creates target directory
+- Each subcommand has:
+  - Core function: `gatherIdentityInfo()`, `verifyIdentity()`, `executeRotation()`, `exportIdentity()`
+  - Formatter: `formatIdentityShow()`, `formatVerifyResult()`, `formatRotateResult()`, `formatExportResult()`
+  - Structured result type for JSON output
+- Handler factory `createIdentityHandler()` routes subcommands with `--json` support
+- Default subcommand: `show` (when no subcommand provided)
+- Unknown subcommand shows usage help
+- Created `src/cli/identity-command.test.ts` (530 lines) — 25 tests:
+  - Show: valid identity display (AID, pubkey, created), KEL length, nextKeyHash, missing identity, format valid, format invalid
+  - Verify: all checks pass, file-readable failure, legacy sha256 detection, embedded secrets detection, missing public key, format with pass/fail counts
+  - Export: successful copy, missing source, invalid identity, format success, format failure
+  - Handler: default route to show, explicit show route, verify route, export route, export without --out, JSON mode for show, JSON mode for verify, unknown subcommand usage
+- Updated `src/index.ts`:
+  - Import `createIdentityHandler` from `./cli/identity-command.js`
+  - Replaced placeholder identity command with real handler using `createIdentityHandler()`
+  - Added 9 exports from identity-command module
+  - Placeholder list reduced to 2 (history, verify — P4-CLI-05, P4-CLI-06)
+- Verification:
+  - vitest: all 438 tests pass (25 new + 413 existing)
+  - TypeScript: `tsc --noEmit` passes cleanly
+  - All 5 PRD steps verified:
+    1. Register 'amcp identity show' ✓ (display AID, pubkey, created, KEL, rotation history)
+    2. Register 'amcp identity rotate' ✓ (delegates to key-rotation module with trigger flag)
+    3. Register 'amcp identity verify' ✓ (7 integrity checks with pass/fail reporting)
+    4. Register 'amcp identity export' ✓ (validate + copy to --out path)
+    5. Verify: all identity commands work ✓ (25 tests cover all subcommands)
+  - File sizes: identity-command.ts=575, identity-command.test.ts=530, index.ts=557 (all under 800)
