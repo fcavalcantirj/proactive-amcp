@@ -10,6 +10,7 @@
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { createContextMonitor } from "./monitors/context-monitor.js";
+import { createValueMonitor } from "./monitors/value-monitor.js";
 import type {
   AmcpPlugin,
   AmcpPluginConfig,
@@ -17,6 +18,7 @@ import type {
   PluginService,
   LifecycleEvent,
   SessionApi,
+  FileWatcher,
 } from "./types.js";
 
 const PLUGIN_ID = "proactive-amcp";
@@ -91,6 +93,52 @@ const DEFAULT_CHECKPOINT_LOG_PATH = join(
   ".amcp",
   "checkpoint-log.jsonl",
 );
+
+/** Default paths watched by the value monitor for high-value content changes. */
+const DEFAULT_VALUE_WATCH_PATHS = [
+  join(homedir(), ".amcp", "identity.json"),
+  join(homedir(), ".openclaw", "workspace", "SOUL.md"),
+  join(homedir(), ".openclaw", "workspace", "MEMORY.md"),
+  join(homedir(), ".openclaw", "workspace", "USER.md"),
+  join(homedir(), ".openclaw", "workspace", "AGENTS.md"),
+  join(homedir(), ".openclaw", "workspace", "TOOLS.md"),
+];
+
+/**
+ * Build a default FileWatcher that reads files from disk and computes hashes.
+ * The gateway may provide a real implementation via api.fileWatcher.
+ */
+function defaultFileWatcher(watchPaths: string[]): FileWatcher {
+  // Lazy imports — only loaded if the default watcher is actually used
+  const fsPromises = () => import("node:fs/promises");
+  const cryptoMod = () => import("node:crypto");
+
+  return {
+    async getFileHashes(): Promise<Map<string, string>> {
+      const fs = await fsPromises();
+      const crypto = await cryptoMod();
+      const result = new Map<string, string>();
+      for (const filePath of watchPaths) {
+        try {
+          const content = await fs.readFile(filePath, "utf-8");
+          const hash = crypto.createHash("sha256").update(content).digest("hex");
+          result.set(filePath, hash);
+        } catch {
+          // File missing or unreadable — omit from results
+        }
+      }
+      return result;
+    },
+    async readFile(filePath: string): Promise<string | null> {
+      const fs = await fsPromises();
+      try {
+        return await fs.readFile(filePath, "utf-8");
+      } catch {
+        return null;
+      }
+    },
+  };
+}
 
 /**
  * Placeholder memory monitor service.
@@ -201,8 +249,24 @@ async function register(api: PluginApi): Promise<void> {
     historyPath,
     checkpointLogPath,
   });
+
+  // Value monitor — watches memory files for high-value content changes
+  const watchPaths =
+    (apiExt.amcpValueWatchPaths as string[]) ?? DEFAULT_VALUE_WATCH_PATHS;
+  const fileWatcher: FileWatcher =
+    (apiExt.fileWatcher as FileWatcher) ?? defaultFileWatcher(watchPaths);
+  const valueMonitor = createValueMonitor({
+    config,
+    logger: api.logger,
+    emit: api.emit.bind(api),
+    fileWatcher,
+    checkpointLogPath,
+    watchPaths,
+  });
+
   const memoryMonitor = createMemoryMonitor(config, api.logger);
   api.registerService(contextMonitor);
+  api.registerService(valueMonitor);
   api.registerService(memoryMonitor);
 
   // Register lifecycle hooks
@@ -234,4 +298,5 @@ export {
   DEFAULT_CHECKPOINT_LOG_PATH,
 };
 export { createContextMonitor } from "./monitors/context-monitor.js";
+export { createValueMonitor } from "./monitors/value-monitor.js";
 export type * from "./types.js";

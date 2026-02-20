@@ -147,3 +147,55 @@ export interface ContextMonitorDeps {
   checkpointLogPath: string;
   contentHasher?: ContentHasher;
 }
+
+// --- Value Monitor ---
+
+/**
+ * High-value content patterns that should trigger an immediate checkpoint.
+ * Patterns are regexes applied to file content changes.
+ */
+export interface ValuePattern {
+  name: string;
+  pattern: RegExp;
+  /** Whether to redact matched content in log summaries (e.g. secrets). */
+  redact: boolean;
+}
+
+/**
+ * A detected high-value change in a monitored file.
+ */
+export interface ValueDetection {
+  timestamp: string;
+  filePath: string;
+  patternName: string;
+  /** Content summary — redacted if pattern requires it. */
+  summary: string;
+}
+
+/**
+ * Provides current file content hashes for monitored paths.
+ * Used to detect changes between polls.
+ */
+export interface FileWatcher {
+  /**
+   * Return a map of filePath -> sha256 hash for all monitored files.
+   * Missing files should be omitted from the map.
+   */
+  getFileHashes(): Promise<Map<string, string>>;
+  /**
+   * Read file content for pattern scanning. Returns null if file missing.
+   */
+  readFile(filePath: string): Promise<string | null>;
+}
+
+export interface ValueMonitorDeps {
+  config: AmcpPluginConfig;
+  logger: PluginLogger;
+  emit: (event: string, data?: Record<string, unknown>) => void;
+  fileWatcher: FileWatcher;
+  checkpointLogPath: string;
+  /** Paths to monitor for high-value changes. */
+  watchPaths: string[];
+  /** Additional custom patterns (merged with built-in patterns). */
+  extraPatterns?: ValuePattern[];
+}

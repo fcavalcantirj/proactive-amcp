@@ -1220,7 +1220,7 @@
       "Log trigger reason with content summary (no secrets)",
       "Verify: checkpoint on identity.json changes"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "P4-ID-01",

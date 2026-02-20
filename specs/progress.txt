@@ -1354,3 +1354,38 @@
   - npm run lint (tsc --noEmit) passes with zero errors
   - npm test passes: 73 tests (22 + 13 + 27 + 11), 4 test files, 0 failures
   - File sizes: context-monitor.ts=300, context-monitor-interval.test.ts=472, context-monitor.test.ts=690, types.ts=149 (all under 800)
+
+## Task: P4-CTX-04 — Implement value-based triggers — checkpoint when high-value content detected (DONE)
+- Created `src/monitors/value-monitor.ts` (239 lines) — monitors memory files for high-value content changes
+- 6 built-in high-value patterns (BUILTIN_PATTERNS):
+  - identity_change: "aid", "publicKey", "kel", "nextKeyHash" in JSON
+  - secret_api_key: sk-*, ghp_*, solvr_*, am_* patterns
+  - secret_jwt: JWT tokens (eyJ...)
+  - secret_bot_token: Telegram bot tokens ([0-9]+:AA...)
+  - important_decision: DECISION:, IMPORTANT:, CRITICAL:, BREAKING CHANGE:, NEVER:, ALWAYS: markers
+  - soul_change: north star, identity, principles, voice, who I am patterns
+- File change detection via FileWatcher interface: getFileHashes() returns SHA-256 hashes, readFile() for content
+- Poll loop every 30s: compare hashes to previous poll, scan changed files for patterns
+- Initial startup captures baseline hashes WITHOUT triggering checkpoint (avoids false positive on first scan)
+- Secret patterns redacted in log summaries ([REDACTED]) — no credentials leak to checkpoint-log.jsonl
+- Non-secret patterns show content summary truncated to 80 chars
+- Supports custom extra patterns via ValueMonitorDeps.extraPatterns
+- Cooldown enforcement shared with checkpoint system (config.checkpointCooldownMs)
+- Checkpoint event: emit("amcp:checkpoint:requested", { trigger: "value_content", detections, fileCount })
+- Sequential poll chaining pattern (same as context-monitor): pollChain.then(() => poll())
+- waitForPendingPoll() helper for deterministic fake-timer testing
+- Added types to `src/types.ts` (193 lines): ValuePattern, ValueDetection, FileWatcher, ValueMonitorDeps
+- Wired into `src/index.ts` (277 lines):
+  - Default watch paths: ~/.amcp/identity.json, SOUL.md, MEMORY.md, USER.md, AGENTS.md, TOOLS.md
+  - defaultFileWatcher() reads files from disk using SHA-256 hashing (lazy imports)
+  - Gateway can provide custom fileWatcher and watchPaths via extended PluginApi
+  - Registered as "amcp-value-monitor" service between context-monitor and memory-monitor
+- Created `src/monitors/value-monitor.test.ts` (399 lines) — 20 tests:
+  - Pattern scanning (8 tests): identity changes, API keys, JWT tokens, bot tokens, decisions, soul changes, no match, truncation
+  - Service lifecycle (12 tests): exports, initial baseline no trigger, identity.json change triggers checkpoint, no trigger when no patterns match, cooldown enforcement, trigger after cooldown, log with redacted secrets, multiple files simultaneously, custom patterns, missing files graceful, status details, no polling after stop
+- Updated `src/integration.test.ts`: service count 2→3 in 3 assertions (value-monitor added)
+- Exported createValueMonitor from index.ts
+- Verification:
+  - npm run build (tsc) passes with zero errors
+  - npm test passes: 93 tests (22 + 13 + 27 + 20 + 11), 5 test files, 0 failures
+  - File sizes: value-monitor.ts=239, value-monitor.test.ts=399, types.ts=193, index.ts=277 (all under 800)
