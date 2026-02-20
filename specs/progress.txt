@@ -1715,3 +1715,41 @@
     5. Verify: injection in MEMORY.md triggers alert ✓ (dedicated test case)
   - File sizes: prompt-injection-scanner.ts=265, prompt-injection-scanner.test.ts=415,
     memory-integrity.ts=499, index.ts=451 (all under 800)
+
+## Task P4-MEM-04: Auto-restore from checkpoint on tampering detection (DONE)
+- Created `src/monitors/memory-auto-restore.ts` (258 lines) — quarantine + restore logic
+  - Snapshot management: saveSnapshot(), saveAllSnapshots(), hasSnapshot(), removeSnapshot()
+  - Clean file snapshots saved alongside baseline when autoRestore is enabled
+  - autoRestore() function: quarantines tampered files, restores from snapshot
+  - Quarantine: tampered files moved to ~/.amcp/quarantine/<timestamp>/
+  - Restore: clean files copied from ~/.amcp/memory-snapshot/ to workspace
+  - Added files (unauthorized) quarantined but not restored (not part of baseline)
+  - Removed files restored from snapshot if available
+  - Restore action logged to ~/.amcp/restore-log.jsonl (JSONL format)
+- Updated `src/monitors/memory-integrity.ts` (574 lines) — wired auto-restore into pollOnce
+  - On baseline create/update: saves clean file snapshots when autoRestore enabled
+  - On pollOnce tampering detection: calls autoRestore() if config.memoryIntegrity.autoRestore
+  - Emits `amcp:memory:auto_restored` event with restoredCount, quarantinedOnlyCount
+  - getLastRestoreResult() exposed on MemoryIntegrityMonitor type
+  - status() includes autoRestore, snapshotDir, quarantineDir, lastRestore info
+  - New deps: snapshotDir, quarantineDir, restoreLogPath (all with defaults)
+- Updated `src/index.ts` (460 lines) — exported autoRestore, saveSnapshot,
+  saveAllSnapshots, hasSnapshot, removeSnapshot
+- Created `src/monitors/memory-auto-restore.test.ts` (383 lines) — 17 tests
+  - Snapshot management: 4 tests (save, saveAll, remove, idempotent remove)
+  - autoRestore: 6 tests (quarantine+restore, quarantine added, restore removed,
+    log action, missing snapshot graceful, multi-file)
+  - Integration: 7 tests (pollOnce triggers restore, disabled skips restore,
+    snapshots created on baseline, snapshots updated on refresh, quarantine for analysis,
+    log with reason, status includes autoRestore)
+- Verification:
+  - vitest: 17 new tests pass, 50 existing memory-integrity tests still pass
+  - TypeScript: `tsc --noEmit` passes cleanly
+  - All 5 PRD steps verified:
+    1. On tampering alert, offer auto-restore option ✓ (config.memoryIntegrity.autoRestore)
+    2. If configured, restore from last clean checkpoint ✓ (snapshot-based restore)
+    3. Quarantine tampered files for analysis ✓ (~/.amcp/quarantine/<timestamp>/)
+    4. Log restore action with reason ✓ (JSONL with action, files, reason)
+    5. Verify: tampered file auto-restored ✓ (dedicated integration test)
+  - File sizes: memory-auto-restore.ts=258, memory-integrity.ts=574,
+    memory-auto-restore.test.ts=383, index.ts=460 (all under 800)

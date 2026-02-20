@@ -448,4 +448,11 @@ export {
   appendInjectionLog,
   processInjectionResults,
 } from "./monitors/prompt-injection-scanner.js";
+export {
+  autoRestore,
+  saveSnapshot,
+  saveAllSnapshots,
+  hasSnapshot,
+  removeSnapshot,
+} from "./monitors/memory-auto-restore.js";
 export type * from "./types.js";

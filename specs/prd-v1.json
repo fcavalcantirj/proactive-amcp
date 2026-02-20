@@ -1390,7 +1390,7 @@
       "Log restore action with reason",
       "Verify: tampered file auto-restored"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "P4-CLI-01",

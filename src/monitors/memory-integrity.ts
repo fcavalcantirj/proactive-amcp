@@ -19,6 +19,14 @@ import {
   scanMemoryFiles as scanForInjections,
   processInjectionResults,
 } from "./prompt-injection-scanner.js";
+import {
+  autoRestore,
+  saveAllSnapshots,
+  DEFAULT_SNAPSHOT_DIR,
+  DEFAULT_QUARANTINE_DIR,
+  DEFAULT_RESTORE_LOG_PATH,
+} from "./memory-auto-restore.js";
+import type { AutoRestoreResult } from "./memory-auto-restore.js";
 import type {
   AmcpPluginConfig,
   PluginLogger,
@@ -75,6 +83,12 @@ export interface MemoryIntegrityDeps {
   pollIntervalMs?: number;
   /** Path to append injection alert log entries (JSONL). */
   injectionLogPath?: string;
+  /** Directory for clean file snapshots (auto-restore source). */
+  snapshotDir?: string;
+  /** Directory for quarantined tampered files. */
+  quarantineDir?: string;
+  /** Path to append restore log entries (JSONL). */
+  restoreLogPath?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -315,6 +329,8 @@ export type MemoryIntegrityMonitor = PluginService & {
   }>;
   /** Run a single poll cycle (check + alert if changes found). */
   pollOnce(): Promise<MemoryChangeAlert | null>;
+  /** Get the last auto-restore result (null if never triggered). */
+  getLastRestoreResult(): AutoRestoreResult | null;
 };
 
 /**
@@ -332,9 +348,13 @@ export function createMemoryIntegrityMonitor(
   const changeLogPath = deps.changeLogPath ?? DEFAULT_CHANGE_LOG_PATH;
   const pollIntervalMs = deps.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
   const injectionLogPath = deps.injectionLogPath ?? DEFAULT_INJECTION_LOG_PATH;
+  const snapshotDir = deps.snapshotDir ?? DEFAULT_SNAPSHOT_DIR;
+  const quarantineDir = deps.quarantineDir ?? DEFAULT_QUARANTINE_DIR;
+  const restoreLogPath = deps.restoreLogPath ?? DEFAULT_RESTORE_LOG_PATH;
   let baseline: MemoryBaseline | null = null;
   let running = false;
   let pollTimer: ReturnType<typeof setInterval> | null = null;
+  let lastRestoreResult: AutoRestoreResult | null = null;
 
   /**
    * Run prompt injection scan on all discovered memory files (P4-MEM-03).
@@ -391,6 +411,35 @@ export function createMemoryIntegrityMonitor(
       timestamp: alert.timestamp,
     });
 
+    // Auto-restore from snapshot if enabled (P4-MEM-04)
+    if (config.memoryIntegrity.autoRestore) {
+      try {
+        const restoreResult = await autoRestore(
+          contentDir,
+          diff.changed,
+          diff.added,
+          diff.removed,
+          snapshotDir,
+          quarantineDir,
+          restoreLogPath,
+          logger,
+        );
+        lastRestoreResult = restoreResult;
+
+        emit("amcp:memory:auto_restored", {
+          restoredCount: restoreResult.restoredCount,
+          quarantinedOnlyCount: restoreResult.quarantinedOnlyCount,
+          removedFilesRestored: diff.removed.length,
+          timestamp: restoreResult.timestamp,
+          success: restoreResult.success,
+        });
+      } catch (err) {
+        logger.error(
+          `amcp-memory-integrity: auto-restore failed — ${String(err)}`,
+        );
+      }
+    }
+
     return alert;
   }
 
@@ -405,6 +454,10 @@ export function createMemoryIntegrityMonitor(
       baseline = await createBaseline(contentDir);
       baseline.updatedAt = new Date().toISOString();
       await saveBaseline(baselinePath, baseline);
+      // Update snapshots for auto-restore (P4-MEM-04)
+      if (config.memoryIntegrity.autoRestore) {
+        await saveAllSnapshots(contentDir, Object.keys(baseline.files), snapshotDir);
+      }
       logger.info(
         `amcp-memory-integrity: baseline updated — ${Object.keys(baseline.files).length} file(s)`,
       );
@@ -425,6 +478,10 @@ export function createMemoryIntegrityMonitor(
 
     pollOnce,
 
+    getLastRestoreResult() {
+      return lastRestoreResult;
+    },
+
     async start() {
       if (running) return;
       if (!config.memoryIntegrity.enabled) {
@@ -439,9 +496,17 @@ export function createMemoryIntegrityMonitor(
         logger.info(
           `amcp-memory-integrity: loaded baseline — ${Object.keys(baseline.files).length} file(s)`,
         );
+        // Ensure snapshots exist for auto-restore (P4-MEM-04)
+        if (config.memoryIntegrity.autoRestore) {
+          await saveAllSnapshots(contentDir, Object.keys(baseline.files), snapshotDir);
+        }
       } else {
         baseline = await createBaseline(contentDir);
         await saveBaseline(baselinePath, baseline);
+        // Save clean snapshots for auto-restore (P4-MEM-04)
+        if (config.memoryIntegrity.autoRestore) {
+          await saveAllSnapshots(contentDir, Object.keys(baseline.files), snapshotDir);
+        }
         logger.info(
           `amcp-memory-integrity: created baseline — ${Object.keys(baseline.files).length} file(s)`,
         );
@@ -486,6 +551,16 @@ export function createMemoryIntegrityMonitor(
           hasBaseline: baseline !== null,
           polling: pollTimer !== null,
           pollIntervalMs,
+          autoRestore: config.memoryIntegrity.autoRestore,
+          snapshotDir,
+          quarantineDir,
+          lastRestore: lastRestoreResult
+            ? {
+                timestamp: lastRestoreResult.timestamp,
+                restoredCount: lastRestoreResult.restoredCount,
+                success: lastRestoreResult.success,
+              }
+            : null,
         },
       };
     },
