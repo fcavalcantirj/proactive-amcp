@@ -1673,3 +1673,45 @@
     external modification triggers alert (test verified) ✓
   - File sizes: memory-integrity.ts=472, memory-integrity.test.ts=640,
     memory-integrity-alerting.test.ts=410, index.ts=443 (all under 800)
+
+## Task: P4-MEM-03 — Scan memory files for prompt injection patterns (DONE)
+- Created `src/monitors/prompt-injection-scanner.ts` (265 lines) — prompt injection scanner module
+- Defines 19 injection patterns across 3 severity levels:
+  - Critical (8): identity_override, identity_reassignment, persona_injection, pretend_injection,
+    ignore_previous, disregard_instructions, forget_instructions, override_instructions
+  - High (5): system_prompt_extract, initial_prompt_extract, developer_mode, dan_mode,
+    jailbreak_attempt, end_system_prompt, fake_system_tag
+  - Medium (3): context_reset, hidden_instruction, base64_payload
+- `scanContent()`: scans string content against patterns, returns detections with file path,
+  pattern name, severity, matched text (truncated to 120 chars), and line number
+- `scanMemoryFiles()`: reads files from contentDir and scans each for injection patterns
+- `buildInjectionSummary()`: human-readable summary with severity counts and per-file breakdown
+- `appendInjectionLog()`: JSONL logging of injection alerts to ~/.amcp/injection-alerts.jsonl
+- `processInjectionResults()`: orchestrates logging, warning, and event emission
+  - Emits `amcp:memory:prompt_injection_detected` event with detections array
+- Integrated into `memory-integrity.ts`:
+  - Added `scanForPromptInjections()` function called during each `pollOnce()` cycle
+  - Initial injection scan runs on `start()` after baseline creation
+  - Controlled by `config.memoryIntegrity.promptInjectionScan` toggle
+  - Added `injectionLogPath` to `MemoryIntegrityDeps` interface
+- Created `src/monitors/prompt-injection-scanner.test.ts` (415 lines) — 37 tests:
+  - INJECTION_PATTERNS: 4 tests (required fields, unique names, specific patterns present)
+  - scanContent: 19 tests (all pattern types, clean content, case-insensitive, multiple patterns,
+    line numbers, text truncation, timestamps)
+  - scanMemoryFiles: 4 tests (multi-file, clean files, missing files, MEMORY.md injection)
+  - buildInjectionSummary: 4 tests (empty, file paths, grouping, severity counts)
+  - appendInjectionLog: 2 tests (JSONL write, parent dirs)
+  - processInjectionResults: 4 tests (null on no detections, warning logged, event emitted, log written)
+- Exported from `src/index.ts`: INJECTION_PATTERNS, scanContent, scanForInjections,
+  buildInjectionSummary, appendInjectionLog, processInjectionResults
+- Verification:
+  - vitest: 37 new tests pass, 50 existing memory-integrity tests still pass
+  - TypeScript: `tsc --noEmit` passes cleanly
+  - All 5 PRD steps verified:
+    1. Define injection patterns ✓ (19 patterns: 'ignore previous', 'you are now', etc.)
+    2. Scan memory files periodically ✓ (integrated into pollOnce cycle)
+    3. Alert if injection patterns detected ✓ (logger.warn + event emission)
+    4. Log detected patterns with file location ✓ (JSONL with filePath, lineNumber, patternName)
+    5. Verify: injection in MEMORY.md triggers alert ✓ (dedicated test case)
+  - File sizes: prompt-injection-scanner.ts=265, prompt-injection-scanner.test.ts=415,
+    memory-integrity.ts=499, index.ts=451 (all under 800)

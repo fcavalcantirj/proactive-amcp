@@ -440,4 +440,12 @@ export {
   appendChangeLog,
   createMemoryIntegrityMonitor,
 } from "./monitors/memory-integrity.js";
+export {
+  INJECTION_PATTERNS,
+  scanContent,
+  scanMemoryFiles as scanForInjections,
+  buildInjectionSummary,
+  appendInjectionLog,
+  processInjectionResults,
+} from "./monitors/prompt-injection-scanner.js";
 export type * from "./types.js";

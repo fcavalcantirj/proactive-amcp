@@ -15,6 +15,10 @@ import { createHash } from "node:crypto";
 import { readFile, writeFile, appendFile, readdir, stat, mkdir } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import { homedir } from "node:os";
+import {
+  scanMemoryFiles as scanForInjections,
+  processInjectionResults,
+} from "./prompt-injection-scanner.js";
 import type {
   AmcpPluginConfig,
   PluginLogger,
@@ -69,6 +73,8 @@ export interface MemoryIntegrityDeps {
   changeLogPath?: string;
   /** Polling interval in milliseconds (default: 60000). */
   pollIntervalMs?: number;
+  /** Path to append injection alert log entries (JSONL). */
+  injectionLogPath?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -79,6 +85,7 @@ const DEFAULT_CONTENT_DIR = join(homedir(), ".openclaw", "workspace");
 const DEFAULT_BASELINE_PATH = join(homedir(), ".amcp", "memory-baseline.json");
 const DEFAULT_CHANGE_LOG_PATH = join(homedir(), ".amcp", "memory-changes.jsonl");
 const DEFAULT_POLL_INTERVAL_MS = 60_000; // 60 seconds
+const DEFAULT_INJECTION_LOG_PATH = join(homedir(), ".amcp", "injection-alerts.jsonl");
 
 /** Top-level memory files to hash. */
 const TOP_LEVEL_FILES = [
@@ -324,16 +331,33 @@ export function createMemoryIntegrityMonitor(
   const { config, logger, emit, contentDir, baselinePath } = deps;
   const changeLogPath = deps.changeLogPath ?? DEFAULT_CHANGE_LOG_PATH;
   const pollIntervalMs = deps.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
+  const injectionLogPath = deps.injectionLogPath ?? DEFAULT_INJECTION_LOG_PATH;
   let baseline: MemoryBaseline | null = null;
   let running = false;
   let pollTimer: ReturnType<typeof setInterval> | null = null;
 
   /**
+   * Run prompt injection scan on all discovered memory files (P4-MEM-03).
+   * Logs and emits alert if injection patterns found.
+   */
+  async function scanForPromptInjections(): Promise<void> {
+    if (!config.memoryIntegrity.promptInjectionScan) return;
+
+    const files = await discoverMemoryFiles(contentDir);
+    const result = await scanForInjections(contentDir, files);
+    await processInjectionResults(result, logger, emit, injectionLogPath);
+  }
+
+  /**
    * Run a single poll cycle: compare current files to baseline,
    * emit alert + log if unauthorized changes detected.
+   * Also runs prompt injection scan (P4-MEM-03).
    * Returns the alert if changes found, null otherwise.
    */
   async function pollOnce(): Promise<MemoryChangeAlert | null> {
+    // Run prompt injection scan regardless of baseline state (P4-MEM-03)
+    await scanForPromptInjections();
+
     if (!baseline) return null;
 
     const files = await discoverMemoryFiles(contentDir);
@@ -427,7 +451,10 @@ export function createMemoryIntegrityMonitor(
         });
       }
 
-      // Start periodic polling for unauthorized changes (P4-MEM-02)
+      // Run initial prompt injection scan (P4-MEM-03)
+      await scanForPromptInjections();
+
+      // Start periodic polling for unauthorized changes (P4-MEM-02) + injection scan (P4-MEM-03)
       pollTimer = setInterval(() => {
         pollOnce().catch((err) => {
           logger.error(`amcp-memory-integrity: poll error — ${String(err)}`);

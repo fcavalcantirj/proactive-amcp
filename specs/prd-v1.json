@@ -1376,7 +1376,7 @@
       "Log detected patterns with file location",
       "Verify: injection in MEMORY.md triggers alert"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "P4-MEM-04",
