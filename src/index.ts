@@ -16,6 +16,7 @@ import { createKeyRotationService } from "./key-rotation.js";
 import { createResurrectionIdentityService } from "./monitors/resurrection-identity.js";
 import { createResurrectionDetector } from "./monitors/resurrection-detector.js";
 import { createMultiIdentityService } from "./multi-identity.js";
+import { createRecoveryPromptInjector } from "./monitors/recovery-prompt-injector.js";
 import type {
   AmcpPlugin,
   AmcpPluginConfig,
@@ -329,6 +330,17 @@ async function register(api: PluginApi): Promise<void> {
     identityPath,
   });
 
+  // Recovery prompt injector — auto-inject recovery instructions on context wipe
+  const recoveryPromptInjector = createRecoveryPromptInjector({
+    config,
+    logger: api.logger,
+    emit: api.emit.bind(api),
+    identityPath,
+    lastCheckpointPath,
+    identitiesDir,
+    lastRecoveryPath,
+  });
+
   api.registerService(contextMonitor);
   api.registerService(valueMonitor);
   api.registerService(memoryMonitor);
@@ -337,6 +349,7 @@ async function register(api: PluginApi): Promise<void> {
   api.registerService(resurrectionIdentityService);
   api.registerService(resurrectionDetector);
   api.registerService(multiIdentityService);
+  api.registerService(recoveryPromptInjector);
 
   // Register lifecycle hooks
   registerHooks(api, config);
@@ -386,6 +399,11 @@ export {
 } from "./monitors/resurrection-identity.js";
 export { createResurrectionDetector } from "./monitors/resurrection-detector.js";
 export {
+  createRecoveryPromptInjector,
+  findLatestCheckpoint,
+  generateRecoveryPrompt,
+} from "./monitors/recovery-prompt-injector.js";
+export {
   listIdentities,
   getActiveAid,
   storeIdentity,
@@ -394,4 +412,10 @@ export {
   validateCheckpointOwnership,
   createMultiIdentityService,
 } from "./multi-identity.js";
+export {
+  selectBestCheckpoint,
+  listScoredCheckpoints,
+  scoreCheckpoint,
+  gatherCheckpoints,
+} from "./monitors/checkpoint-selector.js";
 export type * from "./types.js";

@@ -271,6 +271,38 @@ while true; do
     echo ""
   fi
 
+  # Check if ALL tasks are complete (100%)
+  progress_output=$(./progress.sh 2>/dev/null)
+  if echo "$progress_output" | grep -q "100%\|110/110"; then
+    echo ""
+    echo -e "${GREEN}${BOLD}   🎯 ALL TASKS COMPLETE (100%)! Grace period: 30 seconds...${NC}"
+    sleep 30
+    
+    # Double-check it's still 100%
+    progress_output=$(./progress.sh 2>/dev/null)
+    if echo "$progress_output" | grep -q "100%\|110/110"; then
+      runner_end=$(date +%s)
+      total_time=$((runner_end - runner_start))
+      
+      send_telegram "🏆 *proactive-amcp Ralph* - ALL TASKS COMPLETE!
+
+📦 Total batches: ${batch_count}
+🔄 Total iterations: ${total_iterations}
+⏱️ Total time: $(format_time $total_time)
+📊 ${progress_output}
+
+🛑 Auto-stopping runner. Mission accomplished! 🏴‍☠️"
+      
+      echo -e "${GREEN}${BOLD}   ✅ Confirmed 100%. Exiting gracefully...${NC}"
+      
+      # Kill the tmux session if we're in one
+      if [ -n "$TMUX" ]; then
+        tmux kill-session 2>/dev/null
+      fi
+      exit 0
+    fi
+  fi
+
   # Check if PRD or PHASE 1 is complete
   if [ "$prd_complete" = true ] || [ "$phase1_complete" = true ]; then
     runner_end=$(date +%s)

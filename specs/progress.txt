@@ -1544,3 +1544,31 @@
   - vitest run passes: 186 tests, 10 test files, 0 failures
   - All 6 PRD steps verified: create resurrection-detector.ts ✓, hook into session events ✓, detect >50% drop ✓, detect session restart ✓, log to resurrection-log.jsonl ✓, context wipe detected within 1 poll cycle ✓
   - File sizes: resurrection-detector.ts=260, resurrection-detector.test.ts=506, index.ts=397 (all under 800)
+
+## Task: P4-RES-03 — Auto-select best checkpoint for recovery (DONE)
+- Created `src/monitors/checkpoint-selector.ts` (468 lines) — checkpoint scoring and selection engine
+- Scoring algorithm with 3 weighted dimensions:
+  - Recency (40%): exponential decay with 24-hour half-life
+  - Completeness (35%): presence of key metadata fields (CID, timestamp, size, secrets, ontology, soul, type, localPath)
+  - Integrity (25%): valid CID format, valid timestamp, structural soundness; corrupted checkpoints get 90% penalty
+- `gatherCheckpoints()`: scans 3 sources — per-identity, global last-checkpoint.json, checkpoints dir — deduplicates by CID
+- `scoreCheckpoint()`: scores a single candidate, returns ScoredCheckpoint with score breakdown
+- `selectBestCheckpoint()`: gathers + scores + selects best non-corrupted; falls back to corrupted if no clean exist
+- `listScoredCheckpoints()`: returns all candidates sorted by score (for history/debugging)
+- Manual CID override via `manualCid` option — bypasses scoring, returns exact match or null
+- Created `src/monitors/checkpoint-selector.test.ts` (571 lines) — 21 tests covering:
+  - Score computation (recent vs old, complete vs incomplete, corrupted marking)
+  - CID fallback fields (pinataCid, solvrCid)
+  - Gathering from all 3 sources + deduplication
+  - Best selection with highest score
+  - Fallback to older checkpoint when latest is corrupted
+  - Corrupted-only recovery (last resort)
+  - Manual CID override (found and not found)
+  - Score breakdown in list output
+- Updated `src/monitors/recovery-prompt-injector.ts`: integrated selectBestCheckpoint into doInject(), added checkpointsDir and manualCid deps
+- Updated `src/index.ts`: exported selectBestCheckpoint, listScoredCheckpoints, scoreCheckpoint, gatherCheckpoints
+- Verification:
+  - tsc --noEmit passes with zero errors
+  - vitest run passes: 227 tests, 12 test files, 0 failures
+  - All 5 PRD steps verified: scoring (recency+completeness+integrity) ✓, highest score selected ✓, fallback to older on corruption ✓, manual CID override ✓, best checkpoint selected in tests (21 passing) ✓
+  - File sizes: checkpoint-selector.ts=468, checkpoint-selector.test.ts=571, recovery-prompt-injector.ts=489, index.ts=421 (all under 800)

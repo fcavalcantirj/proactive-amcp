@@ -1306,7 +1306,7 @@
       "Include identity verification in recovery prompt",
       "Verify: agent receives recovery instructions automatically"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "P4-RES-03",
@@ -1320,7 +1320,7 @@
       "Support manual checkpoint selection override",
       "Verify: best checkpoint selected in tests"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "P4-RES-04",
