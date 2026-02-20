@@ -283,7 +283,7 @@ describe("integration: CLI commands", () => {
 
     expect(
       state.logs.info.some(
-        (l) => l.includes("amcp checkpoint") && l.includes("--dry-run"),
+        (l) => l.includes("amcp checkpoint") && l.includes("dry-run"),
       ),
     ).toBe(true);
   });

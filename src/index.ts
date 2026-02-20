@@ -7,7 +7,7 @@
  *   - Skill (bash): checkpoint creation, secrets, resurrection logic
  */
 
-import { join } from "node:path";
+import { join, dirname } from "node:path";
 import { homedir } from "node:os";
 import { createContextMonitor } from "./monitors/context-monitor.js";
 import { createValueMonitor } from "./monitors/value-monitor.js";
@@ -23,6 +23,7 @@ import {
   DEFAULT_BASELINE_PATH,
 } from "./monitors/memory-integrity.js";
 import { createStatusHandler } from "./cli/status-command.js";
+import { createCheckpointHandler } from "./cli/checkpoint-command.js";
 import type {
   AmcpPlugin,
   AmcpPluginConfig,
@@ -191,6 +192,7 @@ interface CliRegistrationDeps {
   services: PluginService[];
   identityPath: string;
   lastCheckpointPath: string;
+  scriptDir: string;
 }
 
 /**
@@ -212,9 +214,22 @@ function registerCliCommands(api: PluginApi, deps: CliRegistrationDeps): void {
     handler: statusHandler,
   });
 
-  // Placeholder commands — will be implemented in P4-CLI-02 through P4-CLI-06
+  // 'amcp checkpoint' — fully implemented (P4-CLI-02)
+  const checkpointHandler = createCheckpointHandler({
+    logger: api.logger,
+    config: deps.config,
+    lastCheckpointPath: deps.lastCheckpointPath,
+    scriptDir: deps.scriptDir,
+  });
+
+  api.registerCommand("amcp", {
+    name: "checkpoint",
+    description: "Create a manual checkpoint",
+    handler: checkpointHandler,
+  });
+
+  // Placeholder commands — will be implemented in P4-CLI-03 through P4-CLI-06
   const placeholderCommands = [
-    { name: "checkpoint", description: "Create a manual checkpoint" },
     { name: "resurrect", description: "Restore from a checkpoint" },
     { name: "identity", description: "Identity management (show, rotate, verify, export)" },
     { name: "history", description: "Show checkpoint history" },
@@ -388,12 +403,18 @@ async function register(api: PluginApi): Promise<void> {
   // Register lifecycle hooks
   registerHooks(api, config);
 
+  // Script directory — resolve from plugin install path or apiExt override
+  const scriptDir =
+    (apiExt.amcpScriptDir as string) ??
+    join(dirname(new URL(import.meta.url).pathname), "..", "scripts");
+
   // Register CLI commands — status command needs access to services and paths
   registerCliCommands(api, {
     config,
     services: allServices,
     identityPath,
     lastCheckpointPath,
+    scriptDir,
   });
 
   api.logger.info("amcp: plugin registered successfully");
@@ -495,4 +516,9 @@ export {
   formatStatus,
   createStatusHandler,
 } from "./cli/status-command.js";
+export {
+  runCheckpoint,
+  formatCheckpointResult,
+  createCheckpointHandler,
+} from "./cli/checkpoint-command.js";
 export type * from "./types.js";

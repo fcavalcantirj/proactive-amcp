@@ -1419,7 +1419,7 @@
       "Support --dry-run to show what would be included",
       "Verify: manual checkpoint works from CLI"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "P4-CLI-03",

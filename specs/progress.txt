@@ -1787,3 +1787,37 @@
     5. Display config summary ✓ (8 config fields)
     6. Verify: status shows all info correctly ✓ (15 tests)
   - File sizes: status-command.ts=307, status-command.test.ts=405, index.ts=498 (all under 800)
+
+## Task P4-CLI-02: plugin-cli — Implement 'amcp checkpoint' CLI command (DONE)
+- Created `src/cli/checkpoint-command.ts` (357 lines) — full implementation of manual checkpoint trigger
+- Architecture: delegates to bash checkpoint engine (`full-checkpoint.sh`) via `execFile`, captures output, parses results
+- Core functions:
+  - `runCheckpoint()`: executes full-checkpoint.sh with flags, parses output for CID/secrets/size, reads last-checkpoint.json
+  - `formatCheckpointResult()`: human-readable output for success/dry-run/failure
+  - `createCheckpointHandler()`: factory returning async CLI handler with flag parsing
+- Supported flags: `--dry-run`, `--force`, `--smart`, `--notify`, `--skip-evolution`, `--json`
+- CID resolution: prefers structured last-checkpoint.json, falls back to stdout parsing (CID:, Pinata:, Solvr: patterns)
+- Dry-run: parses "Would checkpoint N secrets and SIZE of content" from script output
+- Error handling: missing script detection, non-zero exit codes, stderr capture
+- Updated `src/index.ts`:
+  - Replaced checkpoint placeholder with real handler via `createCheckpointHandler()`
+  - Added `scriptDir` to `CliRegistrationDeps` (derived from `import.meta.url` or `apiExt.amcpScriptDir`)
+  - Added exports for `runCheckpoint`, `formatCheckpointResult`, `createCheckpointHandler`
+- Updated `src/integration.test.ts`: relaxed checkpoint log check from "--dry-run" to "dry-run" to match real handler
+- Created `src/cli/checkpoint-command.test.ts` (562 lines) — 20 tests:
+  - Execution: success with CID, secret count parsing, failure on non-zero exit, missing script error
+  - Dry-run: shows included content without creating, parses content size
+  - Flags: --force, --smart, --skip-evolution passthrough verified
+  - Format: successful with CID, dry-run result, failed checkpoint, local-only (no CID)
+  - Handler: JSON mode output, human-readable default, dry-run via handler, progress logging
+  - Last-checkpoint.json: prefers structured data over parsed output, pinataCid fallback
+- Verification:
+  - vitest: all 388 tests pass (20 new + 368 existing)
+  - TypeScript: `tsc --noEmit` passes cleanly
+  - All 5 PRD steps verified:
+    1. Register 'amcp checkpoint' CLI command ✓ (registered with real handler in index.ts:225-229)
+    2. Trigger full checkpoint via checkpoint-engine ✓ (delegates to full-checkpoint.sh via execFile)
+    3. Show progress and CID on completion ✓ (formatCheckpointResult + stage line logging)
+    4. Support --dry-run to show what would be included ✓ (parses dry-run output, shows secrets/size)
+    5. Verify: manual checkpoint works from CLI ✓ (20 tests with mock scripts)
+  - File sizes: checkpoint-command.ts=357, checkpoint-command.test.ts=562, index.ts=524 (all under 800)
