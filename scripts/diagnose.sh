@@ -22,6 +22,8 @@ SESSION_DIR="${SESSION_DIR:-$HOME/.openclaw/agents/main/sessions}"
 OPENCLAW_CONFIG="${OPENCLAW_CONFIG:-$HOME/.openclaw/openclaw.json}"
 DISK_THRESHOLD="${DISK_THRESHOLD:-10}"
 MEM_THRESHOLD="${MEM_THRESHOLD:-10}"
+CRASH_LOOP_THRESHOLD="${CRASH_LOOP_THRESHOLD:-10}"  # restarts per hour
+STATE_FILE="${STATE_FILE:-$HOME/.amcp/watchdog-state.json}"
 
 # Parse args
 while [[ $# -gt 0 ]]; do
@@ -517,6 +519,70 @@ check_memory() {
 }
 
 # ============================================================
+# Check 7: Crash-loop detection (restart frequency)
+# ============================================================
+check_crash_loop() {
+  if [ ! -f "$STATE_FILE" ]; then
+    return 0
+  fi
+
+  local result
+  result=$(WATCHDOG_STATE_FILE="$STATE_FILE" \
+  WATCHDOG_CRASH_THRESHOLD="$CRASH_LOOP_THRESHOLD" \
+  python3 << 'PYEOF'
+import json, os, sys
+from datetime import datetime, timezone
+
+state_file = os.environ["WATCHDOG_STATE_FILE"]
+threshold = int(os.environ["WATCHDOG_CRASH_THRESHOLD"])
+
+try:
+    with open(state_file) as f:
+        state = json.load(f)
+except (json.JSONDecodeError, FileNotFoundError, IOError):
+    print("no_state")
+    sys.exit(0)
+
+history = state.get("restart_history", [])
+if not history:
+    print("no_restarts")
+    sys.exit(0)
+
+# Count restarts in the last hour (3600 seconds)
+now = datetime.now(timezone.utc)
+one_hour_ago = now.timestamp() - 3600
+count = 0
+for ts_str in history:
+    try:
+        ts = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+        if ts.timestamp() >= one_hour_ago:
+            count += 1
+    except (ValueError, TypeError):
+        continue
+
+if count >= threshold:
+    print(json.dumps({"count": count, "threshold": threshold, "window": "1h"}))
+else:
+    print("ok")
+PYEOF
+  )
+
+  if [ "$result" = "no_state" ] || [ "$result" = "no_restarts" ] || [ "$result" = "ok" ]; then
+    return 0
+  fi
+
+  local count
+  count=$(echo "$result" | python3 -c "import json,sys; print(json.load(sys.stdin)['count'])")
+
+  add_finding "crash_loop_detected" "critical" \
+    "Crash-loop detected: $count restarts in last hour (threshold: $CRASH_LOOP_THRESHOLD)" \
+    "$STATE_FILE" \
+    ""
+
+  return 1
+}
+
+# ============================================================
 # Run all checks
 # ============================================================
 has_issues=false
@@ -536,6 +602,7 @@ if [ "$config_json_ok" = true ]; then
 fi
 check_disk || has_issues=true
 check_memory || has_issues=true
+check_crash_loop || has_issues=true
 
 # ============================================================
 # Output structured JSON
@@ -564,7 +631,7 @@ findings = json.loads('''$findings_json''')
 result = {
     'status': '$status',
     'findings': findings,
-    'checks_run': 8,
+    'checks_run': 9,
     'findings_count': len(findings)
 }
 print(json.dumps(result, indent=2))

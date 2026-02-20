@@ -31,6 +31,7 @@ FAIL_THRESHOLD="${FAIL_THRESHOLD:-2}"   # consecutive failures before DEAD
 RETRY_DELAY_INITIAL="${RETRY_DELAY_INITIAL:-300}"  # 5 min initial retry delay
 RETRY_DELAY_MAX="${RETRY_DELAY_MAX:-1800}"          # 30 min max retry delay
 ESCALATION_THRESHOLD="${ESCALATION_THRESHOLD:-5}"   # same error N times → escalate
+CRASH_LOOP_THRESHOLD="${CRASH_LOOP_THRESHOLD:-10}"  # restarts per hour before escalation
 SESSION_DIR="${SESSION_DIR:-$HOME/.openclaw/agents/main/sessions}"
 
 # ============================================================
@@ -76,7 +77,8 @@ if [ ! -f "$STATE_FILE" ]; then
   "lastHealthy": null,
   "resurrectionPid": null,
   "lastResurrectionAttempt": null,
-  "retryDelay": 0
+  "retryDelay": 0,
+  "restart_history": []
 }
 EOJSON
 fi
@@ -195,6 +197,7 @@ if new_state == "HEALTHY":
     state["retryDelay"] = 0
     state["resurrectionPid"] = None
     state["errorHistory"] = []
+    state["restart_history"] = []
 
 tmp = state_file + ".tmp"
 with open(tmp, "w") as f:
@@ -353,7 +356,8 @@ record_resurrection_launch() {
   WATCHDOG_NEXT_DELAY="$next_delay" \
   python3 << 'PYEOF'
 import json, os
-from datetime import datetime
+from datetime import datetime, timezone
+
 state_file = os.environ["WATCHDOG_STATE_FILE"]
 try:
     with open(state_file) as f:
@@ -361,10 +365,18 @@ try:
 except (json.JSONDecodeError, FileNotFoundError):
     state = {"state": "DEAD", "consecutiveFailures": 0, "lastCheck": None,
              "lastHealthy": None, "resurrectionPid": None,
-             "lastResurrectionAttempt": None, "retryDelay": 0}
+             "lastResurrectionAttempt": None, "retryDelay": 0,
+             "restart_history": []}
+now = datetime.now(timezone.utc)
 state["resurrectionPid"] = int(os.environ["WATCHDOG_RES_PID"])
-state["lastResurrectionAttempt"] = datetime.now().isoformat()
+state["lastResurrectionAttempt"] = now.isoformat()
 state["retryDelay"] = int(os.environ["WATCHDOG_NEXT_DELAY"])
+
+# Track restart timestamp for crash-loop detection (keep last 50)
+history = state.get("restart_history", [])
+history.append(now.isoformat())
+state["restart_history"] = history[-50:]
+
 tmp = state_file + ".tmp"
 with open(tmp, "w") as f:
     json.dump(state, f, indent=2)
@@ -527,6 +539,19 @@ do_check() {
   errors=$(get_error_summary "$diag_json")
   failures=$((failures + 1))
   echo "⚠️ Check failed ($failures/$FAIL_THRESHOLD): $errors"
+
+  # Crash-loop detection — immediate escalation, skip normal fix routing
+  local has_crash_loop
+  has_crash_loop=$(has_finding "$diag_json" "crash_loop_detected")
+  if [ "$has_crash_loop" = "yes" ]; then
+    echo "🚨 CRASH-LOOP DETECTED: Too many restarts in the last hour"
+    echo "🚨 Stopping automatic recovery to prevent further damage"
+    update_state "DEAD" "$failures" "crash_loop_detected $errors"
+    local condensed_errors
+    condensed_errors=$(condense_error_msg "$errors")
+    [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "🚨🔁 [$AGENT_NAME] CRASH-LOOP DETECTED! Restarts exceed ${CRASH_LOOP_THRESHOLD}/hour. Automatic recovery PAUSED. Errors: $condensed_errors. Manual intervention required."
+    return 2
+  fi
 
   local has_session_corrupt
   has_session_corrupt=$(has_finding "$diag_json" "session_corrupted")

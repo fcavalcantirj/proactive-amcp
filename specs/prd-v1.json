@@ -1840,7 +1840,7 @@
       "Notify human immediately on crash-loop detection (don't wait for normal thresholds)",
       "Verify: Simulate 15 restarts in 10 minutes \u2192 watchdog detects crash-loop, notifies, escalates"
     ],
-    "passes": false,
+    "passes": true,
     "phase": 5
   },
   {

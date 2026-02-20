@@ -2286,3 +2286,26 @@
   - `restart_gateway` called after each tier
   - `session_stuck` routing present in `do_check()`
   - File sizes: session-fix.sh=197, watchdog.sh=674 (both under 800)
+
+## Task P5-09: observability — Crash-loop detection metric (DONE)
+- Added `restart_history` array to watchdog-state.json (last 50 restart timestamps, UTC ISO-8601)
+- In `record_resurrection_launch()`: appends UTC timestamp to `restart_history` on every resurrection launch
+- In `update_state()`: clears `restart_history` when returning to HEALTHY
+- Added `CRASH_LOOP_THRESHOLD` env var (default 10 restarts/hour) to both watchdog.sh and diagnose.sh
+- Added `check_crash_loop()` function to diagnose.sh:
+  - Reads `restart_history` from watchdog-state.json
+  - Counts timestamps within last 3600 seconds
+  - If count >= CRASH_LOOP_THRESHOLD, emits `crash_loop_detected` finding (critical severity)
+- Added crash-loop routing in watchdog.sh `do_check()`:
+  - Checks for `crash_loop_detected` finding BEFORE normal fix routing
+  - On detection: immediately notifies human ("CRASH-LOOP DETECTED! Manual intervention required.")
+  - Sets state to DEAD but does NOT launch resurrection (prevents further crash-loop)
+  - Pauses automatic recovery to stop the runaway scenario
+- State file initialized with empty `restart_history: []`
+- History capped at 50 entries to prevent unbounded growth
+- Verification:
+  - Both scripts pass `bash -n` syntax check
+  - File sizes: watchdog.sh=699, diagnose.sh=643 (both under 800)
+  - `crash_loop_detected` finding present in diagnose.sh
+  - `CRASH_LOOP_THRESHOLD` present in both scripts
+  - `restart_history` tracked in record_resurrection_launch, cleared on HEALTHY
