@@ -18,6 +18,10 @@ import { createResurrectionDetector } from "./monitors/resurrection-detector.js"
 import { createMultiIdentityService } from "./multi-identity.js";
 import { createRecoveryPromptInjector } from "./monitors/recovery-prompt-injector.js";
 import { createPartialResurrectionService } from "./monitors/partial-resurrection.js";
+import {
+  createMemoryIntegrityMonitor,
+  DEFAULT_BASELINE_PATH,
+} from "./monitors/memory-integrity.js";
 import type {
   AmcpPlugin,
   AmcpPluginConfig,
@@ -148,28 +152,6 @@ function defaultFileWatcher(watchPaths: string[]): FileWatcher {
 }
 
 /**
- * Placeholder memory monitor service.
- * Watches memory files for unauthorized changes and prompt injection.
- */
-function createMemoryMonitor(
-  _config: AmcpPluginConfig,
-  logger: { info: (msg: string) => void },
-): PluginService {
-  return {
-    name: "amcp-memory-monitor",
-    async start() {
-      logger.info("amcp-memory-monitor: started");
-    },
-    async stop() {
-      logger.info("amcp-memory-monitor: stopped");
-    },
-    async status() {
-      return { running: true, details: { service: "amcp-memory-monitor" } };
-    },
-  };
-}
-
-/**
  * Register lifecycle hooks for checkpoint triggers.
  */
 function registerHooks(
@@ -271,7 +253,19 @@ async function register(api: PluginApi): Promise<void> {
     watchPaths,
   });
 
-  const memoryMonitor = createMemoryMonitor(config, api.logger);
+  // Memory integrity — baseline hashing + change detection for memory files
+  const baselinePath =
+    (apiExt.amcpBaselinePath as string) ?? DEFAULT_BASELINE_PATH;
+  const contentDir =
+    (apiExt.amcpContentDir as string) ??
+    join(homedir(), ".openclaw", "workspace");
+  const memoryMonitor = createMemoryIntegrityMonitor({
+    config,
+    logger: api.logger,
+    emit: api.emit.bind(api),
+    contentDir,
+    baselinePath,
+  });
 
   // Identity manager — validates KERI identity on start, blocks checkpoints if invalid
   const identityPath =
@@ -343,9 +337,6 @@ async function register(api: PluginApi): Promise<void> {
   });
 
   // Partial resurrection — restore specific memories from a checkpoint
-  const contentDir =
-    (apiExt.amcpContentDir as string) ??
-    join(homedir(), ".openclaw", "workspace");
   const partialResurrectionService = createPartialResurrectionService({
     config,
     logger: api.logger,
@@ -437,4 +428,14 @@ export {
   matchesAnyPattern,
   createPartialResurrectionService,
 } from "./monitors/partial-resurrection.js";
+export {
+  sha256,
+  discoverMemoryFiles,
+  hashMemoryFiles,
+  createBaseline,
+  loadBaseline,
+  saveBaseline,
+  compareToBaseline,
+  createMemoryIntegrityMonitor,
+} from "./monitors/memory-integrity.js";
 export type * from "./types.js";

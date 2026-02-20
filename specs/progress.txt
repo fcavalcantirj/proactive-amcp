@@ -1606,3 +1606,41 @@
     preserve current state for non-restored ✓, log partial resurrection details (JSONL) ✓,
     partial restore works correctly (22 tests) ✓
   - File sizes: partial-resurrection.ts=298, partial-resurrection.test.ts=313, index.ts=432, integration.test.ts=420 (all under 800)
+
+## Task: P4-MEM-01 — Create baseline of memory file hashes (DONE)
+- Created `src/monitors/memory-integrity.ts` (344 lines) — memory file baseline hashing
+- Core functions:
+  - `sha256(content)` — SHA-256 hex hash of string content
+  - `discoverMemoryFiles(contentDir)` — finds SOUL.md, MEMORY.md, USER.md, AGENTS.md, TOOLS.md + memory/*.md
+  - `hashMemoryFiles(contentDir, filePaths)` — computes hash + size for each file
+  - `createBaseline(contentDir)` — creates MemoryBaseline with all discovered files
+  - `loadBaseline(baselinePath)` — loads from disk, returns null if missing/corrupt
+  - `saveBaseline(baselinePath, baseline)` — saves JSON to disk with mkdir -p
+  - `compareToBaseline(baseline, current)` — returns { changed, added, removed } arrays
+  - `createMemoryIntegrityMonitor(deps)` — PluginService with getBaseline(), refreshBaseline(), checkIntegrity()
+- Baseline stored at `~/.amcp/memory-baseline.json` (configurable via `baselinePath` dep)
+- On start: loads existing baseline, or creates new one if none exists
+- On `refreshBaseline()`: re-hashes all files, saves to disk, emits `amcp:memory:baseline_updated`
+- On `checkIntegrity()`: compares current hashes to baseline, returns diff
+- Respects `config.memoryIntegrity.enabled` — skips baseline creation when disabled
+- Replaced placeholder `createMemoryMonitor` in index.ts with real `createMemoryIntegrityMonitor`
+- Service name changed from `amcp-memory-monitor` to `amcp-memory-integrity`
+- Created `src/monitors/memory-integrity.test.ts` (621 lines) — 32 tests:
+  - sha256: 3 tests (hex format, determinism, uniqueness)
+  - discoverMemoryFiles: 5 tests (top-level, memory/*.md, skip non-.md, empty dir, sorted)
+  - hashMemoryFiles: 3 tests (hash+size, correct SHA-256, skip missing)
+  - createBaseline: 2 tests (all files discovered, empty workspace)
+  - saveBaseline/loadBaseline: 5 tests (round-trip, missing file, corrupt JSON, bad schema, mkdir -p)
+  - compareToBaseline: 5 tests (changed, added, removed, all three, no changes)
+  - createMemoryIntegrityMonitor: 9 tests (create on first start, load existing, refresh, checkIntegrity
+    detect changes, empty check, no baseline check, status, disabled config, service name)
+- Updated `src/index.test.ts`: amcp-memory-monitor → amcp-memory-integrity
+- Updated `src/integration.test.ts`: amcp-memory-monitor → amcp-memory-integrity, updated log message check
+- Exported all core functions from index.ts
+- Verification:
+  - tsc --noEmit passes with zero errors
+  - vitest run passes: 281 tests, 14 test files, 0 failures
+  - All 5 PRD steps verified: memory-integrity.ts created ✓, hashes SOUL.md/MEMORY.md/memory/*.md ✓,
+    baseline stored in .amcp/memory-baseline.json ✓, baseline updated on refreshBaseline() ✓,
+    baseline created correctly (32 tests) ✓
+  - File sizes: memory-integrity.ts=344, memory-integrity.test.ts=621, index.ts=441 (all under 800)

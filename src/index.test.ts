@@ -92,7 +92,7 @@ describe("register", () => {
 
     // Services
     expect(services).toContain("amcp-context-monitor");
-    expect(services).toContain("amcp-memory-monitor");
+    expect(services).toContain("amcp-memory-integrity");
 
     // Hooks
     expect(hooks).toContain("gateway_start");

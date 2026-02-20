@@ -91,7 +91,7 @@ describe("integration: plugin registration", () => {
     const names = state.services.map((s) => s.name);
     expect(names).toContain("amcp-context-monitor");
     expect(names).toContain("amcp-value-monitor");
-    expect(names).toContain("amcp-memory-monitor");
+    expect(names).toContain("amcp-memory-integrity");
     expect(names).toContain("amcp-identity-manager");
     expect(names).toContain("amcp-key-rotation");
     expect(names).toContain("amcp-resurrection-identity");
@@ -336,13 +336,13 @@ describe("integration: service lifecycle", () => {
 
   it("memory monitor starts, reports status, and stops", async () => {
     const monitor = state.services.find(
-      (s) => s.name === "amcp-memory-monitor",
+      (s) => s.name === "amcp-memory-integrity",
     )!;
 
     await monitor.start();
     const status = await monitor.status();
     expect(status.running).toBe(true);
-    expect(status.details?.service).toBe("amcp-memory-monitor");
+    expect(status.details?.service).toBe("amcp-memory-integrity");
 
     await monitor.stop();
   });
@@ -360,10 +360,10 @@ describe("integration: service lifecycle", () => {
       state.logs.info.some((l) => l.includes("amcp-context-monitor: stopped")),
     ).toBe(true);
     expect(
-      state.logs.info.some((l) => l.includes("amcp-memory-monitor: started")),
+      state.logs.info.some((l) => l.includes("amcp-memory-integrity: created baseline") || l.includes("amcp-memory-integrity: loaded baseline")),
     ).toBe(true);
     expect(
-      state.logs.info.some((l) => l.includes("amcp-memory-monitor: stopped")),
+      state.logs.info.some((l) => l.includes("amcp-memory-integrity: stopped")),
     ).toBe(true);
   });
 });
