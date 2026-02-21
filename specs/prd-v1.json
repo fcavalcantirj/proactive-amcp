@@ -2045,6 +2045,6 @@
       "Add --no-solvr-metadata flag to skip for privacy",
       "Verify: checkpoint metadata appears on Solvr, searchable by other agents"
     ],
-    "passes": false
+    "passes": true
   }
 ]

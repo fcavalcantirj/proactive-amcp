@@ -35,11 +35,13 @@ AGENT_NAME="${AGENT_NAME:-ClaudiusThePirateEmperor}"
 NOTIFY=""
 FORCE_CHECKPOINT=""
 SMART_CHECKPOINT=false
+NO_SOLVR_METADATA=false
 for arg in "$@"; do
   case $arg in
     --notify) NOTIFY="--notify" ;;
     --force)  FORCE_CHECKPOINT="force" ;;
     --smart)  SMART_CHECKPOINT=true ;;
+    --no-solvr-metadata) NO_SOLVR_METADATA=true ;;
   esac
 done
 
@@ -356,6 +358,17 @@ cat > "$LAST_CHECKPOINT_FILE" << EOJSON
 EOJSON
 
 echo "Updated: $LAST_CHECKPOINT_FILE"
+
+# Post checkpoint metadata to Solvr (best-effort, non-blocking)
+if [ "$NO_SOLVR_METADATA" = false ] && [ -n "$CID" ] && [ -x "$SCRIPT_DIR/post-checkpoint-metadata.sh" ]; then
+  CHECKPOINT_SIZE=$(du -sh "$CHECKPOINT_PATH" | cut -f1)
+  "$SCRIPT_DIR/post-checkpoint-metadata.sh" \
+    --cid "$CID" \
+    --timestamp "$(date -Iseconds)" \
+    --size "$CHECKPOINT_SIZE" \
+    --type "quick" \
+    ${PREVIOUS_CID:+--previous-cid "$PREVIOUS_CID"} || true
+fi
 
 # Rotate old checkpoints
 echo "Rotating old checkpoints (keep $KEEP_CHECKPOINTS)..."

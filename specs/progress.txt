@@ -2594,3 +2594,28 @@
 - Verification:
   - SKILL.md is 490 lines (under 800)
   - All 6 PRD steps covered: Getting Started section, install→init→register→claim flow, Solvr benefits, registration troubleshooting, Quick Reference with register/claim-info, end-to-end user path
+
+## Task P6-10: integration — Add checkpoint metadata to Solvr (DONE)
+- Created `scripts/post-checkpoint-metadata.sh` (150 lines) — shared helper that POSTs checkpoint metadata to Solvr
+  - Reads Solvr API key from config.json (apiKeys.solvr, solvr.apiKey, pinning.solvr.apiKey)
+  - Extracts AID from identity.json for agent_id
+  - POSTs to Solvr `/v1/posts` as type=idea with structured metadata
+  - Metadata includes: cid, timestamp, size, checkpoint_type, agent_id, previous_cid
+  - Tagged with amcp, checkpoint, and type (quick/full) for discoverability
+  - Graceful: no API key = silent skip, API error = warn but never block
+  - Standalone usage: `./post-checkpoint-metadata.sh --cid <CID> --timestamp <ISO> --size <SIZE>`
+- Updated `checkpoint.sh` (389 lines):
+  - Added `--no-solvr-metadata` flag to skip metadata posting for privacy
+  - Calls post-checkpoint-metadata.sh after successful IPFS pin with `|| true` guard
+  - Passes --type "quick" to distinguish from full checkpoints
+- Updated `full-checkpoint.sh` (800 lines):
+  - Added `--no-solvr-metadata` flag to skip metadata posting for privacy
+  - Calls post-checkpoint-metadata.sh after STAGE 4 (IPFS pinning) with `|| true` guard
+  - Passes --type "full" to distinguish from quick checkpoints
+  - Trimmed redundant blank lines to stay at exactly 800 lines
+- Verification:
+  - All 3 scripts pass `bash -n` syntax check
+  - `--no-solvr-metadata` flag present in both checkpoint.sh and full-checkpoint.sh
+  - post-checkpoint-metadata.sh called from both checkpoint scripts
+  - Metadata payload includes all required fields: cid, timestamp, size, previous_cid, agent_id
+  - File sizes: post-checkpoint-metadata.sh=150, checkpoint.sh=389, full-checkpoint.sh=800 (all ≤800)

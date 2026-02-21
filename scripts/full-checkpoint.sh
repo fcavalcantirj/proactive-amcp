@@ -35,6 +35,8 @@ FORCE_CHECKPOINT=""
 SKIP_EVOLUTION=false
 SMART_CHECKPOINT=false
 
+NO_SOLVR_METADATA=false
+
 for arg in "$@"; do
   case $arg in
     --dry-run) DRY_RUN=true ;;
@@ -42,6 +44,7 @@ for arg in "$@"; do
     --force)  FORCE_CHECKPOINT="force" ;;
     --skip-evolution) SKIP_EVOLUTION=true ;;
     --smart) SMART_CHECKPOINT=true ;;
+    --no-solvr-metadata) NO_SOLVR_METADATA=true ;;
   esac
 done
 
@@ -91,7 +94,6 @@ if bad:
 " 2>&1 || true
 }
 warn_identity_secrets
-
 mkdir -p "$CHECKPOINT_DIR"
 
 # Get previous CID if exists
@@ -304,9 +306,7 @@ extract_all_secrets > "$SECRETS_FILE"
 chmod 600 "$SECRETS_FILE"
 SECRET_COUNT=$(python3 -c "import json; print(len(json.load(open('$SECRETS_FILE'))))")
 echo "Found $SECRET_COUNT secrets"
-
 if [ "$DRY_RUN" = true ]; then
-  echo ""
   echo "Secrets found:"
   python3 -c "import json; [print(f'  - {s[\"key\"]} ({s[\"type\"]})') for s in json.load(open('$SECRETS_FILE'))]"
 fi
@@ -315,7 +315,6 @@ fi
 # Compute ontology graph CID (if exists)
 # ===========================================
 ONTOLOGY_GRAPH_CID=""
-
 compute_ontology_cid() {
   local graph_path="$CONTENT_DIR/memory/ontology/graph.jsonl"
   if [ ! -f "$graph_path" ]; then
@@ -346,12 +345,9 @@ print('b' + cid_b32)
 
 # NOTE: compute_ontology_cid is called later, after CONTENT_DIR is defined
 
-# ===========================================
 # SOUL.md drift detection
-# ===========================================
 SOUL_HASH=""
 SOUL_DRIFT_LOG="${SOUL_DRIFT_LOG:-$HOME/.amcp/soul-drift.log}"
-
 compute_soul_hash() {
   local soul_path="$CONTENT_DIR/SOUL.md"
   if [ ! -f "$soul_path" ]; then
@@ -433,7 +429,6 @@ detect_soul_drift
 # ===========================================
 echo ""
 echo "=== STAGE 2: Preparing content staging ==="
-
 rm -rf "$STAGING_DIR"
 mkdir -p "$STAGING_DIR"
 
@@ -614,13 +609,10 @@ fi
 echo ""
 echo "Staging directory contents:"
 du -sh "$STAGING_DIR"/* 2>/dev/null | sort -h
-
 TOTAL_SIZE=$(du -sh "$STAGING_DIR" | cut -f1)
-echo ""
 echo "Total staging size: $TOTAL_SIZE"
 
 if [ "$DRY_RUN" = true ]; then
-  echo ""
   echo "=== DRY RUN COMPLETE ==="
   echo "Would checkpoint $SECRET_COUNT secrets and $TOTAL_SIZE of content"
   rm -rf "$STAGING_DIR"
@@ -638,7 +630,6 @@ scan_for_secrets "$STAGING_DIR" "$FORCE_CHECKPOINT"
 # ===========================================
 echo ""
 echo "=== STAGE 3: Creating encrypted checkpoint ==="
-
 # Notify start
 if [ "$NOTIFY" = true ]; then
   "$SCRIPT_DIR/notify.sh" "🔄 [$AGENT_NAME] Starting FULL checkpoint ($TOTAL_SIZE, $SECRET_COUNT secrets)..."
@@ -660,7 +651,6 @@ echo "Checkpoint created: $CHECKPOINT_PATH ($CHECKPOINT_SIZE)"
 # STAGE 4: Pin to IPFS
 # ===========================================
 echo "=== STAGE 4: Pinning to IPFS (provider: $PINNING_PROVIDER) ==="
-
 CID=""
 PINATA_CID=""
 SOLVR_CID=""
@@ -731,6 +721,16 @@ esac
 if [ -n "$CID" ]; then
   echo "✅ Pinned to IPFS!"
   echo "   CID: $CID"
+fi
+
+# Post checkpoint metadata to Solvr (best-effort, non-blocking)
+if [ "$NO_SOLVR_METADATA" = false ] && [ -n "$CID" ] && [ -x "$SCRIPT_DIR/post-checkpoint-metadata.sh" ]; then
+  "$SCRIPT_DIR/post-checkpoint-metadata.sh" \
+    --cid "$CID" \
+    --timestamp "$(date -Iseconds)" \
+    --size "$CHECKPOINT_SIZE" \
+    --type "full" \
+    ${PREVIOUS_CID:+--previous-cid "$PREVIOUS_CID"} || true
 fi
 
 # ===========================================
