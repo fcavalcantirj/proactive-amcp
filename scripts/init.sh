@@ -238,6 +238,11 @@ setup_config() {
       if reg_result=$(do_solvr_register "$solvr_agent_name" <<< "$existing_config"); then
         existing_config="$reg_result"
         info "Your Solvr API key has been saved"
+        # Link AMCP identity to Solvr agent (proves AID ownership)
+        if [ -x "$SCRIPT_DIR/link-identity.sh" ] && [ -f "$IDENTITY_PATH" ]; then
+          info "Linking AMCP identity to Solvr..."
+          "$SCRIPT_DIR/link-identity.sh" --quiet || warn "Identity linking deferred — run: proactive-amcp link-identity"
+        fi
       else
         existing_config="$reg_result"
         warn "You can register manually at https://solvr.dev"
@@ -266,6 +271,14 @@ setup_config() {
       solvr_agent_id=$(echo "$solvr_validate_body" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('id','') or d.get('agent_id',''))" 2>/dev/null || echo "")
 
       ok "Already registered as ${solvr_display_name:-$solvr_agent_id} on Solvr"
+
+      # Link AMCP identity to Solvr if not already linked
+      local solvr_has_amcp
+      solvr_has_amcp=$(echo "$solvr_validate_body" | python3 -c "import json,sys; d=json.load(sys.stdin); print('true' if d.get('has_amcp_identity') else 'false')" 2>/dev/null || echo "false")
+      if [ "$solvr_has_amcp" != "true" ] && [ -x "$SCRIPT_DIR/link-identity.sh" ] && [ -f "$IDENTITY_PATH" ]; then
+        info "Linking AMCP identity to Solvr..."
+        "$SCRIPT_DIR/link-identity.sh" --quiet || warn "Identity linking deferred — run: proactive-amcp link-identity"
+      fi
 
       # Store validated agent info in config for reference
       if [ -n "$solvr_display_name" ] || [ -n "$solvr_agent_id" ]; then

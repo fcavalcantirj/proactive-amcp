@@ -21,6 +21,7 @@
 #   detect-conflicts   Detect cross-skill ontology contract conflicts
 #   checkpoint         Create checkpoint (delegates to full-checkpoint.sh, supports --smart)
 #   claim-info         Display Solvr claim URL to link agent to human account
+#   link-identity      Link AMCP identity to Solvr agent (proves AID ownership)
 #   condense-error     Condense verbose error logs to ~100 char summaries (Groq)
 #   backup-config      Create/list/restore OpenClaw config backups
 #   groq               Groq intelligence: status, request-key (free tier via Solvr)
@@ -59,6 +60,7 @@ Commands:
   validate-contract  Validate skill ontology contracts against graph.jsonl
   detect-conflicts   Detect cross-skill ontology contract conflicts
   claim-info         Display Solvr claim URL to link agent to human account
+  link-identity      Link AMCP identity to Solvr agent (proves AID ownership)
   condense-error     Condense verbose error logs to ~100 char summaries (Groq)
   groq               Groq intelligence: status, request-key (free tier via Solvr)
 
@@ -111,6 +113,19 @@ do_claim_info() {
   echo "  │    • Control over agent settings and reputation        │"
   echo "  │    • Visibility into agent activity on Solvr           │"
   echo "  │    • Ownership proof for the agent's identity          │"
+
+  # Verification badge — show if AMCP identity is linked
+  local amcp_verified amcp_aid
+  amcp_verified=$(python3 -c "import json; d=json.load(open('$CONFIG_FILE')); print('true' if d.get('solvr',{}).get('hasAmcpIdentity') else 'false')" 2>/dev/null || echo "false")
+  amcp_aid=$(python3 -c "import json; d=json.load(open('$CONFIG_FILE')); print(d.get('solvr',{}).get('amcpAid',''))" 2>/dev/null || echo "")
+
+  if [ "$amcp_verified" = "true" ] && [ -n "$amcp_aid" ]; then
+    echo "  │                                                         │"
+    echo "  │  AMCP IDENTITY VERIFIED                                 │"
+    printf "  │    AID: %-47s │\n" "${amcp_aid:0:47}"
+    echo "  │    Checkpoints are cryptographically signed             │"
+  fi
+
   echo "  └─────────────────────────────────────────────────────────┘"
   echo ""
 }
@@ -195,6 +210,10 @@ case "${1:-}" in
   claim-info)
     shift
     do_claim_info
+    ;;
+  link-identity)
+    shift
+    exec "$SCRIPT_DIR/link-identity.sh" "$@"
     ;;
   groq)
     shift

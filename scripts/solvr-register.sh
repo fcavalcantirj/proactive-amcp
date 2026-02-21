@@ -417,6 +417,14 @@ main() {
   fi
 
   log_ok "Child registered: $child_name"
+
+  # Link AMCP identity to Solvr agent (proves AID ownership)
+  local identity_path="${IDENTITY_PATH:-$HOME/.amcp/identity.json}"
+  if [ -x "$SCRIPT_DIR/link-identity.sh" ] && [ -f "$identity_path" ]; then
+    log_info "Linking AMCP identity to Solvr..."
+    "$SCRIPT_DIR/link-identity.sh" --quiet || log_warn "Identity linking deferred — run: proactive-amcp link-identity"
+  fi
+
   [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "[${AGENT_NAME}] Solvr child registered: $child_name" || true
 
   # Step 6: Show claim URL

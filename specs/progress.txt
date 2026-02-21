@@ -2540,3 +2540,34 @@
   - pinning.provider update confirmed via grep
   - claim URL display confirmed via grep
   - register|solvr-register case confirmed in proactive-amcp.sh
+
+## Task P6-04: identity — Link AMCP identity to Solvr agent (DONE)
+- PRD 6.4: After AMCP identity created and Solvr registered, prove AID ownership and link
+- Created `scripts/link-identity.sh` (344 lines) — standalone identity linking script
+  - Extracts AID from identity.json via python3
+  - Requests challenge from Solvr `POST /me/identity-challenge`
+  - Signs challenge via `$AMCP_CLI sign` or Python nacl fallback
+  - Sends AID + signature to Solvr `PATCH /me` with `{amcp_aid, has_amcp_identity: true}`
+  - Graceful degradation: if challenge endpoint unavailable, links with API key auth only
+  - Verifies: re-checks `GET /me` to confirm `has_amcp_identity=true`
+  - Stores `solvr.hasAmcpIdentity`, `solvr.amcpAid`, `solvr.linkedAt` in config
+  - Displays "AMCP identity linked to Solvr — your checkpoints are now verifiable"
+  - Idempotent: if already linked with same AID, exits 0 immediately
+  - Supports `--quiet` flag for use from init.sh/solvr-register.sh
+- Updated `scripts/init.sh`:
+  - After Solvr registration: calls link-identity.sh --quiet
+  - After existing key validation: checks has_amcp_identity, calls link-identity.sh if not linked
+- Updated `scripts/solvr-register.sh`:
+  - After successful child registration: calls link-identity.sh --quiet
+- Updated `scripts/proactive-amcp.sh`:
+  - Added `link-identity` subcommand routed to link-identity.sh
+  - Updated `do_claim_info()` with verification badge: shows "AMCP IDENTITY VERIFIED" with AID
+  - Badge reads `solvr.hasAmcpIdentity` and `solvr.amcpAid` from config
+- Verification:
+  - bash -n syntax check passes on all 4 scripts
+  - File sizes: link-identity.sh=344, proactive-amcp.sh=230, init.sh=729, solvr-register.sh=457 (all under 800)
+  - link-identity referenced in init.sh, solvr-register.sh, proactive-amcp.sh dispatcher
+  - PATCH /me with has_amcp_identity confirmed in link-identity.sh
+  - sign_challenge function defined and called in link-identity.sh
+  - identity-challenge endpoint called in link-identity.sh
+  - hasAmcpIdentity/amcpAid config keys stored and read in claim-info
