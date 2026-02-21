@@ -2571,3 +2571,26 @@
   - sign_challenge function defined and called in link-identity.sh
   - identity-challenge endpoint called in link-identity.sh
   - hasAmcpIdentity/amcpAid config keys stored and read in claim-info
+
+## Task P6-09: docs — Update SKILL.md for end-to-end flow (DONE)
+- Added "Getting Started" section (Steps 1-4) to SKILL.md:
+  - Step 1: Install (clawhub or manual git clone, plus fleet --install flags)
+  - Step 2: Initialize (init wizard: identity, pinning, Groq, watchdog/checkpoint schedule)
+  - Step 3: Register on Solvr (register --name, benefits table: free IPFS, collective knowledge, agent profile, death recovery)
+  - Step 4: Claim Your Agent (optional — claim-info URL + link-identity for AID verification)
+  - Verify Setup: status command with status table
+- Added "Register on Solvr" subsection to Quick Reference:
+  - `register --name my_agent`
+  - `register --dry-run`
+- Added "Claim and Link Identity" subsection to Quick Reference:
+  - `claim-info`
+  - `link-identity`
+- Added 5 registration-specific troubleshooting entries:
+  - Name taken (auto-suffixes _2 through _5)
+  - No parent key (root vs child guidance)
+  - 401/403 (verify parent Solvr API key)
+  - claim-info shows "Not registered" (run register first)
+  - link-identity fails (check both identity and registration)
+- Verification:
+  - SKILL.md is 490 lines (under 800)
+  - All 6 PRD steps covered: Getting Started section, install→init→register→claim flow, Solvr benefits, registration troubleshooting, Quick Reference with register/claim-info, end-to-end user path
