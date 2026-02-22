@@ -2076,7 +2076,7 @@
       "Support --json flag for machine-readable output",
       "Verify: proactive-amcp checkpoints shows all checkpoints from Solvr"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "7.3",

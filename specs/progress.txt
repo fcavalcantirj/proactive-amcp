@@ -2639,3 +2639,23 @@
   - register-checkpoint-solvr.sh uses POST /v1/agents/me/checkpoints endpoint
   - death_count read from amcp-stats.json, memory_hash computed via sha256sum
   - Errors handled gracefully — checkpoint succeeds even if Solvr API fails
+
+## P7-02: Add 'proactive-amcp checkpoints' command to list all checkpoints (DONE)
+- Created `scripts/list-checkpoints.sh` (173 lines) — lists all agent checkpoints from Solvr
+  - Calls GET /v1/agents/me/checkpoints with Bearer auth
+  - Displays: CID, name, date, death_count for each checkpoint in formatted table
+  - Latest checkpoint highlighted with `*` marker at top
+  - Supports `--json` flag for machine-readable output (pretty-printed JSON)
+  - Reads Solvr API key from config (apiKeys.solvr, solvr.apiKey, pinning.solvr.apiKey fallback chain)
+  - Graceful error handling: connection failures, API errors, parse errors
+  - Truncates long CIDs (>20 chars) and names (>35 chars) for display
+  - Shows "No checkpoints found" with help message if count is 0
+- Updated `scripts/proactive-amcp.sh` — added `checkpoints` subcommand routing
+  - Added to help text and usage block
+  - Routes `checkpoints` → `list-checkpoints.sh` via exec
+- Verification:
+  - Both scripts pass `bash -n` syntax check
+  - list-checkpoints.sh calls GET /v1/agents/me/checkpoints
+  - --json flag supported (JSON_OUTPUT variable + raw output path)
+  - proactive-amcp.sh routes `checkpoints` to list-checkpoints.sh
+  - File sizes: list-checkpoints.sh=173 lines, proactive-amcp.sh=238 lines (under 800)

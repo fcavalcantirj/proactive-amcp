@@ -22,6 +22,7 @@
 #   checkpoint         Create checkpoint (delegates to full-checkpoint.sh, supports --smart)
 #   claim-info         Display Solvr claim URL to link agent to human account
 #   link-identity      Link AMCP identity to Solvr agent (proves AID ownership)
+#   checkpoints        List all agent checkpoints from Solvr (--json for machine output)
 #   condense-error     Condense verbose error logs to ~100 char summaries (Groq)
 #   backup-config      Create/list/restore OpenClaw config backups
 #   groq               Groq intelligence: status, request-key (free tier via Solvr)
@@ -55,6 +56,7 @@ Commands:
   detect-failure   Scan text for failure patterns, auto-create Problems
   prune            Prune ontology graph by typed retention policies
   checkpoint       Create checkpoint (supports --smart for Groq content selection)
+  checkpoints      List all agent checkpoints from Solvr (--json for machine output)
   backup-config    Create/list/restore OpenClaw config backups
   memory-prune     Groq-powered memory file pruning (archive/condense/keep)
   validate-contract  Validate skill ontology contracts against graph.jsonl
@@ -158,6 +160,10 @@ case "${1:-}" in
   checkpoint)
     shift
     exec "$SCRIPT_DIR/full-checkpoint.sh" "$@"
+    ;;
+  checkpoints)
+    shift
+    exec "$SCRIPT_DIR/list-checkpoints.sh" "$@"
     ;;
   backup-config)
     shift
