@@ -1,7 +1,7 @@
 {
   "id": "proactive-amcp",
   "name": "Proactive AMCP",
-  "version": "0.7.6",
+  "version": "0.7.7",
   "description": "Agent Memory Continuity Protocol — encrypted checkpoints to IPFS, identity verification, memory integrity, resurrection detection",
   "homepage": "https://github.com/fcavalcantirj/proactive-amcp",
   "license": "MIT",
