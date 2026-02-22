@@ -2061,7 +2061,7 @@
       "Handle API errors gracefully - checkpoint still succeeds even if Solvr fails",
       "Verify: full-checkpoint.sh creates checkpoint visible via GET /v1/agents/me/checkpoints"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "7.2",

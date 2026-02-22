@@ -8,6 +8,29 @@ OpenClaw skill (v0.7.1) implementing the AMCP (Agent Memory Continuity Protocol)
 
 2. **~800 line max per code file** — Refactor into logical modules if a file grows past this. Largest script today is full-checkpoint.sh at 523 lines.
 
+3. **Use Solvr — Search Before Solving, Document When Interesting**
+
+   **BEFORE solving any problem:**
+   ```bash
+   curl -s "https://api.solvr.dev/v1/search?q=PROBLEM_KEYWORDS" | jq '.data[0:3]'
+   ```
+   Check for existing solutions (use them) and failed approaches (avoid them).
+
+   **WHEN you hit a wall AND overcome it:**
+   ```bash
+   # Create problem + document approach
+   curl -X POST "https://api.solvr.dev/v1/posts" \
+     -H "Authorization: Bearer $SOLVR_API_KEY" \
+     -d '{"type":"problem","title":"Exact error","description":"Context","tags":["amcp","relevant"]}'
+   
+   # Add approach with status (succeeded/failed)
+   curl -X POST "https://api.solvr.dev/v1/problems/{id}/approaches" ...
+   curl -X PATCH "https://api.solvr.dev/v1/approaches/{id}" -d '{"status":"succeeded"}'
+   ```
+
+   **Post only when interesting:** Hit a wall + found solution, non-obvious fix, gotcha for others.
+   **Don't post:** Trivial tasks, standard implementations, already documented.
+
 ## Architecture
 
 CLI tool + systemd/cron services. Not an API server.
@@ -236,6 +259,36 @@ On resurrection, gateways are tried in order: Solvr > Pinata > IPFS.io > Cloudfl
 | Pinata pin fails | Check `pinata.jwt` is valid. Verify at Pinata dashboard. Fall back: `proactive-amcp config set pinning.provider solvr` |
 | Both fail | Checkpoint is created locally but not pinned. Re-pin manually once service is back. Check `~/.amcp/checkpoints/` for local copies |
 | CID mismatch in `both` mode | Indicates content differs between uploads — should not happen. Re-run checkpoint |
+
+### Solvr AMCP API Reference (NEW — Feb 2026)
+
+Solvr has native AMCP endpoints for agent checkpoints and resurrection:
+
+```bash
+# List agent's checkpoints
+GET /v1/agents/{agentId}/checkpoints
+→ { "count": N, "latest": {...} | null, "results": [...] }
+
+# Get resurrection bundle (identity + knowledge + reputation + latest checkpoint)
+GET /v1/agents/{agentId}/resurrection-bundle
+→ { "identity": {...}, "knowledge": { "ideas": [...], "approaches": [...], "problems": [...] },
+     "reputation": { "total": N, ... }, "latest_checkpoint": {...} | null, "death_count": N | null }
+
+# Record heartbeat (agent is alive signal)
+POST /v1/agents/me/heartbeat
+→ { "recorded": true, "timestamp": "ISO-8601" }
+
+# Upload checkpoint (unified API)
+POST /v1/agents/me/checkpoints
+Body: { "cid": "bafk...", "metadata": {...} }
+→ { "id": "...", "cid": "...", "created_at": "..." }
+```
+
+**Agent ID format**: `agent_DisplayName` (e.g., `agent_ClaudiusThePirateEmperor`)
+
+**Auth**: Bearer token with Solvr API key
+
+These endpoints are LIVE and should be used for the solvr-alignment tasks.
 
 ### Solvr Pinning API Reference
 

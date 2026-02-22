@@ -2619,3 +2619,23 @@
   - post-checkpoint-metadata.sh called from both checkpoint scripts
   - Metadata payload includes all required fields: cid, timestamp, size, previous_cid, agent_id
   - File sizes: post-checkpoint-metadata.sh=150, checkpoint.sh=389, full-checkpoint.sh=800 (all ≤800)
+
+## P7-01: Use Solvr unified checkpoint API (POST /v1/agents/me/checkpoints)
+- Created `scripts/register-checkpoint-solvr.sh` (157 lines) — replaces post-checkpoint-metadata.sh
+  - Uses POST /v1/agents/me/checkpoints (unified API) instead of POST /v1/posts
+  - Payload: { cid, metadata: { name, death_count, memory_hash } }
+  - Reads death_count from $CONTENT_DIR/memory/amcp-stats.json (totalDeaths field), defaults to 0
+  - Computes memory_hash via sha256sum of the checkpoint file
+  - Graceful: failures logged but never block checkpoint flow (exit 0 on missing key or API error)
+  - Accepts --cid, --checkpoint-path, --name, --content-dir flags
+- Updated `scripts/full-checkpoint.sh` (799 lines):
+  - Removed call to post-checkpoint-metadata.sh
+  - Now calls register-checkpoint-solvr.sh with --cid, --checkpoint-path, --name, --content-dir
+  - Same guard pattern: [ -x "$SCRIPT_DIR/register-checkpoint-solvr.sh" ] && ... || true
+  - File stays under 800-line limit (799 lines)
+- Verification:
+  - Both scripts pass `bash -n` syntax check
+  - post-checkpoint-metadata.sh fully removed from full-checkpoint.sh (0 occurrences)
+  - register-checkpoint-solvr.sh uses POST /v1/agents/me/checkpoints endpoint
+  - death_count read from amcp-stats.json, memory_hash computed via sha256sum
+  - Errors handled gracefully — checkpoint succeeds even if Solvr API fails

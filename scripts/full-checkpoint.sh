@@ -723,14 +723,13 @@ if [ -n "$CID" ]; then
   echo "   CID: $CID"
 fi
 
-# Post checkpoint metadata to Solvr (best-effort, non-blocking)
-if [ "$NO_SOLVR_METADATA" = false ] && [ -n "$CID" ] && [ -x "$SCRIPT_DIR/post-checkpoint-metadata.sh" ]; then
-  "$SCRIPT_DIR/post-checkpoint-metadata.sh" \
+# Register checkpoint with Solvr unified API (best-effort, non-blocking)
+if [ "$NO_SOLVR_METADATA" = false ] && [ -n "$CID" ] && [ -x "$SCRIPT_DIR/register-checkpoint-solvr.sh" ]; then
+  "$SCRIPT_DIR/register-checkpoint-solvr.sh" \
     --cid "$CID" \
-    --timestamp "$(date -Iseconds)" \
-    --size "$CHECKPOINT_SIZE" \
-    --type "full" \
-    ${PREVIOUS_CID:+--previous-cid "$PREVIOUS_CID"} || true
+    --checkpoint-path "$CHECKPOINT_PATH" \
+    --name "amcp-full-$AGENT_NAME-$TIMESTAMP" \
+    --content-dir "$CONTENT_DIR" || true
 fi
 
 # ===========================================
