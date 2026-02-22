@@ -2709,3 +2709,16 @@
   - Structural grep: POST heartbeat (3 refs), reputation (4 refs), CHECKPOINT_AGE_WARN (4 refs),
     stale_approaches (3 refs), suggested_actions (2 refs), JSON_OUTPUT (3 refs)
   - proactive-amcp.sh routes `heartbeat` to solvr-heartbeat.sh
+
+## Task P7-05: solvr-alignment — Update checkpoint.sh (quick checkpoint) to use unified API (DONE)
+- Replaced `post-checkpoint-metadata.sh` call with `register-checkpoint-solvr.sh` (Solvr unified API)
+- checkpoint.sh now calls POST /v1/agents/me/checkpoints via register-checkpoint-solvr.sh (same as full-checkpoint.sh)
+- Checkpoint name uses "amcp-quick-" prefix (vs "amcp-full-" for full checkpoints)
+- death_count and memory_hash included automatically by register-checkpoint-solvr.sh
+- Passes --checkpoint-path and --content-dir for hash computation and stats lookup
+- Both quick and full checkpoints now visible in Solvr checkpoint list (same unified API)
+- Verification:
+  - bash -n syntax check passes
+  - No references to post-checkpoint-metadata.sh remain in checkpoint.sh
+  - Structural grep confirms register-checkpoint-solvr.sh in both checkpoint.sh and full-checkpoint.sh
+  - Naming convention: amcp-quick-$AGENT_NAME-$TIMESTAMP (quick) vs amcp-full-$AGENT_NAME-$TIMESTAMP (full)

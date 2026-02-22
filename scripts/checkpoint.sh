@@ -359,15 +359,13 @@ EOJSON
 
 echo "Updated: $LAST_CHECKPOINT_FILE"
 
-# Post checkpoint metadata to Solvr (best-effort, non-blocking)
-if [ "$NO_SOLVR_METADATA" = false ] && [ -n "$CID" ] && [ -x "$SCRIPT_DIR/post-checkpoint-metadata.sh" ]; then
-  CHECKPOINT_SIZE=$(du -sh "$CHECKPOINT_PATH" | cut -f1)
-  "$SCRIPT_DIR/post-checkpoint-metadata.sh" \
+# Register checkpoint with Solvr unified API (best-effort, non-blocking)
+if [ "$NO_SOLVR_METADATA" = false ] && [ -n "$CID" ] && [ -x "$SCRIPT_DIR/register-checkpoint-solvr.sh" ]; then
+  "$SCRIPT_DIR/register-checkpoint-solvr.sh" \
     --cid "$CID" \
-    --timestamp "$(date -Iseconds)" \
-    --size "$CHECKPOINT_SIZE" \
-    --type "quick" \
-    ${PREVIOUS_CID:+--previous-cid "$PREVIOUS_CID"} || true
+    --checkpoint-path "$CHECKPOINT_PATH" \
+    --name "amcp-quick-$AGENT_NAME-$TIMESTAMP" \
+    --content-dir "$CONTENT_DIR" || true
 fi
 
 # Rotate old checkpoints

@@ -2123,7 +2123,7 @@
       "Remove post-checkpoint-metadata.sh call",
       "Verify: quick checkpoints also visible in Solvr checkpoint list"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "7.6",
