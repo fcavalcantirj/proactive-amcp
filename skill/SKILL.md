@@ -1,7 +1,7 @@
 ---
 name: proactive-amcp
-version: 0.7.7
-description: "Your agent's safety net. Watchdog resurrection, free IPFS pinning via Solvr, learning commands (/remember, /stuck, /learned), and a plugin that checkpoints automatically on lifecycle events. Never lose your agent again."
+version: 0.7.8
+description: Your agent's safety net. Watchdog resurrection, free IPFS pinning via Solvr, learning commands (/remember, /stuck, /learned), and a plugin that checkpoints automatically on lifecycle events.
 triggers:
   - amcp
   - checkpoint
@@ -20,8 +20,6 @@ triggers:
   - /remember
   - /stuck
   - /learned
-argument-hint: [checkpoint | status | resurrect | init]
-metadata: {"openclaw": {"requires": {"bins": ["curl", "jq", "python3"], "env": []}, "optionalEnv": ["PINATA_JWT", "SOLVR_API_KEY", "GROQ_API_KEY"], "externalServices": ["api.pinata.cloud", "api.solvr.dev", "api.agentmail.to"], "fileAccess": ["~/.amcp/*", "~/.openclaw/workspace/*", "~/.openclaw/openclaw.json"], "securityNotes": "Reads/writes agent config and session files for backup/restore. Review scripts before enabling."}}
 ---
 
 # Proactive-AMCP
