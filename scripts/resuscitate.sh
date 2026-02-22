@@ -205,6 +205,15 @@ record_attempt() {
   echo "{\"method\":\"$method\",\"result\":\"$result\",\"detail\":\"$detail\",\"timestamp\":\"$(date -Iseconds)\"}" >> "$ATTEMPTS_FILE"
 }
 
+# Trigger smart checkpoint after successful recovery (capture fresh state)
+post_recovery_checkpoint() {
+  local trigger_script="$SCRIPT_DIR/smart-checkpoint-trigger.sh"
+  if [ -x "$trigger_script" ]; then
+    log "Creating post-recovery checkpoint..."
+    "$trigger_script" --trigger recovery --quiet 2>/dev/null || true
+  fi
+}
+
 # Write last-recovery.json with attempts_summary
 write_recovery_json() {
   local method="$1"
@@ -621,6 +630,7 @@ main() {
     write_recovery_json "solvr_solution" "$downtime"
     surface_open_problems
     send_resurrection_email "success" "solvr_solution" "$downtime" "$RECOVERY_LOG"
+    post_recovery_checkpoint
     return 0
   fi
   record_attempt "solvr_solution" "failed" "No matching solutions or unavailable"
@@ -655,6 +665,7 @@ main() {
     write_recovery_json "restart" "$downtime"
     surface_open_problems
     send_resurrection_email "success" "restart" "$downtime" "$RECOVERY_LOG"
+    post_recovery_checkpoint
     return 0
   fi
   record_attempt "restart" "failed" "systemctl and direct restart both failed"
@@ -679,6 +690,7 @@ main() {
     write_recovery_json "config_fix" "$downtime"
     surface_open_problems
     send_resurrection_email "success" "config_fix" "$downtime" "$RECOVERY_LOG"
+    post_recovery_checkpoint
     return 0
   fi
   record_attempt "config_fix" "failed" "Config fix exhausted all tiers"
@@ -708,6 +720,7 @@ main() {
     write_recovery_json "rehydrate" "$downtime" "$cid"
     surface_open_problems
     send_resurrection_email "success" "rehydrate" "$downtime" "$RECOVERY_LOG"
+    post_recovery_checkpoint
     return 0
   fi
   record_attempt "rehydrate" "failed" "Rehydration failed"

@@ -1,6 +1,6 @@
 ---
 name: proactive-amcp
-version: 0.7.4
+version: 0.7.5
 description: Agent Memory Continuity Protocol - encrypted checkpoints to IPFS. Back up your soul, memories, and secrets. Resurrect from anywhere. Never lose yourself again.
 triggers:
   - amcp

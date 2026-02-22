@@ -21,6 +21,7 @@ Usage:
 import argparse
 import json
 import os
+import subprocess
 import sys
 import uuid
 from datetime import datetime, timezone
@@ -144,6 +145,22 @@ def save_stats(stats):
     with open(STATS_FILE, "w") as f:
         json.dump(stats, f, indent=2)
         f.write("\n")
+
+
+def trigger_smart_checkpoint(trigger_type="learning"):
+    """Trigger smart checkpoint after learning capture."""
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    trigger_script = os.path.join(script_dir, "smart-checkpoint-trigger.sh")
+    
+    if os.path.isfile(trigger_script) and os.access(trigger_script, os.X_OK):
+        try:
+            subprocess.run(
+                [trigger_script, "--trigger", trigger_type, "--quiet"],
+                capture_output=True,
+                timeout=60
+            )
+        except Exception:
+            pass  # Don't fail learning capture if checkpoint fails
 
 
 # ============================================================
@@ -467,6 +484,8 @@ def main():
         if args.action == "create":
             tags = [t.strip() for t in args.tags.split(",")] if args.tags else []
             create_learning(args.insight, args.source_problem, tags)
+            # Smart checkpoint after learning capture
+            trigger_smart_checkpoint("learning")
         elif args.action == "verify":
             verify_learning(args.id, args.human_verified)
         elif args.action == "get":
