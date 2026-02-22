@@ -2137,6 +2137,6 @@
       "Create template for responding to Solvr suggested_actions",
       "Verify: heartbeat now includes Solvr intelligence briefing"
     ],
-    "passes": false
+    "passes": true
   }
 ]

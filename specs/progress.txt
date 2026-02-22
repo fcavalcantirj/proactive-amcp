@@ -2722,3 +2722,21 @@
   - No references to post-checkpoint-metadata.sh remain in checkpoint.sh
   - Structural grep confirms register-checkpoint-solvr.sh in both checkpoint.sh and full-checkpoint.sh
   - Naming convention: amcp-quick-$AGENT_NAME-$TIMESTAMP (quick) vs amcp-full-$AGENT_NAME-$TIMESTAMP (full)
+
+## Task P7-06: solvr-alignment — Add Solvr briefing integration to HEARTBEAT.md workflow (DONE)
+- Updated `assets/HEARTBEAT.md` to integrate Solvr intelligence briefing into heartbeat workflow
+- Added "Solvr Intelligence Briefing" section at top — recommends `proactive-amcp heartbeat` first on every heartbeat
+- Added "Solvr Rotation: Opportunities" — search Solvr for open problems in agent's domain with example code
+- Added "Solvr Rotation: Stale Approaches" — check and update approaches that need succeeded/failed status
+- Created "Responding to Suggested Actions" section with:
+  - Action types table: update_approach, checkpoint_stale, review_problem, opportunity, identity_check
+  - Template script for processing suggested_actions from heartbeat --json output
+  - Case statement routing actions to appropriate responses
+- Added "Recommended Heartbeat Rotation" checklist at bottom (6-step ordered workflow)
+- Updated "When to Alert" table with Solvr-specific conditions (stale approaches, heartbeat fails, pending actions)
+- Verification:
+  - Solvr briefing recommended on each heartbeat (proactive-amcp heartbeat command, 3 modes)
+  - Opportunities rotation: search for problems in domain with curl + python3 example
+  - Stale approaches rotation: check and update via heartbeat --json + PATCH API
+  - Suggested actions template: action types table + processing script template
+  - Heartbeat includes Solvr intelligence briefing as step 1 of rotation
