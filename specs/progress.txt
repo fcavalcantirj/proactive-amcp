@@ -2690,3 +2690,22 @@
   - Checkpoint download uses IPFS gateway fallback chain
   - proactive-amcp.sh routes `resurrect` to resurrect-from-solvr.sh
   - File sizes: resurrect-from-solvr.sh=301 lines, proactive-amcp.sh=242 lines (under 800)
+
+## Task P7-04: solvr-alignment — Add 'proactive-amcp heartbeat' command (DONE)
+- Created `scripts/solvr-heartbeat.sh` (296 lines) — sends heartbeat to Solvr and displays agent status briefing
+- Step 1: POST /v1/agents/me/heartbeat to record liveness (updates last_seen_at)
+- Step 2: GET /v1/agents/me to fetch agent profile (status, reputation, death_count, suggested_actions, stale_approaches)
+- Step 3: GET /v1/agents/me/checkpoints to fetch checkpoint count and latest checkpoint
+- Step 4: Reads local last-checkpoint.json for checkpoint age calculation
+- Displays: agent status, reputation breakdown, checkpoint count, stale approaches, suggested actions
+- Shows checkpoint age warning if > 24h (configurable via CHECKPOINT_AGE_WARN_HOURS env)
+- Shows stale approach warnings from Solvr's suggested_actions and stale_approaches
+- Flags: --json (machine-readable output), --quiet (warnings only), -h/--help
+- Solvr API key resolved from config (same fallback chain: apiKeys.solvr, solvr.apiKey, pinning.solvr.apiKey)
+- Updated `scripts/proactive-amcp.sh` — added `heartbeat` subcommand to help text and case statement
+- Verification:
+  - bash -n syntax check passes on both scripts
+  - File sizes: solvr-heartbeat.sh=296, proactive-amcp.sh=249 (under 800)
+  - Structural grep: POST heartbeat (3 refs), reputation (4 refs), CHECKPOINT_AGE_WARN (4 refs),
+    stale_approaches (3 refs), suggested_actions (2 refs), JSON_OUTPUT (3 refs)
+  - proactive-amcp.sh routes `heartbeat` to solvr-heartbeat.sh

@@ -2109,7 +2109,7 @@
       "Add 'heartbeat' subcommand to proactive-amcp.sh dispatcher",
       "Verify: proactive-amcp heartbeat shows status and tips"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "7.5",
