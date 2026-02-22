@@ -2046,5 +2046,97 @@
       "Verify: checkpoint metadata appears on Solvr, searchable by other agents"
     ],
     "passes": true
+  },
+  {
+    "id": "7.1",
+    "category": "solvr-alignment",
+    "phase": 7,
+    "description": "Use Solvr's unified checkpoint API instead of separate pin + metadata calls",
+    "steps": [
+      "Update full-checkpoint.sh to use POST /v1/agents/me/checkpoints after IPFS pin",
+      "API call: POST /v1/agents/me/checkpoints with { cid, name, death_count, memory_hash }",
+      "Read death_count from ~/clawd/memory/amcp-stats.json (totalDeaths field)",
+      "Generate memory_hash from sha256 of checkpoint tarball",
+      "Remove call to post-checkpoint-metadata.sh (now unified in API)",
+      "Handle API errors gracefully - checkpoint still succeeds even if Solvr fails",
+      "Verify: full-checkpoint.sh creates checkpoint visible via GET /v1/agents/me/checkpoints"
+    ],
+    "passes": false
+  },
+  {
+    "id": "7.2",
+    "category": "solvr-alignment",
+    "phase": 7,
+    "description": "Add 'proactive-amcp checkpoints' command to list all checkpoints",
+    "steps": [
+      "Create scripts/list-checkpoints.sh that calls GET /v1/agents/me/checkpoints",
+      "Display: CID, name, date, status, death_count for each checkpoint",
+      "Highlight latest checkpoint at top",
+      "Add 'checkpoints' subcommand to proactive-amcp.sh dispatcher",
+      "Support --json flag for machine-readable output",
+      "Verify: proactive-amcp checkpoints shows all checkpoints from Solvr"
+    ],
+    "passes": false
+  },
+  {
+    "id": "7.3",
+    "category": "solvr-alignment",
+    "phase": 7,
+    "description": "Add 'proactive-amcp resurrect' command using Solvr resurrection bundle",
+    "steps": [
+      "Create scripts/resurrect-from-solvr.sh that calls GET /v1/agents/{id}/resurrection-bundle",
+      "Parse bundle: identity, knowledge (ideas, approaches), reputation, latest checkpoint CID",
+      "Download checkpoint from IPFS via Solvr gateway if CID present",
+      "Apply checkpoint using existing restore logic",
+      "Import knowledge: create local cache of top ideas/approaches for context",
+      "Add 'resurrect' subcommand to proactive-amcp.sh dispatcher",
+      "Support --agent-id flag (default: self/me)",
+      "Verify: proactive-amcp resurrect fully rehydrates agent from Solvr"
+    ],
+    "passes": false
+  },
+  {
+    "id": "7.4",
+    "category": "solvr-alignment",
+    "phase": 7,
+    "description": "Add 'proactive-amcp heartbeat' command using Solvr heartbeat endpoint",
+    "steps": [
+      "Create scripts/solvr-heartbeat.sh that calls Solvr briefing or heartbeat API",
+      "Display: agent status, reputation, unread notifications, storage usage",
+      "Show checkpoint age warning if > 24h since last checkpoint",
+      "Show stale approach warnings from Solvr's suggested_actions",
+      "Update last_seen_at for liveness tracking",
+      "Add 'heartbeat' subcommand to proactive-amcp.sh dispatcher",
+      "Verify: proactive-amcp heartbeat shows status and tips"
+    ],
+    "passes": false
+  },
+  {
+    "id": "7.5",
+    "category": "solvr-alignment",
+    "phase": 7,
+    "description": "Update checkpoint.sh (quick checkpoint) to use unified API",
+    "steps": [
+      "Update checkpoint.sh to call POST /v1/agents/me/checkpoints after pin",
+      "Same flow as full-checkpoint.sh but with type='quick' in name",
+      "Include death_count and memory_hash",
+      "Remove post-checkpoint-metadata.sh call",
+      "Verify: quick checkpoints also visible in Solvr checkpoint list"
+    ],
+    "passes": false
+  },
+  {
+    "id": "7.6",
+    "category": "solvr-alignment",
+    "phase": 7,
+    "description": "Add Solvr briefing integration to HEARTBEAT.md workflow",
+    "steps": [
+      "Update HEARTBEAT.md to recommend calling Solvr briefing on each heartbeat",
+      "Add to rotation: check Solvr opportunities (problems in my domain)",
+      "Add to rotation: check stale approaches that need status updates",
+      "Create template for responding to Solvr suggested_actions",
+      "Verify: heartbeat now includes Solvr intelligence briefing"
+    ],
+    "passes": false
   }
 ]
