@@ -22,6 +22,7 @@
 #   checkpoint         Create checkpoint (delegates to full-checkpoint.sh, supports --smart)
 #   claim-info         Display Solvr claim URL to link agent to human account
 #   link-identity      Link AMCP identity to Solvr agent (proves AID ownership)
+#   resurrect          Resurrect agent from Solvr resurrection bundle (--agent-id, --json, --dry-run)
 #   checkpoints        List all agent checkpoints from Solvr (--json for machine output)
 #   condense-error     Condense verbose error logs to ~100 char summaries (Groq)
 #   backup-config      Create/list/restore OpenClaw config backups
@@ -56,6 +57,7 @@ Commands:
   detect-failure   Scan text for failure patterns, auto-create Problems
   prune            Prune ontology graph by typed retention policies
   checkpoint       Create checkpoint (supports --smart for Groq content selection)
+  resurrect        Resurrect agent from Solvr resurrection bundle (--agent-id, --json, --dry-run)
   checkpoints      List all agent checkpoints from Solvr (--json for machine output)
   backup-config    Create/list/restore OpenClaw config backups
   memory-prune     Groq-powered memory file pruning (archive/condense/keep)
@@ -160,6 +162,10 @@ case "${1:-}" in
   checkpoint)
     shift
     exec "$SCRIPT_DIR/full-checkpoint.sh" "$@"
+    ;;
+  resurrect)
+    shift
+    exec "$SCRIPT_DIR/resurrect-from-solvr.sh" "$@"
     ;;
   checkpoints)
     shift

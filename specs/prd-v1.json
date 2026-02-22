@@ -2093,7 +2093,7 @@
       "Support --agent-id flag (default: self/me)",
       "Verify: proactive-amcp resurrect fully rehydrates agent from Solvr"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "7.4",

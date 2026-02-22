@@ -2659,3 +2659,34 @@
   - --json flag supported (JSON_OUTPUT variable + raw output path)
   - proactive-amcp.sh routes `checkpoints` to list-checkpoints.sh
   - File sizes: list-checkpoints.sh=173 lines, proactive-amcp.sh=238 lines (under 800)
+
+## P7-03: Add 'proactive-amcp resurrect' command using Solvr resurrection bundle (DONE)
+- Created `scripts/resurrect-from-solvr.sh` (301 lines) — resurrect agent from Solvr resurrection bundle
+  - Calls GET /v1/agents/{id}/resurrection-bundle with Bearer auth
+  - Parses bundle: identity, knowledge (ideas, approaches, problems), reputation, latest checkpoint CID, death_count
+  - Supports `--agent-id <id>` flag (default: "me" — uses authenticated agent)
+  - Supports `--json` flag for raw bundle output (inspection mode)
+  - Supports `--dry-run` flag to display bundle without applying changes
+  - Step 1: Imports knowledge — caches top 50 ideas/approaches/problems to ~/.amcp/solvr-knowledge/
+  - Writes knowledge-cache.json (structured) and knowledge-summary.md (human-readable)
+  - Step 2: Downloads checkpoint from IPFS via Solvr gateway (with fallbacks: Solvr > Pinata > IPFS.io > Cloudflare)
+  - Applies checkpoint using amcp CLI resuscitate (verify + decrypt)
+  - Restores content to workspace, skipping code repos
+  - Injects secrets via inject-secrets.sh (guard pattern)
+  - Validates learning storage JSONL, ontology graph, recreates venvs
+  - Notifies on success via notify.sh (guard pattern)
+  - Reads Solvr API key from config (same fallback chain as other scripts)
+  - Validates AMCP identity before checkpoint operations
+  - Graceful error handling at each step
+- Updated `scripts/proactive-amcp.sh` — added `resurrect` subcommand routing
+  - Added to help text and usage block
+  - Routes `resurrect` → `resurrect-from-solvr.sh` via exec
+- Verification:
+  - Both scripts pass `bash -n` syntax check
+  - resurrect-from-solvr.sh calls GET /v1/agents/{id}/resurrection-bundle
+  - --agent-id flag supported (default: "me")
+  - --json and --dry-run flags supported
+  - Knowledge import caches ideas/approaches/problems locally
+  - Checkpoint download uses IPFS gateway fallback chain
+  - proactive-amcp.sh routes `resurrect` to resurrect-from-solvr.sh
+  - File sizes: resurrect-from-solvr.sh=301 lines, proactive-amcp.sh=242 lines (under 800)
