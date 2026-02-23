@@ -2795,3 +2795,9 @@
 - chmod +x applied, verified executable (-rwxrwxr-x)
 - bash -n syntax check passes
 - Script is a library (sourced by other scripts), direct execution shows expected "log: command not found" since log() is provided by the caller
+
+## Task: bundling — Copy status.sh into skill package
+- Copied scripts/status.sh to skill/scripts/status.sh (19079 bytes, 621 lines)
+- chmod +x applied, verified executable (-rwxrwxr-x)
+- bash -n syntax check passes
+- bash skill/scripts/status.sh --help shows usage with basic/--full/--json modes and exit codes

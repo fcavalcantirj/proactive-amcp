@@ -101,7 +101,7 @@
         "Verify executable: chmod +x skill/scripts/status.sh",
         "Test: bash skill/scripts/status.sh shows status output"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "category": "bundling",
