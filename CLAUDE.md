@@ -1,6 +1,6 @@
 # proactive-amcp
 
-OpenClaw skill (v0.7.1) implementing the AMCP (Agent Memory Continuity Protocol). Encrypted agent checkpoints to IPFS, watchdog health monitoring, and multi-tier resurrection. Bash primary, Python3 for JSON helpers. BATS for tests.
+OpenClaw skill (v0.9.0) implementing the AMCP (Agent Memory Continuity Protocol). Encrypted agent checkpoints to IPFS, watchdog health monitoring, and multi-tier resurrection. Bash primary, Python3 for JSON helpers. BATS for tests.
 
 ## Golden Rules
 

@@ -1,6 +1,6 @@
 {
   "name": "proactive-amcp",
-  "version": "0.8.1",
+  "version": "0.9.0",
   "description": "AMCP skill — encrypted agent checkpoints to IPFS, watchdog health monitoring, multi-tier resurrection",
   "type": "module",
   "main": "dist/index.js",

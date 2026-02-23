@@ -200,6 +200,6 @@
       "Update local installation",
       "Announce breaking changes (script paths changed)"
     ],
-    "passes": false
+    "passes": true
   }
 ]

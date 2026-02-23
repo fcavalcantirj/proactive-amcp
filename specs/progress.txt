@@ -3276,3 +3276,22 @@
 - Section 19: Deprecated script path audit (soft warning check)
 - Section 20: Graceful empty args — all 7 hubs show usage on no args
 - All 108 tests pass
+
+## Task 11: release — Bump version to 0.9.0 and publish (DONE)
+- Updated version to 0.9.0 in all primary files:
+  - package.json: 0.8.1 -> 0.9.0
+  - _meta.json: 0.8.1 -> 0.9.0
+  - skill/skill.json: 0.8.1 -> 0.9.0
+  - SKILL.md: 0.8.0 -> 0.9.0
+  - openclaw.plugin.json: 0.7.7 -> 0.9.0
+  - CLAUDE.md: v0.7.1 -> v0.9.0
+- Created CHANGELOG.md with consolidation notes:
+  - Breaking changes section (script consolidation)
+  - Full mapping table of old scripts to new commands
+  - Backward compatibility notes (aliases still work)
+  - Prior version history
+- npm publish attempted: requires OTP (2FA) — user must run manually with --otp=CODE
+- clawdhub publish attempted: timed out — user must retry when service available
+- Local installation updated via rsync to ~/.openclaw/skills/proactive-amcp/
+- npm build (tsc) succeeded — tarball ready at 304.8kB
+- Breaking changes documented in CHANGELOG.md and SKILL.md migration section
