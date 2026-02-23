@@ -268,7 +268,7 @@
         "Run: npm publish",
         "Verify: npm view proactive-amcp version returns 0.8.0"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "category": "publish",

@@ -2951,3 +2951,14 @@
 - All modified scripts pass bash -n syntax check
 - All existing tests (full-checkpoint.bats, resuscitate.bats) still pass
 - All files under 800 lines
+
+## Task 22: publish — Publish v0.8.0 to npm (DONE)
+- package.json already at version 0.8.0 (bumped from 0.7.9)
+- package-lock.json already at version 0.8.0
+- skill/SKILL.md frontmatter already at version 0.8.0
+- SKILL.md (root) frontmatter updated to version 0.8.0
+- TypeScript build succeeds: `npm run build` (tsc, no errors)
+- npm publish attempted — package validates, tarball created (294.3 kB, 205 files)
+- npm registry requires OTP (2FA enabled on fcavalcantirj account)
+- User must complete publish manually: `npm publish --otp=YOUR_CODE`
+- Previous npm version: 0.7.9, target: 0.8.0
