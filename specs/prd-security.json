@@ -90,7 +90,7 @@
         "Verify executable: chmod +x skill/scripts/solvr-integration.sh",
         "Test: bash skill/scripts/solvr-integration.sh --help shows usage or runs without error"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "category": "bundling",
