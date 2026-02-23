@@ -68,7 +68,7 @@
         "Verify executable: chmod +x skill/scripts/init.sh",
         "Test: bash skill/scripts/init.sh --help shows usage or runs without error"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "category": "bundling",

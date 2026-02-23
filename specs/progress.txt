@@ -2771,3 +2771,11 @@
 - Copied scripts/resuscitate.sh to skill/scripts/resuscitate.sh
 - Verified file exists and is executable (chmod +x): -rwxrwxr-x, 24553 bytes
 - Syntax check passes: bash -n skill/scripts/resuscitate.sh
+
+## Task: bundling — Copy init.sh into skill package
+- Copied scripts/init.sh to skill/scripts/init.sh
+- Verified file exists and is executable (chmod +x): -rwxrwxr-x, 29787 bytes
+- Syntax check passes: bash -n skill/scripts/init.sh
+- Also copied dependency scripts/init-services.sh to skill/scripts/init-services.sh (required by init.sh)
+- init-services.sh syntax check passes: bash -n skill/scripts/init-services.sh
+- Test: bash skill/scripts/init.sh --help shows full setup wizard banner with AMCP description
