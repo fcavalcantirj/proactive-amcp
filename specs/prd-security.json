@@ -240,7 +240,7 @@
         "Verify .networkAccess.endpoints is array with 3 entries",
         "Verify .dataExposed contains 'Plaintext by default'"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "category": "testing",

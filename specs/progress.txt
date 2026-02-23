@@ -2918,3 +2918,14 @@
 - Verified: no `curl | bash` patterns for fetching skill scripts (only Solvr CLI runtime dependency install)
 - All scripts are bundled locally — no network calls needed for script availability
 - Cleaned up test directory
+
+## Task: Test skill.json is valid and complete (testing category)
+
+- Validated skill/skill.json is well-formed JSON via `jq .`
+- Verified .requiredEnvVars has exactly 3 entries (SOLVR_API_KEY, PINATA_JWT, NOTIFY_TARGET)
+- Verified .requiredEnvVars[0].name == 'SOLVR_API_KEY' — PASS
+- Verified .requiredBinaries includes 'bash', 'curl', 'jq' — all three present
+- Verified .persistence.createsSystemdUnits == true — PASS
+- Verified .networkAccess.endpoints is array with 3 entries (api.solvr.dev, api.pinata.cloud, ipfs.solvr.dev)
+- Verified .dataExposed contains 'Plaintext by default' — PASS
+- All 6 structural checks pass
