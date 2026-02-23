@@ -23,9 +23,44 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0" 2>/dev/null || realpath "$0" 2>/dev/null || echo "$0")")" && pwd)"
 
 # ============================================================
+# Help
+# ============================================================
+show_help() {
+  cat <<EOF
+diagnose.sh — Consolidated diagnostic hub
+
+Usage: ./diagnose.sh [subcommand] [options]
+
+Subcommands:
+  health (default)   Bash health checks → structured JSON findings
+  claude             Claude-powered diagnostics with Solvr integration
+  condense           Condense verbose error logs to ~100 chars (Groq)
+  failure            Detect failure patterns in text, auto-create Problems
+  summary            Generate open problem summary for resurrection
+  fix                Attempt automated fixes for detected issues
+
+Health options:
+  --session-dir DIR  Session directory (default: ~/.openclaw/agents/main/sessions)
+  --config FILE      OpenClaw config path
+
+Claude options:
+  --json             Output as JSON
+  --no-solvr         Skip Solvr problem posting
+  --bash-only        Only run bash checks, skip LLM analysis
+
+Exit codes:
+  0 = healthy/success
+  1 = issues found
+  2 = missing prerequisites
+EOF
+  exit 0
+}
+
+# ============================================================
 # Subcommand dispatch
 # ============================================================
 case "${1:-}" in
+  -h|--help) show_help ;;
   claude)   shift; exec "$SCRIPT_DIR/_diagnose-claude.sh" "$@" ;;
   condense) shift; exec "$SCRIPT_DIR/_diagnose-condense.sh" "$@" ;;
   failure)  shift; exec python3 "$SCRIPT_DIR/detect-failure.py" "$@" ;;

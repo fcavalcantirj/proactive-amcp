@@ -12,6 +12,41 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# Help handler
+show_help() {
+  cat <<EOF
+watchdog.sh — AMCP health monitoring and auto-recovery
+
+Usage: ./watchdog.sh [--continuous] [--check-interval N]
+
+Modes:
+  (default)       Single health check + fix attempt if needed
+  --continuous    Run forever, checking every CHECK_INTERVAL seconds
+
+Options:
+  --check-interval N   Seconds between checks (default: 60)
+  --fail-threshold N   Consecutive failures before DEAD state (default: 2)
+  -h, --help           Show this help
+
+Environment:
+  CHECK_INTERVAL       Default check interval (60s)
+  FAIL_THRESHOLD       Failures before escalation (2)
+  AGENT_NAME           Agent name for notifications
+
+The watchdog uses diagnose.sh to detect issues, then routes to fixes:
+  • session_corrupted       → diagnose fix + gateway restart
+  • gateway_down            → full resurrection
+  • gateway_unresponsive    → gateway restart
+  • config_invalid          → resurrection (config fix tier)
+EOF
+  exit 0
+}
+
+case "${1:-}" in
+  -h|--help) show_help ;;
+esac
+
 AMCP_CLI="${AMCP_CLI:-$(command -v amcp 2>/dev/null || echo "$HOME/bin/amcp")}"
 IDENTITY_PATH="${IDENTITY_PATH:-$HOME/.amcp/identity.json}"
 
