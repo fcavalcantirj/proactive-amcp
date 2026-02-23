@@ -184,7 +184,7 @@
       "Verify proactive-amcp.sh CLI still works for all commands",
       "Run full AMCP workflow: init → checkpoint → simulate death → resurrect"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": 11,

@@ -3248,3 +3248,31 @@
 - Marked ontology section as "Advanced: Ontology Commands" with note that most agents don't need them
 - SKILL.md is 681 lines (well under 800 limit)
 - All content matches actual consolidated script structure verified against proactive-amcp.sh dispatcher
+
+## Task 10: testing — Create test suite verifying no functionality loss (DONE)
+- Created `test/consolidation-test.bats` (108 tests) covering all consolidation work
+- Section 1: Syntax validation — all 10 hub scripts pass `bash -n`
+- Section 2: All `_*.sh` internal scripts pass `bash -n`, all implementation scripts exist
+- Section 3: Usage output — each hub's `--help` lists expected subcommands
+- Section 4: Unknown subcommand rejection — all hubs error on invalid input
+- Section 5-13: Routing tests — diagnose, config, solvr, checkpoint, secrets, memory, learning, ontology, status
+  - Each subcommand routes to correct internal script (verified via route probes)
+  - diagnose: claude, condense, failure, summary, fix all route correctly
+  - config: evaluators, backup, fix route to `_config-*.sh`; set/get work inline
+  - solvr: register, heartbeat, pin, checkpoint, resurrect → `_solvr-*.sh`
+  - checkpoint: list → `_checkpoint-list.sh`; `--help` shows all modes
+  - secrets: scan, inject, pre-commit → `_secrets-*.sh`
+  - memory: prune, prune-batch, evolution; smart --batch detection works
+  - learning: problem, log, report; backward compat `create` passthrough
+  - ontology: validate, prune, similarity, temporal, contract (inline), conflicts
+  - status: groq → `_status-groq.sh`; `--help` shows modes
+- Section 14-15: Backward compat aliases — 16 aliases in proactive-amcp.sh verified:
+  - register, solvr-register, heartbeat, resurrect, memory-prune, temporal-query, prune,
+    validate-contract, detect-conflicts, condense-error, session-fix, detect-failure,
+    backup-config, checkpoints, groq, problem
+- Section 16: Config real implementation — set/get roundtrip, boolean/integer coercion, secret redaction
+- Section 17: Status real implementation — READY, NO_IDENTITY, INVALID_IDENTITY, NO_PINNING states
+- Section 18: Checkpoint --help exits 0 with expected content
+- Section 19: Deprecated script path audit (soft warning check)
+- Section 20: Graceful empty args — all 7 hubs show usage on no args
+- All 108 tests pass
