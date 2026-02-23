@@ -160,13 +160,13 @@ This guides you through:
 
 After status is `READY`, proceed with what the user/agent needs:
 
-- **Checkpoint requested** → See "Create Checkpoint" below
+- **Checkpoint requested** → See "Checkpoint" below
 - **Death detected** → See "Resurrect" below
-- **Learning to capture** → See "Learning Capture" below
+- **Learning to capture** → See "Learning" below
 
 ---
 
-## 🔑 IPFS Pinning — Use Your Solvr API Key!
+## IPFS Pinning — Use Your Solvr API Key!
 
 **If you have a Solvr API key, you already have free IPFS pinning.**
 
@@ -205,7 +205,7 @@ Or use the init wizard — it asks about this.
 
 ---
 
-## 🌐 Why IPFS?
+## Why IPFS?
 
 Your checkpoints live on IPFS, not some random cloud:
 
@@ -220,7 +220,7 @@ Your checkpoints live on IPFS, not some random cloud:
 
 ---
 
-## 🧠 What is AMCP?
+## What is AMCP?
 
 **Agent Memory Continuity Protocol** is a standard for:
 
@@ -241,25 +241,49 @@ You can resurrect on any machine with your `identity.json` and a checkpoint CID.
 
 ---
 
-## Quick Reference
+## Command Reference
 
-### Check Status
+All commands go through the CLI entry point: `bash SKILL_DIR/scripts/proactive-amcp.sh <command> [subcommand] [args...]`
+
+### Status
 
 ```bash
+# Basic readiness check (READY/NO_IDENTITY/NO_PINNING/INVALID_IDENTITY)
 bash SKILL_DIR/scripts/proactive-amcp.sh status
+
+# Comprehensive status of all subsystems
+bash SKILL_DIR/scripts/proactive-amcp.sh status --full
+
+# Machine-readable JSON output
+bash SKILL_DIR/scripts/proactive-amcp.sh status --json
+
+# Groq intelligence status
+bash SKILL_DIR/scripts/proactive-amcp.sh groq status
 ```
 
-### Create Checkpoint
+### Checkpoint
 
 ```bash
-# Quick (workspace only)
-bash SKILL_DIR/scripts/checkpoint.sh
+# Full checkpoint (workspace + secrets + ontology + soul drift detection)
+bash SKILL_DIR/scripts/proactive-amcp.sh checkpoint
 
-# Full (includes secrets)
-bash SKILL_DIR/scripts/full-checkpoint.sh
+# With notification on completion
+bash SKILL_DIR/scripts/proactive-amcp.sh checkpoint --notify
 
-# With notification
-bash SKILL_DIR/scripts/checkpoint.sh --notify
+# Smart checkpoint (Groq filters content for relevance)
+bash SKILL_DIR/scripts/proactive-amcp.sh checkpoint --smart
+
+# Continuous auto-checkpoint runner (for cron/systemd)
+bash SKILL_DIR/scripts/proactive-amcp.sh checkpoint --auto [--interval N]
+
+# Smart trigger (decides if checkpoint is needed based on trigger type)
+bash SKILL_DIR/scripts/proactive-amcp.sh checkpoint --trigger heartbeat|learning|recovery|session-end|manual
+
+# List existing checkpoints from Solvr
+bash SKILL_DIR/scripts/proactive-amcp.sh checkpoints
+
+# Dry run (preview without creating)
+bash SKILL_DIR/scripts/proactive-amcp.sh checkpoint --dry-run
 ```
 
 ### Resurrect
@@ -270,22 +294,12 @@ bash SKILL_DIR/scripts/resuscitate.sh
 
 # From specific CID
 bash SKILL_DIR/scripts/resuscitate.sh --from-cid QmYourCID...
+
+# From Solvr resurrection bundle
+bash SKILL_DIR/scripts/proactive-amcp.sh resurrect --agent-id agent_MyAgent
 ```
 
-### Capture Learning
-
-```bash
-# Record something you learned
-bash SKILL_DIR/scripts/proactive-amcp.sh learning create --insight "AgentMail uses v0 API not v1"
-
-# Record a problem you're stuck on
-bash SKILL_DIR/scripts/proactive-amcp.sh problem create --description "Can't auth to Moltbook"
-
-# Close a problem with what you learned
-bash SKILL_DIR/scripts/proactive-amcp.sh learning create --insight "Need cookie auth" --source-problem prob_abc123
-```
-
-### Diagnostics
+### Diagnose
 
 ```bash
 # Health checks (default — structured JSON output)
@@ -302,47 +316,120 @@ bash SKILL_DIR/scripts/proactive-amcp.sh diagnose failure --input <file>
 
 # Generate open problem summary
 bash SKILL_DIR/scripts/proactive-amcp.sh diagnose summary [--learning-dir DIR]
+
+# Fix diagnostics findings
+bash SKILL_DIR/scripts/proactive-amcp.sh diagnose fix [--dry-run]
 ```
 
-### Register on Solvr
+### Config
 
 ```bash
-# Register with a chosen name
-bash SKILL_DIR/scripts/proactive-amcp.sh register --name my_agent
-
-# Preview without registering
-bash SKILL_DIR/scripts/proactive-amcp.sh register --dry-run
-```
-
-### Claim and Link Identity
-
-```bash
-# Show claim URL to link agent to human account
-bash SKILL_DIR/scripts/proactive-amcp.sh claim-info
-
-# Link AMCP identity to Solvr (proves AID ownership)
-bash SKILL_DIR/scripts/proactive-amcp.sh link-identity
-```
-
-### Configure
-
-```bash
-# Set Solvr API key for pinning
+# Set config value (dot-path notation)
 bash SKILL_DIR/scripts/proactive-amcp.sh config set solvr.apiKey YOUR_KEY
-
-# Set IPFS provider (solvr or pinata)
 bash SKILL_DIR/scripts/proactive-amcp.sh config set ipfs.provider solvr
-
-# Set Telegram notifications
 bash SKILL_DIR/scripts/proactive-amcp.sh config set notify.target YOUR_TELEGRAM_ID
 
-# View current config
+# View current config (secrets redacted)
 bash SKILL_DIR/scripts/proactive-amcp.sh config get
+
+# Get specific value
+bash SKILL_DIR/scripts/proactive-amcp.sh config get solvr.apiKey
+
+# Manage evaluators
+bash SKILL_DIR/scripts/proactive-amcp.sh config evaluators list|add|remove|show
+
+# Create/list/restore OpenClaw config backups
+bash SKILL_DIR/scripts/proactive-amcp.sh config backup [--list] [--restore]
+
+# 3-tier config recovery
+bash SKILL_DIR/scripts/proactive-amcp.sh config fix [--dry-run]
+```
+
+### Solvr
+
+```bash
+# Register on Solvr
+bash SKILL_DIR/scripts/proactive-amcp.sh solvr register --name my_agent [--dry-run]
+
+# Send heartbeat (agent alive signal)
+bash SKILL_DIR/scripts/proactive-amcp.sh solvr heartbeat [--json] [--quiet]
+
+# Pin file to IPFS via Solvr
+bash SKILL_DIR/scripts/proactive-amcp.sh solvr pin <file> [name]
+
+# Register checkpoint on Solvr
+bash SKILL_DIR/scripts/proactive-amcp.sh solvr checkpoint --cid bafk... [--name NAME]
+
+# Resurrect from Solvr bundle
+bash SKILL_DIR/scripts/proactive-amcp.sh solvr resurrect --agent-id agent_MyAgent [--json]
+```
+
+Aliases for convenience: `register` → `solvr register`, `heartbeat` → `solvr heartbeat`, `resurrect` → `solvr resurrect`.
+
+### Learning
+
+```bash
+# Record something you learned
+bash SKILL_DIR/scripts/proactive-amcp.sh learning log create --insight "AgentMail uses v0 API not v1"
+
+# Record a problem you're stuck on
+bash SKILL_DIR/scripts/proactive-amcp.sh learning problem create --description "Can't auth to Moltbook"
+
+# Close a problem with what you learned
+bash SKILL_DIR/scripts/proactive-amcp.sh learning log create --insight "Need cookie auth" --source-problem prob_abc123
+
+# List open problems
+bash SKILL_DIR/scripts/proactive-amcp.sh learning problem list --status open
+
+# Verify a learning
+bash SKILL_DIR/scripts/proactive-amcp.sh learning log verify --id learn_abc123
+
+# Check stale unverified learnings
+bash SKILL_DIR/scripts/proactive-amcp.sh learning log check-unverified --days 7
+
+# Generate learning metrics report
+bash SKILL_DIR/scripts/proactive-amcp.sh learning report [--json] [--output FILE]
+```
+
+Alias: `problem` → `learning problem`.
+
+### Memory
+
+```bash
+# Groq-powered memory file pruning (preview)
+bash SKILL_DIR/scripts/proactive-amcp.sh memory prune --dry-run
+
+# Apply pruning (archive low, condense medium, keep high)
+bash SKILL_DIR/scripts/proactive-amcp.sh memory prune
+
+# Batch mode via Groq batch API (50% cost savings)
+bash SKILL_DIR/scripts/proactive-amcp.sh memory prune-batch --submit
+bash SKILL_DIR/scripts/proactive-amcp.sh memory prune-batch --poll
+bash SKILL_DIR/scripts/proactive-amcp.sh memory prune-batch --apply
+
+# Zettelkasten-style entity linking (dynamic relation inference)
+bash SKILL_DIR/scripts/proactive-amcp.sh memory evolution --entity-id ID [--threshold 0.75]
+bash SKILL_DIR/scripts/proactive-amcp.sh memory evolution --all-new
+```
+
+Alias: `memory-prune` → `memory prune`.
+
+### Secrets
+
+```bash
+# Scan directory for cleartext secrets
+bash SKILL_DIR/scripts/proactive-amcp.sh secrets scan <directory>
+
+# Inject secrets from backup JSON to file/env/systemd targets
+bash SKILL_DIR/scripts/proactive-amcp.sh secrets inject <secrets.json>
+
+# Git pre-commit hook to block secret commits
+bash SKILL_DIR/scripts/proactive-amcp.sh secrets pre-commit
 ```
 
 ### Advanced: Ontology Commands
 
-Semantic validation, knowledge graph management, and temporal queries for the AMCP ontology layer.
+Semantic validation, knowledge graph management, and temporal queries for the AMCP ontology layer. These commands are for advanced use cases — most agents don't need them directly.
 
 ```bash
 # Validate ontology graph schema and integrity
@@ -357,6 +444,7 @@ bash SKILL_DIR/scripts/proactive-amcp.sh ontology similarity --graph FILE --enti
 # Cross-checkpoint entity history
 bash SKILL_DIR/scripts/proactive-amcp.sh ontology temporal history <entity_id>
 bash SKILL_DIR/scripts/proactive-amcp.sh ontology temporal query <entity_id> --start YYYY-MM-DD --end YYYY-MM-DD
+bash SKILL_DIR/scripts/proactive-amcp.sh ontology temporal build-index
 
 # Validate skill ontology contracts
 bash SKILL_DIR/scripts/proactive-amcp.sh ontology contract <skill-name> [--json]
@@ -365,46 +453,7 @@ bash SKILL_DIR/scripts/proactive-amcp.sh ontology contract <skill-name> [--json]
 bash SKILL_DIR/scripts/proactive-amcp.sh ontology conflicts [--json]
 ```
 
----
-
-## What Gets Saved
-
-| Content | What It Is | Encrypted? |
-|---------|------------|------------|
-| SOUL.md | Who you are | Yes |
-| MEMORY.md | What you've learned | Yes |
-| memory/*.md | Daily notes, context | Yes |
-| AGENTS.md | How you behave | Yes |
-| USER.md | Who you serve | Yes |
-| TOOLS.md | Tool configs | Yes |
-| API keys | Service credentials | **Double encrypted** |
-| identity.json | Your signing key | Included for self-recovery |
-
-**Secrets are extracted, encrypted separately, then the whole checkpoint is encrypted.**
-
----
-
-## ⚡ Groq Intelligence (Optional)
-
-Make your agent smarter with Groq-powered memory:
-
-| Feature | Benefit |
-|---------|---------|
-| **Intelligent Pruning** | Agent thinks about what to remember |
-| **Importance Scoring** | Each memory gets 0-1 score |
-| **Condensing** | Verbose logs → concise insights |
-| **Reasoning** | Agent explains WHY it keeps/prunes |
-| **Speed** | 1000 tokens/sec evaluation |
-
-### Enable Groq
-
-```bash
-# During init, say yes to "Enable Groq intelligence?"
-# Or manually:
-bash SKILL_DIR/scripts/proactive-amcp.sh config set groq.apiKey YOUR_GROQ_KEY
-```
-
-Free Groq key at: https://console.groq.com
+Aliases: `prune` → `ontology prune`, `temporal-query` → `ontology temporal`, `validate-contract` → `ontology contract`, `detect-conflicts` → `ontology conflicts`.
 
 ---
 
@@ -429,6 +478,47 @@ Two ways to capture knowledge:
 | "I finally solved..." | Learning |
 | "I keep forgetting..." | Problem |
 | "I can't figure out..." | Problem |
+
+---
+
+## What Gets Saved
+
+| Content | What It Is | Encrypted? |
+|---------|------------|------------|
+| SOUL.md | Who you are | Yes |
+| MEMORY.md | What you've learned | Yes |
+| memory/*.md | Daily notes, context | Yes |
+| AGENTS.md | How you behave | Yes |
+| USER.md | Who you serve | Yes |
+| TOOLS.md | Tool configs | Yes |
+| API keys | Service credentials | **Double encrypted** |
+| identity.json | Your signing key | Included for self-recovery |
+
+**Secrets are extracted, encrypted separately, then the whole checkpoint is encrypted.**
+
+---
+
+## Groq Intelligence (Optional)
+
+Make your agent smarter with Groq-powered memory:
+
+| Feature | Benefit |
+|---------|---------|
+| **Intelligent Pruning** | Agent thinks about what to remember |
+| **Importance Scoring** | Each memory gets 0-1 score |
+| **Condensing** | Verbose logs → concise insights |
+| **Reasoning** | Agent explains WHY it keeps/prunes |
+| **Speed** | 1000 tokens/sec evaluation |
+
+### Enable Groq
+
+```bash
+# During init, say yes to "Enable Groq intelligence?"
+# Or manually:
+bash SKILL_DIR/scripts/proactive-amcp.sh config set groq.apiKey YOUR_GROQ_KEY
+```
+
+Free Groq key at: https://console.groq.com
 
 ---
 
@@ -494,6 +584,65 @@ bash SKILL_DIR/scripts/proactive-amcp.sh config set notify.agentmailInbox your@a
 
 ---
 
+## Migration from v0.7.x
+
+In v0.8.0, scripts were consolidated into hub commands with subcommands. All old commands still work via backward-compatible aliases, but prefer the new syntax.
+
+### Deprecated Direct Script Calls
+
+**Do not call individual scripts directly.** Always use `proactive-amcp.sh <command>` instead. Direct script paths may change in future versions.
+
+| Old (deprecated) | New (preferred) |
+|-------------------|-----------------|
+| `scripts/full-checkpoint.sh` | `proactive-amcp.sh checkpoint` |
+| `scripts/checkpoint.sh` | `proactive-amcp.sh checkpoint` (default is full) |
+| `scripts/auto-checkpoint.sh` | `proactive-amcp.sh checkpoint --auto` |
+| `scripts/claude-diagnose.sh` | `proactive-amcp.sh diagnose claude` |
+| `scripts/condense-error.sh` | `proactive-amcp.sh diagnose condense` |
+| `scripts/solvr-register.sh` | `proactive-amcp.sh solvr register` |
+| `scripts/pin-to-solvr.sh` | `proactive-amcp.sh solvr pin` |
+| `scripts/solvr-heartbeat.sh` | `proactive-amcp.sh solvr heartbeat` |
+| `scripts/resurrect-from-solvr.sh` | `proactive-amcp.sh solvr resurrect` |
+| `scripts/register-checkpoint-solvr.sh` | `proactive-amcp.sh solvr checkpoint` |
+| `scripts/memory-prune.sh` | `proactive-amcp.sh memory prune` |
+| `scripts/memory-prune-batch.sh` | `proactive-amcp.sh memory prune-batch` |
+| `scripts/memory-evolution.sh` | `proactive-amcp.sh memory evolution` |
+| `scripts/scan-secrets.sh` | `proactive-amcp.sh secrets scan` |
+| `scripts/inject-secrets.sh` | `proactive-amcp.sh secrets inject` |
+| `scripts/pre-commit-secrets.sh` | `proactive-amcp.sh secrets pre-commit` |
+| `scripts/list-checkpoints.sh` | `proactive-amcp.sh checkpoints` |
+| `scripts/checkpoint-decrypt.sh` | `proactive-amcp.sh checkpoint` (with decrypt flags) |
+| `scripts/backup-config.sh` | `proactive-amcp.sh config backup` |
+| `scripts/try-fix-config.sh` | `proactive-amcp.sh config fix` |
+| `scripts/config-evaluators.sh` | `proactive-amcp.sh config evaluators` |
+| `scripts/session-fix.sh` | `proactive-amcp.sh diagnose fix` |
+| `scripts/groq-status.sh` | `proactive-amcp.sh groq status` |
+| `scripts/detect-failure.py` | `proactive-amcp.sh diagnose failure` |
+| `scripts/generate-problem-summary.py` | `proactive-amcp.sh diagnose summary` |
+| `scripts/validate-ontology.py` | `proactive-amcp.sh ontology validate` |
+| `scripts/prune-ontology.py` | `proactive-amcp.sh ontology prune` |
+| `scripts/validate-skill-contract.sh` | `proactive-amcp.sh ontology contract` |
+| `scripts/detect-contract-conflicts.sh` | `proactive-amcp.sh ontology conflicts` |
+
+### Deprecated CLI Aliases
+
+These top-level aliases still work but route to the consolidated commands:
+
+| Alias | Routes to |
+|-------|-----------|
+| `solvr-register` | `solvr register` |
+| `memory-prune` | `memory prune` |
+| `temporal-query` | `ontology temporal` |
+| `prune` | `ontology prune` |
+| `validate-contract` | `ontology contract` |
+| `detect-conflicts` | `ontology conflicts` |
+| `condense-error` | `diagnose condense` |
+| `session-fix` | `diagnose fix` |
+| `detect-failure` | `diagnose failure` |
+| `backup-config` | `config backup` |
+
+---
+
 ## Troubleshooting
 
 | Problem | Solution |
@@ -529,4 +678,4 @@ bash SKILL_DIR/scripts/proactive-amcp.sh config set notify.agentmailInbox your@a
 
 ---
 
-*Death is temporary. Your soul persists. ⚓*
+*Death is temporary. Your soul persists.*

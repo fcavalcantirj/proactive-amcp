@@ -166,7 +166,7 @@
       "Update examples to use new syntax",
       "Add deprecation warnings for direct script calls"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": 10,

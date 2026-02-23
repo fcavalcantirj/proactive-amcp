@@ -3224,3 +3224,27 @@
   - No old script names remain in scripts/ code (only in comments of renamed files)
   - No old script names remain in test/ files
   - All structural dispatch routes verified working
+
+## Task 9: documentation — Update SKILL.md with new consolidated command structure (DONE)
+- Replaced old "Quick Reference" section with comprehensive "Command Reference" section
+- Documented all 9 consolidated hub scripts with their subcommands:
+  - status: basic, --full, --json, groq
+  - checkpoint: default (full), --auto, --trigger, --smart, --dry-run, list
+  - diagnose: health (default), claude, condense, failure, summary, fix
+  - config: set, get, evaluators, backup, fix
+  - solvr: register, heartbeat, pin, checkpoint, resurrect
+  - learning: problem (create/update/get/list/close), log (create/verify/get/list/check-unverified), report
+  - memory: prune, prune-batch, evolution
+  - secrets: scan, inject, pre-commit
+  - ontology: validate, prune, similarity, temporal, contract, conflicts (marked as Advanced)
+- Added "Migration from v0.7.x" section:
+  - "Deprecated Direct Script Calls" table mapping 30+ old script paths to new CLI commands
+  - "Deprecated CLI Aliases" table listing 10 backward-compat aliases that still work
+  - Clear warning: "Do not call individual scripts directly"
+- Updated all examples to use new consolidated syntax:
+  - Old: `scripts/full-checkpoint.sh` → New: `proactive-amcp.sh checkpoint`
+  - Old: `scripts/checkpoint.sh` → New: `proactive-amcp.sh checkpoint`
+  - Learning examples use `learning log create` and `learning problem create`
+- Marked ontology section as "Advanced: Ontology Commands" with note that most agents don't need them
+- SKILL.md is 681 lines (well under 800 limit)
+- All content matches actual consolidated script structure verified against proactive-amcp.sh dispatcher
