@@ -1,6 +1,6 @@
 #!/bin/bash
 # resuscitate.sh - Full resurrection flow
-# Usage: ./resuscitate.sh [--from-cid <cid>]
+# Usage: ./resuscitate.sh [--from-cid <cid>] [--key-file <path>]
 #
 # Solvr: SEARCH only (read-only). Agent posts after alive.
 
@@ -23,6 +23,8 @@ AGENT_NAME="${AGENT_NAME:-Agent}"
 RECOVERY_LOG="$HOME/.amcp/recovery-$(date +%Y%m%d-%H%M%S).log"
 LOCK_FILE="$HOME/.amcp/resurrection.lock"
 GATEWAY_SETTLE_TIME="${GATEWAY_SETTLE_TIME:-5}"
+CHECKPOINT_KEYS_FILE="$HOME/.amcp/checkpoint-keys.json"
+KEY_FILE=""
 
 # Solvr config
 SOLVR_BASE="https://api.solvr.dev/v1"
@@ -80,6 +82,7 @@ while [[ $# -gt 0 ]]; do
     --content-dir) CONTENT_DIR="$2"; shift 2 ;;
     --agent-name) AGENT_NAME="$2"; shift 2 ;;
     --gateway) PREFERRED_GATEWAY="$2"; shift 2 ;;
+    --key-file) KEY_FILE="$2"; shift 2 ;;
     *) shift ;;
   esac
 done
@@ -91,6 +94,12 @@ if [ -n "$FROM_CID" ]; then
     echo "CIDs should start with 'Qm' (CIDv0) or 'bafy' (CIDv1)"
     exit 1
   fi
+fi
+
+# Validate --key-file if provided
+if [ -n "$KEY_FILE" ] && [ ! -f "$KEY_FILE" ]; then
+  echo "ERROR: Key file not found: $KEY_FILE"
+  exit 1
 fi
 
 # ============================================================
@@ -435,6 +444,10 @@ try_fix_config() {
   return 1
 }
 
+# Source checkpoint decryption helpers
+# shellcheck source=checkpoint-decrypt.sh
+source "$SCRIPT_DIR/checkpoint-decrypt.sh"
+
 try_rehydrate() {
   local cid="$1"
 
@@ -474,6 +487,22 @@ try_rehydrate() {
   fi
 
   log "Using checkpoint: $checkpoint_path"
+
+  # Detect and handle encrypted checkpoints
+  if is_checkpoint_encrypted "$checkpoint_path"; then
+    log "Checkpoint is encrypted — resolving decryption key..."
+    local decrypt_key
+    decrypt_key=$(resolve_decrypt_key "$cid" "$checkpoint_path") || decrypt_key=""
+    if [ -z "$decrypt_key" ]; then
+      log "ERROR: Checkpoint is encrypted. Provide --key-file or ensure key exists in $CHECKPOINT_KEYS_FILE"
+      return 1
+    fi
+    log "Decrypting checkpoint..."
+    if ! decrypt_checkpoint "$checkpoint_path" "$decrypt_key"; then
+      return 1
+    fi
+    log "Checkpoint decrypted successfully"
+  fi
 
   # Verify AMCP CLI exists
   if [ ! -x "$AMCP_CLI" ]; then

@@ -194,7 +194,7 @@
         "Continue with normal extraction",
         "Test: ./scripts/resuscitate.sh --cid <encrypted-cid> --key-file /path/to/key works"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "category": "release",

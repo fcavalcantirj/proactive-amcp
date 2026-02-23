@@ -2866,3 +2866,27 @@
   - `bash -n scripts/checkpoint.sh` passes (no syntax errors)
   - Structural grep confirms: --encrypt parsing, ENCRYPT variable, openssl calls, checkpoint-keys.json references
   - File is 447 lines (well under 800 limit)
+
+## Task: encryption — Add --key-file flag to resuscitate.sh (DONE)
+- Added `KEY_FILE=""` and `CHECKPOINT_KEYS_FILE` variables at top of resuscitate.sh
+- Added `--key-file <path>` to argument parsing (alongside existing --from-cid, --gateway, etc.)
+- Added validation: if `--key-file` provided but file doesn't exist, exits with error
+- Created `scripts/checkpoint-decrypt.sh` (90 lines) — sourced helper with 3 functions:
+  - `is_checkpoint_encrypted()`: detects openssl "Salted__" magic header (8 bytes)
+  - `resolve_decrypt_key()`: 3-priority key resolution chain:
+    1. `--key-file` flag (read file, strip whitespace)
+    2. Lookup by CID in `~/.amcp/checkpoint-keys.json`
+    3. Lookup by local path in `~/.amcp/checkpoint-keys.json`
+  - `decrypt_checkpoint()`: decrypts in place using `openssl enc -aes-256-cbc -d -pbkdf2`
+- Integrated into `try_rehydrate()`: after fetching checkpoint, before AMCP CLI resuscitate:
+  - Calls `is_checkpoint_encrypted()` to detect encryption
+  - If encrypted, resolves key via `resolve_decrypt_key()`
+  - If no key found, logs error with actionable message and returns 1
+  - Decrypts checkpoint, then continues with normal extraction
+- Copied both updated files to skill/scripts/ (skill package)
+- Verification:
+  - `bash -n scripts/resuscitate.sh` passes (no syntax errors)
+  - `bash -n scripts/checkpoint-decrypt.sh` passes (no syntax errors)
+  - resuscitate.sh is 782 lines (under 800 limit)
+  - checkpoint-decrypt.sh is 90 lines
+  - Structural grep confirms: --key-file parsing, KEY_FILE variable, source checkpoint-decrypt.sh, all 3 decrypt functions called
