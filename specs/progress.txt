@@ -3015,3 +3015,31 @@
     - Expected behavior for legitimate agent lifecycle management, not malware
     - Scripts use standard tools (curl, jq, systemctl) for health monitoring
   - Documentation placeholders (YOUR_KEY, YOUR_SOLVR_KEY) are examples, not leaked secrets
+
+## Task: consolidation #1 — Consolidate diagnostic scripts into diagnose.sh with subcommands (DONE)
+- Consolidated 5 diagnostic scripts into diagnose.sh with subcommand dispatch:
+  - `diagnose.sh` (default/health) — bash health checks (original diagnose.sh logic, 782L)
+  - `diagnose.sh claude` — Claude-powered diagnostics with Solvr (from claude-diagnose.sh)
+  - `diagnose.sh condense` — Groq error condensing (from condense-error.sh)
+  - `diagnose.sh failure` — failure pattern detection (delegates to detect-failure.py)
+  - `diagnose.sh summary` — open problem summary (delegates to generate-problem-summary.py)
+- Internal implementation files (not standalone entry points):
+  - `_diagnose-claude.sh` (368L) — claude logic, calls `diagnose.sh health` for bash checks
+  - `_diagnose-condense.sh` (347L) — Groq error condensing logic
+  - `detect-failure.py` and `generate-problem-summary.py` kept as-is (Python)
+- Updated callers:
+  - `proactive-amcp.sh`: `diagnose` → `diagnose.sh` (was claude-diagnose.sh)
+  - `proactive-amcp.sh`: `condense-error` → `diagnose.sh condense` (was condense-error.sh)
+  - `proactive-amcp.sh`: `detect-failure` → `diagnose.sh failure` (was detect-failure.py)
+  - `watchdog.sh`: condense_error_msg() → `diagnose.sh condense` (was condense-error.sh)
+  - `resuscitate.sh`: surface_open_problems() → `diagnose.sh summary` (was generate-problem-summary.py)
+- Removed old standalone scripts: claude-diagnose.sh, condense-error.sh
+- Updated test/watchdog-recovery.bats to reference _diagnose-condense.sh instead of condense-error.sh
+- Added Diagnostics section to SKILL.md Quick Reference
+- All changes mirrored to skill/scripts/
+- Verification:
+  - bash -n passes on all 6 modified scripts
+  - File sizes: diagnose.sh=782L, _diagnose-claude.sh=368L, _diagnose-condense.sh=347L (all under 800)
+  - Subcommand dispatch verified: 4 targets in diagnose.sh case statement
+  - All dispatch targets exist as files
+  - proactive-amcp.sh routes diagnose/condense-error/detect-failure through diagnose.sh

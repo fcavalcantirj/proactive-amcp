@@ -1,12 +1,13 @@
 #!/bin/bash
-# claude-diagnose.sh — Claude-powered diagnose with Solvr integration
+# _diagnose-claude.sh — Claude-powered diagnose with Solvr integration
+# Internal implementation for: diagnose.sh claude
 #
-# Runs bash health checks (diagnose.sh), then invokes Claude Code CLI
+# Runs bash health checks (diagnose.sh health), then invokes Claude Code CLI
 # with the Solvr skill to search for known solutions, try fixes,
 # and post novel issues to the Solvr knowledge base.
 #
-# Usage:
-#   ./claude-diagnose.sh [--json] [--no-solvr] [--bash-only]
+# Usage (via diagnose.sh):
+#   diagnose.sh claude [--json] [--no-solvr] [--bash-only]
 #
 # Requires:
 #   - claude CLI (npm install -g @anthropic-ai/claude-code)
@@ -97,7 +98,7 @@ EOF
 done
 
 # ============================================================
-# Step 1: Run bash health checks (diagnose.sh)
+# Step 1: Run bash health checks (diagnose.sh health)
 # ============================================================
 
 log_info "Running bash health checks..."
@@ -105,7 +106,7 @@ log_info "Running bash health checks..."
 FINDINGS=""
 DIAGNOSE_EXIT=0
 if [[ -x "$SCRIPT_DIR/diagnose.sh" ]]; then
-  FINDINGS=$("$SCRIPT_DIR/diagnose.sh" 2>/dev/null) || DIAGNOSE_EXIT=$?
+  FINDINGS=$("$SCRIPT_DIR/diagnose.sh" health 2>/dev/null) || DIAGNOSE_EXIT=$?
 else
   log_error "diagnose.sh not found at $SCRIPT_DIR/diagnose.sh"
   FINDINGS='{"status": "error", "findings": [], "checks_run": 0, "findings_count": 0}'

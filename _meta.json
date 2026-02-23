@@ -1,6 +1,6 @@
 {
   "slug": "proactive-amcp",
-  "version": "0.7.8",
+  "version": "0.8.1",
   "configPaths": {
     "reads": [
       "~/.openclaw/openclaw.json",

@@ -1,0 +1,315 @@
+[
+  {
+    "id": 1,
+    "category": "infrastructure",
+    "priority": "critical",
+    "title": "Create GSD-style project structure",
+    "description": "Establish .planning/ directory structure mirroring GSD for state management and phase tracking",
+    "rationale": "GSD uses .planning/ as the single source of truth. This enables STATE.md tracking, phase organization, and artifact storage.",
+    "steps": [
+      "Create .planning/ directory in workspace root",
+      "Create .planning/phases/ for phase-specific artifacts",
+      "Create .planning/research/ for research outputs",
+      "Create .planning/todos/ with pending/ and done/ subdirs",
+      "Create STATE.md template (under 100 lines, tracks position/decisions/blockers)",
+      "Create PROJECT.md template (core value, constraints, decisions table)",
+      "Add init command to proactive-amcp.sh: 'gsd init'",
+      "Verify: running 'gsd init' creates structure"
+    ],
+    "outputs": [".planning/", "STATE.md template", "PROJECT.md template"],
+    "passes": false
+  },
+  {
+    "id": 2,
+    "category": "workflow",
+    "priority": "critical",
+    "title": "Implement CONTEXT.md decision capture",
+    "description": "Add discuss-phase equivalent that captures user decisions BEFORE planning, with LOCKED/DISCRETION/DEFERRED sections",
+    "rationale": "GSD insight: Plans without context force guessing. CONTEXT.md locks decisions so downstream agents don't re-ask users.",
+    "steps": [
+      "Create templates/CONTEXT.md with sections: Phase Boundary, Implementation Decisions, Specific Ideas, Deferred Ideas",
+      "Create discuss.sh script that guides context capture",
+      "Implement gray-area detection based on phase type (visual/API/CLI/content/organization)",
+      "Add 'gsd discuss <phase>' command to proactive-amcp.sh",
+      "Script should: 1) Analyze phase goal, 2) Generate phase-specific gray areas, 3) Guide discussion, 4) Write CONTEXT.md",
+      "CONTEXT.md must clearly separate: Decisions (LOCKED), Claude's Discretion, Deferred Ideas",
+      "Verify: discuss creates .planning/phases/XX-name/X-CONTEXT.md"
+    ],
+    "outputs": ["discuss.sh", "templates/CONTEXT.md", "gray-area-detection logic"],
+    "passes": false
+  },
+  {
+    "id": 3,
+    "category": "workflow",
+    "priority": "critical", 
+    "title": "Implement plan verification loop",
+    "description": "Add plan-checker that verifies PRD tasks WILL achieve goal BEFORE execution, with goal-backward analysis",
+    "rationale": "GSD insight: 'Plan completeness ≠ Goal achievement'. A task existing doesn't mean the goal will be achieved.",
+    "steps": [
+      "Create verify-plan.sh that implements goal-backward verification",
+      "Verification dimensions: 1) Requirement coverage, 2) Task completeness, 3) Dependency validity, 4) Context compliance, 5) Scope budget",
+      "Check: Every requirement has task(s), no task implements deferred ideas, discretion areas handled",
+      "Implement 3-iteration loop: Plan → Check → Revise (if fails)",
+      "Add 'gsd verify-plan <prd>' command",
+      "Output PLAN-CHECK.md with pass/fail and specific issues",
+      "Integrate into ralph.sh: verify PRD before execution",
+      "Verify: ralph refuses to run PRD that fails verification"
+    ],
+    "outputs": ["verify-plan.sh", "PLAN-CHECK.md template"],
+    "passes": false
+  },
+  {
+    "id": 4,
+    "category": "agents",
+    "priority": "high",
+    "title": "Split ralph into specialized agents",
+    "description": "Create separate agent prompts for researcher, planner, checker, executor, verifier following GSD pattern",
+    "rationale": "GSD uses specialized agents with clear roles and fresh contexts. This prevents quality degradation and enables parallel execution.",
+    "steps": [
+      "Create agents/ directory for agent prompts",
+      "Create agents/researcher.md - investigates how to implement, outputs RESEARCH.md",
+      "Create agents/planner.md - creates executable task plans from research",
+      "Create agents/checker.md - verifies plans before execution (goal-backward)",
+      "Create agents/executor.md - executes tasks atomically with commits",
+      "Create agents/verifier.md - verifies code DID achieve goal after execution",
+      "Each agent: clear role, mandatory file reads, specific outputs",
+      "Add agent spawning to ralph.sh using sessions_spawn",
+      "Verify: ralph spawns appropriate agent for each phase"
+    ],
+    "outputs": ["agents/*.md", "agent spawning logic"],
+    "passes": false
+  },
+  {
+    "id": 5,
+    "category": "execution",
+    "priority": "high",
+    "title": "Implement wave-based parallel execution",
+    "description": "Analyze task dependencies and execute independent tasks in parallel waves",
+    "rationale": "GSD executes independent tasks simultaneously with fresh contexts, dramatically improving throughput.",
+    "steps": [
+      "Create wave-analyzer.sh that parses PRD and builds dependency graph",
+      "Identify independent tasks (no dependencies) for Wave 1",
+      "Identify tasks that depend on Wave 1 for Wave 2, etc.",
+      "Output WAVES.md showing execution order",
+      "Modify ralph.sh to spawn parallel sessions for same-wave tasks",
+      "Each executor gets fresh context (prevents quality degradation)",
+      "Atomic commits per task (not per wave)",
+      "Add --parallel flag to ralph: 'ralph --parallel <prd>'",
+      "Verify: independent tasks run simultaneously"
+    ],
+    "outputs": ["wave-analyzer.sh", "WAVES.md", "parallel execution in ralph"],
+    "passes": false
+  },
+  {
+    "id": 6,
+    "category": "verification",
+    "priority": "high",
+    "title": "Implement stub detection and wiring verification",
+    "description": "Add automated verification that checks artifacts are REAL implementations, not placeholders",
+    "rationale": "GSD insight: 'Existence ≠ Implementation'. Files can exist but be stubs. Must check: Exists → Substantive → Wired → Functional.",
+    "steps": [
+      "Create verify-artifact.sh with stub detection patterns",
+      "Detect: TODO/FIXME/placeholder comments, empty returns, hardcoded values, log-only functions",
+      "Check wiring: Component → API (fetch exists, response used), API → DB (query exists, result returned)",
+      "Verification levels: 1) Exists, 2) Substantive (real content), 3) Wired (connected), 4) Functional (works)",
+      "Create patterns for: React components, API routes, DB schemas, hooks, env vars",
+      "Output VERIFICATION.md with pass/fail per artifact",
+      "Flag items requiring human verification (visual, UX, external services)",
+      "Add 'gsd verify <phase>' command",
+      "Verify: catches stub implementations in test cases"
+    ],
+    "outputs": ["verify-artifact.sh", "stub patterns", "VERIFICATION.md template"],
+    "passes": false
+  },
+  {
+    "id": 7,
+    "category": "state",
+    "priority": "high",
+    "title": "Implement STATE.md continuous updates",
+    "description": "Update STATE.md after every significant action to enable instant session restoration",
+    "rationale": "GSD's STATE.md is the project's living memory. Under 100 lines, updated constantly, read first in every workflow.",
+    "steps": [
+      "Create update-state.sh that modifies STATE.md",
+      "Track: Current position (phase X of Y, plan A of B), Status, Last activity, Progress bar",
+      "Track: Recent decisions (reference to PROJECT.md), Pending todos, Active blockers",
+      "Track: Session continuity (last session, stopped at, resume file)",
+      "Add performance metrics: velocity, avg duration, trend",
+      "Call update-state.sh after: plan creation, task completion, phase transition, decision made",
+      "Keep STATE.md under 100 lines (it's a digest, not archive)",
+      "Add 'gsd status' command that reads and displays STATE.md",
+      "Verify: STATE.md reflects current project state accurately"
+    ],
+    "outputs": ["update-state.sh", "STATE.md management"],
+    "passes": false
+  },
+  {
+    "id": 8,
+    "category": "workflow",
+    "priority": "medium",
+    "title": "Implement research phase before planning",
+    "description": "Add automated research step that investigates domain before creating plans",
+    "rationale": "GSD researches how to implement BEFORE planning. Researcher reads CONTEXT.md to focus investigation.",
+    "steps": [
+      "Create research.sh that spawns research agent",
+      "Research agent investigates: stack patterns, feature implementations, architecture approaches, common pitfalls",
+      "Input: Phase goal from ROADMAP + CONTEXT.md decisions",
+      "Output: RESEARCH.md with findings organized by relevance",
+      "Research can use web_search, web_fetch, codebase analysis",
+      "Add 'gsd research <phase>' command",
+      "Integrate into plan-phase: research → plan → verify loop",
+      "Add --skip-research flag for phases where research not needed",
+      "Verify: RESEARCH.md contains relevant domain knowledge"
+    ],
+    "outputs": ["research.sh", "RESEARCH.md template"],
+    "passes": false
+  },
+  {
+    "id": 9,
+    "category": "workflow",
+    "priority": "medium",
+    "title": "Implement questioning methodology for context capture",
+    "description": "Add guided questioning that follows GSD's 'thinking partner' approach, not interviewing",
+    "rationale": "GSD: 'Start open, follow energy, challenge vagueness, make abstract concrete, know when to stop.'",
+    "steps": [
+      "Create questioning-guide.md reference document",
+      "Principles: Dream extraction not requirements gathering, follow the thread not a script",
+      "Question types: Motivation (why), Concreteness (what actually), Clarification (do you mean), Success (how know)",
+      "Anti-patterns to avoid: checklist walking, canned questions, corporate speak, interrogation, rushing",
+      "Context checklist: What building, Why exists, Who for, What done looks like",
+      "Implement in discuss.sh: analyze phase, generate gray areas, probe each until satisfied",
+      "Add decision gate: 'Ready to create CONTEXT.md?' with keep exploring option",
+      "Verify: discuss.sh guides productive conversation, captures concrete decisions"
+    ],
+    "outputs": ["questioning-guide.md", "discuss.sh improvements"],
+    "passes": false
+  },
+  {
+    "id": 10,
+    "category": "integration",
+    "priority": "medium",
+    "title": "Create GSD command aliases for proactive-amcp",
+    "description": "Add gsd:* style commands to proactive-amcp CLI for familiar workflow",
+    "rationale": "GSD users know /gsd:plan-phase, /gsd:execute-phase etc. Familiar commands ease adoption.",
+    "steps": [
+      "Add command aliases to proactive-amcp.sh:",
+      "gsd init → initialize .planning/ structure",
+      "gsd discuss <phase> → capture context before planning",
+      "gsd research <phase> → investigate domain",
+      "gsd plan <phase> → research → plan → verify loop",
+      "gsd execute <phase> → wave-based parallel execution",
+      "gsd verify <phase> → goal-backward verification",
+      "gsd status → show STATE.md",
+      "gsd progress → show roadmap progress",
+      "Verify: all gsd commands work and integrate with existing ralph workflow"
+    ],
+    "outputs": ["gsd command aliases"],
+    "passes": false
+  },
+  {
+    "id": 11,
+    "category": "quality",
+    "priority": "medium",
+    "title": "Implement context quality degradation tracking",
+    "description": "Track context usage % and adjust behavior at thresholds",
+    "rationale": "GSD insight: Quality degrades as context fills. 0-30% PEAK, 30-50% GOOD, 50-70% DEGRADING, 70%+ POOR.",
+    "steps": [
+      "Create context-monitor.sh that tracks context usage",
+      "Get context % from session_status tool",
+      "Define thresholds: <30% peak, 30-50% good, 50-70% degrading, >70% poor",
+      "At 50%: Warn, recommend checkpoint",
+      "At 60%: Auto-checkpoint (existing IPFS trigger)",
+      "At 70%: Force task completion, spawn fresh context for next task",
+      "Log quality state in STATE.md: 'Context: 45% (GOOD)'",
+      "Integrate into ralph: check context before each task",
+      "Verify: context warnings appear at correct thresholds"
+    ],
+    "outputs": ["context-monitor.sh", "threshold behavior"],
+    "passes": false
+  },
+  {
+    "id": 12,
+    "category": "documentation",
+    "priority": "medium",
+    "title": "Create GSD integration guide",
+    "description": "Document the GSD-style workflow in SKILL.md and reference docs",
+    "rationale": "Users need to understand the new workflow: discuss → research → plan → verify → execute → verify",
+    "steps": [
+      "Add 'GSD Workflow' section to SKILL.md",
+      "Document each phase: discuss, research, plan, execute, verify",
+      "Explain CONTEXT.md: LOCKED vs DISCRETION vs DEFERRED",
+      "Explain STATE.md: what it tracks, when updated",
+      "Explain verification: goal-backward, stub detection, wiring checks",
+      "Add workflow diagram showing phase flow",
+      "Create references/gsd-workflow.md with detailed examples",
+      "Add FAQ: When to use discuss? What if verification fails?",
+      "Verify: new user can follow guide to complete a phase"
+    ],
+    "outputs": ["SKILL.md updates", "references/gsd-workflow.md"],
+    "passes": false
+  },
+  {
+    "id": 13,
+    "category": "templates",
+    "priority": "low",
+    "title": "Create all GSD-style templates",
+    "description": "Port essential GSD templates for consistent artifact creation",
+    "rationale": "Templates ensure consistent structure across projects and enable tooling integration.",
+    "steps": [
+      "Create templates/ directory",
+      "Port: CONTEXT.md (decision capture)",
+      "Port: STATE.md (project memory)",
+      "Port: PROJECT.md (core vision)",
+      "Port: RESEARCH.md (domain investigation)",
+      "Port: VERIFICATION.md (goal-backward results)",
+      "Create: PLAN-CHECK.md (pre-execution verification)",
+      "Create: WAVES.md (parallel execution plan)",
+      "Create: SUMMARY.md (task completion record)",
+      "Verify: all templates have clear sections and examples"
+    ],
+    "outputs": ["templates/*.md"],
+    "passes": false
+  },
+  {
+    "id": 14,
+    "category": "testing",
+    "priority": "low",
+    "title": "Create GSD workflow test suite",
+    "description": "Test the complete GSD-style workflow end-to-end",
+    "rationale": "Complex workflow needs automated testing to prevent regressions.",
+    "steps": [
+      "Create test/gsd-workflow-test.sh",
+      "Test: gsd init creates proper structure",
+      "Test: gsd discuss captures decisions to CONTEXT.md",
+      "Test: gsd research outputs RESEARCH.md",
+      "Test: gsd plan creates verified plans",
+      "Test: verify-plan catches missing requirements",
+      "Test: wave-analyzer identifies independent tasks",
+      "Test: verify-artifact catches stub implementations",
+      "Test: STATE.md updates after each action",
+      "Verify: full workflow passes end-to-end"
+    ],
+    "outputs": ["test/gsd-workflow-test.sh"],
+    "passes": false
+  },
+  {
+    "id": 15,
+    "category": "release",
+    "priority": "low",
+    "title": "Release proactive-amcp with GSD integration",
+    "description": "Bump to v1.0.0 with GSD workflow as major feature",
+    "rationale": "GSD integration is a significant workflow change worthy of major version bump.",
+    "steps": [
+      "Update version to 1.0.0 in all files",
+      "Update CHANGELOG.md with GSD integration details",
+      "Update README.md with GSD workflow overview",
+      "Run full test suite",
+      "Publish to npm: npm publish",
+      "Publish to ClawdHub: clawdhub publish",
+      "Announce on Solvr: Post idea about GSD integration",
+      "Update local installation",
+      "Verify: both registries have v1.0.0"
+    ],
+    "outputs": ["v1.0.0 release"],
+    "passes": false
+  }
+]

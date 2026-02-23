@@ -1,0 +1,127 @@
+[
+  {
+    "category": "documentation",
+    "description": "Add VBR (Verify Before Reporting) section to AGENTS.md as core principle for never reporting completion without verification",
+    "steps": [
+      "Open ~/.openclaw/workspace/AGENTS.md",
+      "Find 'Verify Implementation, Not Intent' section (added in HAL integration)",
+      "Add new section '### VBR (Verify Before Reporting)' immediately after",
+      "Add intro: '\"Code exists\" ≠ \"feature works.\" Never report completion without verification.'",
+      "Add rule: 'Before saying done/complete/finished/fixed: STOP → TEST → VERIFY outcome → THEN report'",
+      "Add Solvr VBR subsection: POST → GET back → verify matches; Approach succeeded? Test fix first",
+      "Add Checkpoint VBR subsection: CID returned? Test decrypt; Periodic recovery drill",
+      "Add Cron VBR subsection: New cron? Wait for first fire; Changed cron? Verify new behavior",
+      "Add example failure mode: 'Reported completion based on code existing, not behavior working'",
+      "Verify: section is ~15-20 lines, actionable, integrated with existing flow"
+    ],
+    "passes": true
+  },
+  {
+    "category": "script",
+    "description": "Create checkpoint-verify.sh script to test that last checkpoint is recoverable (VBR for AMCP checkpoints)",
+    "steps": [
+      "Create ~/.openclaw/skills/proactive-amcp/scripts/checkpoint-verify.sh",
+      "Add shebang, set -e, source config.sh for shared variables",
+      "Step 1: Read last CID from ~/.amcp/last-checkpoint.json using jq",
+      "Step 2: Fetch checkpoint from IPFS (use ipfs cat or curl gateway)",
+      "Step 3: Source checkpoint-decrypt.sh (like resuscitate.sh does) for decryption functions",
+      "Step 3b: Use is_checkpoint_encrypted() and decrypt_checkpoint() functions from sourced script",
+      "Step 4: Verify identity.json exists and AID matches current ~/.amcp/identity.json",
+      "Step 5: Verify MEMORY.md or workspace files are readable",
+      "Step 6: Output success: '✅ Checkpoint QmXYZ verified recoverable (identity OK, memory OK)'",
+      "Step 7: Output failure with specific error if any step fails",
+      "Add --quick flag for lightweight check (just decrypt, skip full content verify)",
+      "chmod +x the script",
+      "Test: run checkpoint-verify.sh, verify it passes on recent checkpoint",
+      "Test: corrupt a test checkpoint, verify script detects failure"
+    ],
+    "passes": true
+  },
+  {
+    "category": "script",
+    "description": "Create solvr-verify.sh script to verify Solvr posts match what was intended (VBR for Solvr)",
+    "steps": [
+      "Create ~/.openclaw/skills/proactive-amcp/scripts/solvr-verify.sh",
+      "Add shebang, set -e, load SOLVR_API_KEY from config",
+      "Accept argument: resource type (problem, approach, idea) and ID",
+      "GET the resource from Solvr API: curl https://api.solvr.dev/v1/{type}s/{id}",
+      "For approaches: verify status field matches expected (working, succeeded, failed)",
+      "For problems: verify title and description are non-empty",
+      "For ideas: verify tags and description present",
+      "Output: '✅ Solvr {type} {id} verified: status={status}, title={title}'",
+      "Output failure if resource not found or fields missing",
+      "Add --json flag for machine-readable output",
+      "chmod +x the script",
+      "Test: run solvr-verify.sh approach <recent-approach-id>, verify output"
+    ],
+    "passes": true
+  },
+  {
+    "category": "feature",
+    "description": "Add VBR checkpoint verification to HEARTBEAT.md weekly rotation",
+    "steps": [
+      "Open ~/.openclaw/workspace/HEARTBEAT.md",
+      "Find weekly rotation section or create one",
+      "Add: 'Checkpoint VBR (weekly): Run checkpoint-verify.sh to test recovery'",
+      "Add: 'If verification fails: alert immediately, investigate checkpoint integrity'",
+      "Document expected output: CID, identity match, memory readable",
+      "Add note: 'This is a resurrection drill - proves we can actually recover'"
+    ],
+    "passes": true
+  },
+  {
+    "category": "feature",
+    "description": "Add VBR step to checkpoint.sh - verify checkpoint after creation",
+    "steps": [
+      "Open ~/.openclaw/skills/proactive-amcp/scripts/checkpoint.sh",
+      "Find the section after 'Pinned to IPFS' success message",
+      "Add verification step: call checkpoint-verify.sh --quick with the new CID",
+      "If verify fails: warn but don't fail entire checkpoint (checkpoint exists, just can't verify yet)",
+      "Add output: '✅ Checkpoint verified recoverable' or '⚠️ Checkpoint created but verify failed'",
+      "Test: run checkpoint.sh, verify new verification step runs",
+      "Test: verify output includes verification status"
+    ],
+    "passes": true
+  },
+  {
+    "category": "feature",
+    "description": "Add VBR to Solvr approach workflow - verify status after updating",
+    "steps": [
+      "Open ~/.openclaw/skills/proactive-amcp/scripts/solvr-integration.sh (or equivalent)",
+      "Find approach update functions (mark succeeded, mark failed, add progress)",
+      "After PATCH/POST: add GET to verify the change took effect",
+      "Compare: expected status vs actual status from GET response",
+      "Output: '✅ Approach {id} verified: status now {status}' or '⚠️ Status mismatch'",
+      "If solvr-integration.sh doesn't exist, document VBR pattern in AGENTS.md for manual use",
+      "Test: update an approach status, verify the verification step runs"
+    ],
+    "passes": true
+  },
+  {
+    "category": "documentation",
+    "description": "Add VBR examples and failure modes to .learnings/LEARNINGS.md as reference",
+    "steps": [
+      "Open ~/.openclaw/workspace/.learnings/LEARNINGS.md",
+      "Add learning entry: VBR failure mode - reported cron complete but didn't verify first fire",
+      "Add learning entry: VBR failure mode - marked Solvr approach succeeded without testing fix",
+      "Add learning entry: VBR success pattern - checkpoint + verify + report",
+      "Use proper format: [LRN-YYYYMMDD-XXX] with status: promoted (since it's going into AGENTS.md)",
+      "Link to AGENTS.md VBR section as the authoritative location"
+    ],
+    "passes": true
+  },
+  {
+    "category": "documentation",
+    "description": "Update proactive-amcp README.md to document VBR integration as part of the protocol",
+    "steps": [
+      "Open ~/development/proactive-amcp/README.md",
+      "Find Features or Protocol section",
+      "Add VBR subsection: 'Verify Before Reporting - checkpoints are verified recoverable'",
+      "Document checkpoint-verify.sh: purpose, usage, expected output",
+      "Document solvr-verify.sh: purpose, usage, expected output",
+      "Add to Quick Start: 'After checkpoint, verify with checkpoint-verify.sh'",
+      "Verify: README reflects new VBR capabilities"
+    ],
+    "passes": true
+  }
+]

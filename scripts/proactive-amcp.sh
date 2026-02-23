@@ -7,14 +7,13 @@
 #   init             Interactive setup: validate/create identity, start services
 #   config           Manage ~/.amcp/config.json (set/get)
 #   install          Non-interactive setup for fleet tools (e.g. openclaw-deploy)
-#   diagnose         Claude-powered health diagnostics with Solvr integration
+#   diagnose         Diagnostic hub: health, claude, condense, failure, summary subcommands
 #   register         Register on Solvr (alias: solvr-register)
 #   solvr-register   Auto-register child Solvr account on first boot
 #   migrate-pins     Transfer historical checkpoints from Pinata to Solvr
 #   problem          Problem CRUD: create, update, get, list, close
 #   learning         Learning CRUD: create, verify, get, list
 #   temporal-query   Cross-checkpoint entity history queries
-#   detect-failure   Scan text for failure patterns, auto-create Problems
 #   prune            Prune ontology graph by typed retention policies
 #   memory-prune     Groq-powered memory file pruning (archive/condense/keep)
 #   validate-contract  Validate skill ontology contracts against graph.jsonl
@@ -25,7 +24,6 @@
 #   heartbeat          Send heartbeat to Solvr and display agent status briefing (--json, --quiet)
 #   resurrect          Resurrect agent from Solvr resurrection bundle (--agent-id, --json, --dry-run)
 #   checkpoints        List all agent checkpoints from Solvr (--json for machine output)
-#   condense-error     Condense verbose error logs to ~100 char summaries (Groq)
 #   backup-config      Create/list/restore OpenClaw config backups
 #   groq               Groq intelligence: status, request-key (free tier via Solvr)
 
@@ -48,14 +46,13 @@ Commands:
   init             Interactive setup: validate/create identity, start watchdog + checkpoint services
   install          Non-interactive setup for fleet tools (accepts --pinata-jwt, --notify-target, etc.)
   config           Manage ~/.amcp/config.json (set/get secrets and settings)
-  diagnose         Claude-powered health diagnostics with Solvr integration
+  diagnose         Diagnostic hub (subcommands: health, claude, condense, failure, summary)
   register         Register on Solvr (alias for solvr-register)
   solvr-register   Auto-register child Solvr account on first boot
   migrate-pins     Transfer historical checkpoints from Pinata to Solvr
   problem          Problem CRUD: create, update, get, list, close
   learning         Learning CRUD: create, verify, get, list
   temporal-query   Cross-checkpoint entity history queries
-  detect-failure   Scan text for failure patterns, auto-create Problems
   prune            Prune ontology graph by typed retention policies
   checkpoint       Create checkpoint (supports --smart for Groq content selection)
   heartbeat        Send heartbeat to Solvr and display agent status briefing (--json, --quiet)
@@ -67,7 +64,6 @@ Commands:
   detect-conflicts   Detect cross-skill ontology contract conflicts
   claim-info         Display Solvr claim URL to link agent to human account
   link-identity      Link AMCP identity to Solvr agent (proves AID ownership)
-  condense-error     Condense verbose error logs to ~100 char summaries (Groq)
   groq               Groq intelligence: status, request-key (free tier via Solvr)
 
 Run '$(basename "$0") <command> --help' for details.
@@ -155,7 +151,7 @@ case "${1:-}" in
     ;;
   diagnose)
     shift
-    exec "$SCRIPT_DIR/claude-diagnose.sh" "$@"
+    exec "$SCRIPT_DIR/diagnose.sh" "$@"
     ;;
   register|solvr-register)
     shift
@@ -203,7 +199,7 @@ case "${1:-}" in
     ;;
   detect-failure)
     shift
-    exec python3 "$SCRIPT_DIR/detect-failure.py" "$@"
+    exec "$SCRIPT_DIR/diagnose.sh" failure "$@"
     ;;
   prune)
     shift
@@ -223,7 +219,7 @@ case "${1:-}" in
     ;;
   condense-error)
     shift
-    exec "$SCRIPT_DIR/condense-error.sh" "$@"
+    exec "$SCRIPT_DIR/diagnose.sh" condense "$@"
     ;;
   claim-info)
     shift

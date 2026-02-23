@@ -1,23 +1,44 @@
 #!/bin/bash
-# diagnose.sh — Comprehensive health diagnostic for OpenClaw agent
+# diagnose.sh — Consolidated diagnostic hub with subcommands
 #
-# Outputs structured JSON with findings. Each finding has:
-#   type, severity, message, path (optional), fix_command (optional)
-#
-# Exit codes:
-#   0 = healthy (no findings)
-#   1 = issues found
+# Subcommands:
+#   health (default)  Bash health checks → structured JSON findings
+#   claude            Claude-powered diagnostics with Solvr integration
+#   condense          Condense verbose error logs to ~100 chars (Groq)
+#   failure           Detect failure patterns in text, auto-create Problems
+#   summary           Generate open problem summary for resurrection
 #
 # Usage:
-#   ./diagnose.sh [--session-dir DIR]
+#   ./diagnose.sh [health] [--session-dir DIR]
+#   ./diagnose.sh claude [--json] [--no-solvr] [--bash-only]
+#   ./diagnose.sh condense "error message"
+#   ./diagnose.sh failure --input <file>
+#   ./diagnose.sh summary [--learning-dir DIR]
 #
-# The LLM or watchdog reads the JSON and picks the right fix.
+# Exit codes (health): 0 = healthy, 1 = issues found
+# Exit codes (claude): 0 = healthy, 1 = issues, 2 = missing prereqs
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0" 2>/dev/null || realpath "$0" 2>/dev/null || echo "$0")")" && pwd)"
+
+# ============================================================
+# Subcommand dispatch
+# ============================================================
+case "${1:-}" in
+  claude)   shift; exec "$SCRIPT_DIR/_diagnose-claude.sh" "$@" ;;
+  condense) shift; exec "$SCRIPT_DIR/_diagnose-condense.sh" "$@" ;;
+  failure)  shift; exec python3 "$SCRIPT_DIR/detect-failure.py" "$@" ;;
+  summary)  shift; exec python3 "$SCRIPT_DIR/generate-problem-summary.py" "$@" ;;
+  health)   shift ;;  # Fall through to health checks below
+esac
+
+# ============================================================
+# Health checks (default subcommand)
+# ============================================================
+
 command -v python3 &>/dev/null || { echo "FATAL: python3 required but not found" >&2; exit 2; }
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SESSION_DIR="${SESSION_DIR:-$HOME/.openclaw/agents/main/sessions}"
 OPENCLAW_CONFIG="${OPENCLAW_CONFIG:-$HOME/.openclaw/openclaw.json}"
 DISK_THRESHOLD="${DISK_THRESHOLD:-10}"

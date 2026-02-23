@@ -1,0 +1,124 @@
+[
+  {
+    "category": "documentation",
+    "description": "Add WAL Protocol (Write-Ahead Logging) section to AGENTS.md for capturing corrections, decisions, and critical details before responding",
+    "steps": [
+      "Open ~/.openclaw/workspace/AGENTS.md",
+      "Find 'Memory Architecture' section (around line 200)",
+      "Add new section '## WAL Protocol (Write-Ahead Logging)' after Memory Architecture, before Solvr Integration",
+      "Add intro: 'Chat history is a BUFFER, not storage. Write critical details to daily notes BEFORE responding.'",
+      "Add trigger list: corrections ('It's X not Y', 'Actually...', 'No, I meant...'), proper nouns (names, places, companies), preferences ('I like/don't like'), decisions ('Let's do X', 'Use Z'), specific values (numbers, dates, IDs, URLs)",
+      "Add rule: 'If ANY trigger appears in human message: STOP → Write to memory/YYYY-MM-DD.md under ## Session State → THEN respond'",
+      "Add rationale: 'The urge to respond is the enemy. Context vanishes. Write first.'",
+      "Add example block showing WRONG ('Got it!') vs RIGHT (write first, then respond)",
+      "Create daily notes template section: add '## Session State' heading to memory/YYYY-MM-DD.md template pattern",
+      "Verify: section reads clearly, ~20-30 lines max"
+    ],
+    "passes": true
+  },
+  {
+    "category": "script",
+    "description": "Create security-audit.sh script for automated security checks on workspace credentials, secrets, and configuration",
+    "steps": [
+      "Create ~/.openclaw/workspace/scripts/security-audit.sh",
+      "Add shebang (#!/bin/bash), set +e, color helpers (RED, YELLOW, GREEN, NC)",
+      "Add warn(), fail(), pass() helper functions with colored output",
+      "Add check 1: credential file permissions - scan ~/.openclaw/ and .credentials/ for files, verify 600 perms",
+      "Add check 2: secret patterns - grep *.md *.json for (api_key|token|password|secret)=.{10,} excluding example/placeholder/TODO",
+      "Add check 3: gateway loopback - grep ~/.openclaw/openclaw.json for 'loopback' in gateway.bind",
+      "Add check 4: AGENTS.md security rules - grep for 'injection|external content|never execute'",
+      "Add check 5: pre-commit hooks - check if ~/clawd/.git/hooks/pre-commit exists",
+      "Add check 6: gitignore - verify .credentials and .env in .gitignore",
+      "Add summary: echo issues/warnings count, exit 0 if clean, exit 1 if issues",
+      "chmod +x the script",
+      "Test: run ./scripts/security-audit.sh, verify it completes and shows summary",
+      "Update HEARTBEAT.md: add 'Security audit (weekly): ./scripts/security-audit.sh' to rotation"
+    ],
+    "passes": true
+  },
+  {
+    "category": "documentation",
+    "description": "Add 'Verify Implementation, Not Intent' principle to AGENTS.md to prevent text-only changes that don't affect behavior",
+    "steps": [
+      "Open ~/.openclaw/workspace/AGENTS.md",
+      "Find 'Self-Improvement Workflow' section (around line 248)",
+      "Add new subsection '### Verify Implementation, Not Intent' after the workflow description",
+      "Add principle: 'Text changes ≠ behavior changes. When modifying how something works, check the MECHANISM (config values like sessionTarget, code paths, actual tool calls), not just the prompt text.'",
+      "Add failure mode example: 'Changed cron prompt to say \"do the work\" but kept sessionTarget: main and kind: systemEvent → still just prompts, doesn't execute'",
+      "Add rule: 'After changing how something works, verify by observing actual behavior, not just reading the config'",
+      "Verify: subsection is 5-10 lines max, actionable"
+    ],
+    "passes": true
+  },
+  {
+    "category": "documentation",
+    "description": "Add Cron Job Architecture section to AGENTS.md documenting when to use systemEvent vs isolated agentTurn",
+    "steps": [
+      "Open ~/.openclaw/workspace/AGENTS.md",
+      "Find appropriate location after 'Token Efficiency' section or before 'Make It Yours'",
+      "Add new section '## Cron Job Architecture'",
+      "Add intro: 'Know when to use systemEvent (prompts main session) vs isolated agentTurn (executes autonomously)'",
+      "Add markdown table with columns: Type, sessionTarget, payload.kind, When to Use, Example",
+      "Row 1: Prompted | main | systemEvent | Need human/main session attention | Reminders, alerts, questions",
+      "Row 2: Autonomous | isolated | agentTurn | Background work without attention | Status checks, maintenance, file updates",
+      "Add rule: 'If work should happen WITHOUT main session attention → use isolated agentTurn with full instructions'",
+      "Add failure mode: 'systemEvent saying \"check X\" while main session is busy → prompt sits there, nothing happens'",
+      "Verify: section is clear decision framework, ~15-20 lines"
+    ],
+    "passes": true
+  },
+  {
+    "category": "documentation",
+    "description": "Add lightweight ADL (Anti-Drift Limits) principles as Evolution Guardrails to Self-Improvement section in AGENTS.md",
+    "steps": [
+      "Open ~/.openclaw/workspace/AGENTS.md",
+      "Find 'Self-Improvement Workflow' section (around line 248)",
+      "Add new subsection '### Evolution Guardrails' after the existing content",
+      "Add intro: 'When evolving your own operating system, apply these constraints:'",
+      "Add bullet: '**Stability > Novelty** — don't break working things for shiny new approaches'",
+      "Add bullet: '**No complexity theater** — reject changes that look smart but add no real value'",
+      "Add bullet: '**Verifiable only** — if you can't test that it worked, don't do it'",
+      "Add bullet: '**Compound leverage** — optimize for future-you solving more problems with less cost'",
+      "Do NOT add VFM scoring formula (too bureaucratic)",
+      "Verify: subsection is ~10 lines, principles are memorable"
+    ],
+    "passes": true
+  },
+  {
+    "category": "feature",
+    "description": "Implement 60% context threshold IPFS checkpoint trigger as danger zone survival mechanism",
+    "steps": [
+      "Open ~/.openclaw/workspace/AGENTS.md",
+      "Find 'Memory Architecture' section, specifically 'Memory Flush Thresholds' table",
+      "Update 50-70% row to add: 'Consider IPFS checkpoint if critical session'",
+      "Add new subsection '### Danger Zone Protocol (60%+ Context)' after the table",
+      "Add rule: 'At 60% context (visible in session_status), trigger IPFS checkpoint for critical sessions'",
+      "Add command: 'Run: ~/.openclaw/skills/proactive-amcp/scripts/checkpoint.sh'",
+      "Add rationale: 'IPFS checkpoint survives server death, Solvr pins for free, content-addressable recovery'",
+      "Add recovery protocol: 'After compaction, check recent checkpoints before asking \"what were we doing?\"'",
+      "Verify checkpoint.sh works: run it manually, confirm CID returned",
+      "Open ~/.openclaw/workspace/HEARTBEAT.md",
+      "Add to critical checks: 'Context % check: if >60% and critical work in progress, run checkpoint.sh'",
+      "Test: run session_status (currently shows 61%), note that we're in danger zone"
+    ],
+    "passes": true
+  },
+  {
+    "category": "refactor",
+    "description": "Clean up AGENTS.md to remove redundancy after adding new sections, ensure document flows logically",
+    "steps": [
+      "Open ~/.openclaw/workspace/AGENTS.md",
+      "Count total lines before cleanup: wc -l AGENTS.md",
+      "Review: does 'Writing It Down' in Memory section overlap with new WAL Protocol? Consolidate if needed",
+      "Review: does Safety section overlap with any new security content? Keep distinct (Safety = behavior, Security = technical)",
+      "Review: is Solvr Integration section still accurate? Update API examples if needed",
+      "Review: are there duplicate 'write it down' rules? Consolidate to single authoritative location",
+      "Ensure section order: First Run → Every Session → Safety → Memory Architecture → WAL Protocol → Self-Improvement → Solvr → Cron Architecture → Token Efficiency → Command Execution",
+      "Remove any orphaned or outdated references",
+      "Count total lines after cleanup: wc -l AGENTS.md",
+      "Goal: new content added but total lines same or fewer through consolidation",
+      "Verify: read AGENTS.md top-to-bottom, no repetition, clear flow"
+    ],
+    "passes": true
+  }
+]

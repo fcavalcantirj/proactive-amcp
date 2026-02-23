@@ -1,11 +1,12 @@
 #!/bin/bash
-# condense-error.sh - Groq-powered error log condensing
+# _diagnose-condense.sh - Groq-powered error log condensing
+# Internal implementation for: diagnose.sh condense
 # Takes a verbose error log snippet and returns a condensed version (<100 chars).
 #
-# Usage:
-#   condense-error.sh "long error message here"
-#   condense-error.sh --input /path/to/logfile
-#   echo "error log" | condense-error.sh --stdin
+# Usage (via diagnose.sh):
+#   diagnose.sh condense "long error message here"
+#   diagnose.sh condense --input /path/to/logfile
+#   echo "error log" | diagnose.sh condense --stdin
 #
 # Config keys (in ~/.amcp/config.json):
 #   groq.apiKey    - Groq API key (required)

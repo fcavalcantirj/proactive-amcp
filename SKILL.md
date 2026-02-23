@@ -285,6 +285,25 @@ bash SKILL_DIR/scripts/proactive-amcp.sh problem create --description "Can't aut
 bash SKILL_DIR/scripts/proactive-amcp.sh learning create --insight "Need cookie auth" --source-problem prob_abc123
 ```
 
+### Diagnostics
+
+```bash
+# Health checks (default — structured JSON output)
+bash SKILL_DIR/scripts/proactive-amcp.sh diagnose
+
+# Claude-powered diagnostics with Solvr integration
+bash SKILL_DIR/scripts/proactive-amcp.sh diagnose claude [--json] [--no-solvr] [--bash-only]
+
+# Condense verbose error logs to ~100 chars (Groq)
+bash SKILL_DIR/scripts/proactive-amcp.sh diagnose condense "error message"
+
+# Detect failure patterns in text
+bash SKILL_DIR/scripts/proactive-amcp.sh diagnose failure --input <file>
+
+# Generate open problem summary
+bash SKILL_DIR/scripts/proactive-amcp.sh diagnose summary [--learning-dir DIR]
+```
+
 ### Register on Solvr
 
 ```bash

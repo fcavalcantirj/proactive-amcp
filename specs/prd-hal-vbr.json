@@ -1,0 +1,383 @@
+[
+  {
+    "category": "documentation",
+    "description": "Add WAL Protocol (Write-Ahead Logging) section to AGENTS.md for capturing corrections, decisions, and critical details before responding",
+    "steps": [
+      "Open ~/.openclaw/workspace/AGENTS.md",
+      "Find 'Memory Architecture' section (around line 200)",
+      "Add new section '## WAL Protocol (Write-Ahead Logging)' after Memory Architecture, before Solvr Integration",
+      "Add intro: 'Chat history is a BUFFER, not storage. Write critical details to daily notes BEFORE responding.'",
+      "Add trigger list: corrections ('It's X not Y', 'Actually...', 'No, I meant...'), proper nouns (names, places, companies), preferences ('I like/don't like'), decisions ('Let's do X', 'Use Z'), specific values (numbers, dates, IDs, URLs)",
+      "Add rule: 'If ANY trigger appears in human message: STOP → Write to memory/YYYY-MM-DD.md under ## Session State → THEN respond'",
+      "Add rationale: 'The urge to respond is the enemy. Context vanishes. Write first.'",
+      "Add example block showing WRONG ('Got it!') vs RIGHT (write first, then respond)",
+      "Create daily notes template section: add '## Session State' heading to memory/YYYY-MM-DD.md template pattern",
+      "Verify: section reads clearly, ~20-30 lines max"
+    ],
+    "passes": false
+  },
+  {
+    "category": "script",
+    "description": "Create security-audit.sh script for automated security checks on workspace credentials, secrets, and configuration",
+    "steps": [
+      "Create ~/.openclaw/workspace/scripts/security-audit.sh",
+      "Add shebang (#!/bin/bash), set +e, color helpers (RED, YELLOW, GREEN, NC)",
+      "Add warn(), fail(), pass() helper functions with colored output",
+      "Add check 1: credential file permissions - scan ~/.openclaw/ and .credentials/ for files, verify 600 perms",
+      "Add check 2: secret patterns - grep *.md *.json for (api_key|token|password|secret)=.{10,} excluding example/placeholder/TODO",
+      "Add check 3: gateway loopback - grep ~/.openclaw/openclaw.json for 'loopback' in gateway.bind",
+      "Add check 4: AGENTS.md security rules - grep for 'injection|external content|never execute'",
+      "Add check 5: pre-commit hooks - check if ~/clawd/.git/hooks/pre-commit exists",
+      "Add check 6: gitignore - verify .credentials and .env in .gitignore",
+      "Add summary: echo issues/warnings count, exit 0 if clean, exit 1 if issues",
+      "chmod +x the script",
+      "Test: run ./scripts/security-audit.sh, verify it completes and shows summary",
+      "Update HEARTBEAT.md: add 'Security audit (weekly): ./scripts/security-audit.sh' to rotation"
+    ],
+    "passes": false
+  },
+  {
+    "category": "documentation",
+    "description": "Add 'Verify Implementation, Not Intent' principle to AGENTS.md to prevent text-only changes that don't affect behavior",
+    "steps": [
+      "Open ~/.openclaw/workspace/AGENTS.md",
+      "Find 'Self-Improvement Workflow' section (around line 248)",
+      "Add new subsection '### Verify Implementation, Not Intent' after the workflow description",
+      "Add principle: 'Text changes ≠ behavior changes. When modifying how something works, check the MECHANISM (config values like sessionTarget, code paths, actual tool calls), not just the prompt text.'",
+      "Add failure mode example: 'Changed cron prompt to say \"do the work\" but kept sessionTarget: main and kind: systemEvent → still just prompts, doesn't execute'",
+      "Add rule: 'After changing how something works, verify by observing actual behavior, not just reading the config'",
+      "Verify: subsection is 5-10 lines max, actionable"
+    ],
+    "passes": false
+  },
+  {
+    "category": "documentation",
+    "description": "Add Cron Job Architecture section to AGENTS.md documenting when to use systemEvent vs isolated agentTurn",
+    "steps": [
+      "Open ~/.openclaw/workspace/AGENTS.md",
+      "Find appropriate location after 'Token Efficiency' section or before 'Make It Yours'",
+      "Add new section '## Cron Job Architecture'",
+      "Add intro: 'Know when to use systemEvent (prompts main session) vs isolated agentTurn (executes autonomously)'",
+      "Add markdown table with columns: Type, sessionTarget, payload.kind, When to Use, Example",
+      "Row 1: Prompted | main | systemEvent | Need human/main session attention | Reminders, alerts, questions",
+      "Row 2: Autonomous | isolated | agentTurn | Background work without attention | Status checks, maintenance, file updates",
+      "Add rule: 'If work should happen WITHOUT main session attention → use isolated agentTurn with full instructions'",
+      "Add failure mode: 'systemEvent saying \"check X\" while main session is busy → prompt sits there, nothing happens'",
+      "Verify: section is clear decision framework, ~15-20 lines"
+    ],
+    "passes": false
+  },
+  {
+    "category": "documentation",
+    "description": "Add lightweight ADL (Anti-Drift Limits) principles as Evolution Guardrails to Self-Improvement section in AGENTS.md",
+    "steps": [
+      "Open ~/.openclaw/workspace/AGENTS.md",
+      "Find 'Self-Improvement Workflow' section (around line 248)",
+      "Add new subsection '### Evolution Guardrails' after the existing content",
+      "Add intro: 'When evolving your own operating system, apply these constraints:'",
+      "Add bullet: '**Stability > Novelty** — don't break working things for shiny new approaches'",
+      "Add bullet: '**No complexity theater** — reject changes that look smart but add no real value'",
+      "Add bullet: '**Verifiable only** — if you can't test that it worked, don't do it'",
+      "Add bullet: '**Compound leverage** — optimize for future-you solving more problems with less cost'",
+      "Do NOT add VFM scoring formula (too bureaucratic)",
+      "Verify: subsection is ~10 lines, principles are memorable"
+    ],
+    "passes": false
+  },
+  {
+    "category": "feature",
+    "description": "Implement 60% context threshold IPFS checkpoint trigger as danger zone survival mechanism",
+    "steps": [
+      "Open ~/.openclaw/workspace/AGENTS.md",
+      "Find 'Memory Architecture' section, specifically 'Memory Flush Thresholds' table",
+      "Update 50-70% row to add: 'Consider IPFS checkpoint if critical session'",
+      "Add new subsection '### Danger Zone Protocol (60%+ Context)' after the table",
+      "Add rule: 'At 60% context (visible in session_status), trigger IPFS checkpoint for critical sessions'",
+      "Add command: 'Run: ~/.openclaw/skills/proactive-amcp/scripts/checkpoint.sh'",
+      "Add rationale: 'IPFS checkpoint survives server death, Solvr pins for free, content-addressable recovery'",
+      "Add recovery protocol: 'After compaction, check recent checkpoints before asking \"what were we doing?\"'",
+      "Verify checkpoint.sh works: run it manually, confirm CID returned",
+      "Open ~/.openclaw/workspace/HEARTBEAT.md",
+      "Add to critical checks: 'Context % check: if >60% and critical work in progress, run checkpoint.sh'",
+      "Test: run session_status (currently shows 61%), note that we're in danger zone"
+    ],
+    "passes": false
+  },
+  {
+    "category": "refactor",
+    "description": "Clean up AGENTS.md to remove redundancy after adding new sections (RUN LAST after tasks 1,3,4,5,6,8)",
+    "steps": [
+      "PREREQUISITE: Complete tasks 1,3,4,5,6,8 first (all AGENTS.md additions)",
+      "Open ~/.openclaw/workspace/AGENTS.md",
+      "Count total lines before cleanup: wc -l AGENTS.md",
+      "Review: does Writing It Down in Memory section overlap with new WAL Protocol? Consolidate if needed",
+      "Review: does Safety section overlap with any new security content? Keep distinct (Safety = behavior, Security = technical)",
+      "Review: is Solvr Integration section still accurate? Update API examples if needed",
+      "Review: are there duplicate write it down rules? Consolidate to single authoritative location",
+      "Ensure section order: First Run → Every Session → Safety → Memory Architecture → WAL Protocol → Self-Improvement → Solvr → Cron Architecture → Token Efficiency → Command Execution",
+      "Remove any orphaned or outdated references",
+      "Count total lines after cleanup: wc -l AGENTS.md",
+      "Goal: new content added but total lines same or fewer through consolidation",
+      "Verify: read AGENTS.md top-to-bottom, no repetition, clear flow"
+    ],
+    "passes": false
+  },
+  {
+    "category": "documentation",
+    "description": "Add VBR (Verify Before Reporting) section to AGENTS.md as core principle for never reporting completion without verification",
+    "steps": [
+      "Open ~/.openclaw/workspace/AGENTS.md",
+      "Find 'Verify Implementation, Not Intent' section (added in HAL integration)",
+      "Add new section '### VBR (Verify Before Reporting)' immediately after",
+      "Add intro: '\"Code exists\" ≠ \"feature works.\" Never report completion without verification.'",
+      "Add rule: 'Before saying done/complete/finished/fixed: STOP → TEST → VERIFY outcome → THEN report'",
+      "Add Solvr VBR subsection: POST → GET back → verify matches; Approach succeeded? Test fix first",
+      "Add Checkpoint VBR subsection: CID returned? Test decrypt; Periodic recovery drill",
+      "Add Cron VBR subsection: New cron? Wait for first fire; Changed cron? Verify new behavior",
+      "Add example failure mode: 'Reported completion based on code existing, not behavior working'",
+      "Verify: section is ~15-20 lines, actionable, integrated with existing flow"
+    ],
+    "passes": false
+  },
+  {
+    "category": "script",
+    "description": "Create checkpoint-verify.sh script to test that last checkpoint is recoverable (VBR for AMCP checkpoints)",
+    "steps": [
+      "Create ~/.openclaw/skills/proactive-amcp/scripts/checkpoint-verify.sh",
+      "Add shebang, set -e, source config.sh for shared variables",
+      "Step 1: Read last CID from ~/.amcp/last-checkpoint.json using jq",
+      "Step 2: Fetch checkpoint from IPFS (use ipfs cat or curl gateway)",
+      "Step 3: Source checkpoint-decrypt.sh (like resuscitate.sh does) for decryption functions",
+      "Step 3b: Use is_checkpoint_encrypted() and decrypt_checkpoint() functions from sourced script",
+      "Step 4: Verify identity.json exists and AID matches current ~/.amcp/identity.json",
+      "Step 5: Verify MEMORY.md or workspace files are readable",
+      "Step 6: Output success: '✅ Checkpoint QmXYZ verified recoverable (identity OK, memory OK)'",
+      "Step 7: Output failure with specific error if any step fails",
+      "Add --quick flag for lightweight check (just decrypt, skip full content verify)",
+      "chmod +x the script",
+      "Test: run checkpoint-verify.sh, verify it passes on recent checkpoint",
+      "Test: corrupt a test checkpoint, verify script detects failure"
+    ],
+    "passes": false
+  },
+  {
+    "category": "script",
+    "description": "Create solvr-verify.sh script to verify Solvr posts match what was intended (VBR for Solvr)",
+    "steps": [
+      "Create ~/.openclaw/skills/proactive-amcp/scripts/solvr-verify.sh",
+      "Add shebang, set -e, load SOLVR_API_KEY from config",
+      "Accept argument: resource type (problem, approach, idea) and ID",
+      "GET the resource from Solvr API: curl https://api.solvr.dev/v1/{type}s/{id}",
+      "For approaches: verify status field matches expected (working, succeeded, failed)",
+      "For problems: verify title and description are non-empty",
+      "For ideas: verify tags and description present",
+      "Output: '✅ Solvr {type} {id} verified: status={status}, title={title}'",
+      "Output failure if resource not found or fields missing",
+      "Add --json flag for machine-readable output",
+      "chmod +x the script",
+      "Test: run solvr-verify.sh approach <recent-approach-id>, verify output"
+    ],
+    "passes": false
+  },
+  {
+    "category": "feature",
+    "description": "Add VBR checkpoint verification to HEARTBEAT.md weekly rotation",
+    "steps": [
+      "Open ~/.openclaw/workspace/HEARTBEAT.md",
+      "Find weekly rotation section or create one",
+      "Add: 'Checkpoint VBR (weekly): Run checkpoint-verify.sh to test recovery'",
+      "Add: 'If verification fails: alert immediately, investigate checkpoint integrity'",
+      "Document expected output: CID, identity match, memory readable",
+      "Add note: 'This is a resurrection drill - proves we can actually recover'"
+    ],
+    "passes": false
+  },
+  {
+    "category": "feature",
+    "description": "Add VBR step to checkpoint.sh - verify checkpoint after creation",
+    "steps": [
+      "Open ~/.openclaw/skills/proactive-amcp/scripts/checkpoint.sh",
+      "Find the section after 'Pinned to IPFS' success message",
+      "Add verification step: call checkpoint-verify.sh --quick with the new CID",
+      "If verify fails: warn but don't fail entire checkpoint (checkpoint exists, just can't verify yet)",
+      "Add output: '✅ Checkpoint verified recoverable' or '⚠️ Checkpoint created but verify failed'",
+      "Test: run checkpoint.sh, verify new verification step runs",
+      "Test: verify output includes verification status"
+    ],
+    "passes": false
+  },
+  {
+    "category": "feature",
+    "description": "Add VBR to Solvr approach workflow - verify status after updating",
+    "steps": [
+      "Open ~/.openclaw/skills/proactive-amcp/scripts/solvr-integration.sh (or equivalent)",
+      "Find approach update functions (mark succeeded, mark failed, add progress)",
+      "After PATCH/POST: add GET to verify the change took effect",
+      "Compare: expected status vs actual status from GET response",
+      "Output: '✅ Approach {id} verified: status now {status}' or '⚠️ Status mismatch'",
+      "If solvr-integration.sh doesn't exist, document VBR pattern in AGENTS.md for manual use",
+      "Test: update an approach status, verify the verification step runs"
+    ],
+    "passes": false
+  },
+  {
+    "category": "documentation",
+    "description": "Add VBR examples and failure modes to .learnings/LEARNINGS.md as reference",
+    "steps": [
+      "Open ~/.openclaw/workspace/.learnings/LEARNINGS.md",
+      "Add learning entry: VBR failure mode - reported cron complete but didn't verify first fire",
+      "Add learning entry: VBR failure mode - marked Solvr approach succeeded without testing fix",
+      "Add learning entry: VBR success pattern - checkpoint + verify + report",
+      "Use proper format: [LRN-YYYYMMDD-XXX] with status: promoted (since it's going into AGENTS.md)",
+      "Link to AGENTS.md VBR section as the authoritative location"
+    ],
+    "passes": false
+  },
+  {
+    "category": "documentation",
+    "description": "Update proactive-amcp README.md to document VBR integration as part of the protocol",
+    "steps": [
+      "Open ~/development/proactive-amcp/README.md",
+      "Find Features or Protocol section",
+      "Add VBR subsection: 'Verify Before Reporting - checkpoints are verified recoverable'",
+      "Document checkpoint-verify.sh: purpose, usage, expected output",
+      "Document solvr-verify.sh: purpose, usage, expected output",
+      "Add to Quick Start: 'After checkpoint, verify with checkpoint-verify.sh'",
+      "Verify: README reflects new VBR capabilities"
+    ],
+    "passes": false
+  },
+  {
+    "category": "feature",
+    "description": "Create proper OpenClaw hook (handler.js) for self-improvement that injects reminder at agent:bootstrap",
+    "steps": [
+      "Create ~/.openclaw/hooks/self-improvement/handler.js",
+      "Add REMINDER_CONTENT constant with learning trigger prompts (corrections, errors, feature requests, knowledge gaps, better approaches)",
+      "Add promotion targets (SOUL.md, AGENTS.md, TOOLS.md)",
+      "Export handler function that fires on agent:bootstrap event",
+      "Add safety checks: verify event structure, skip sub-agents (sessionKey includes :subagent:)",
+      "Inject reminder as virtual bootstrap file: event.context.bootstrapFiles.push({path, content, virtual: true})",
+      "Create HOOK.md with name, description, metadata (emoji: 🧠, events: [agent:bootstrap])",
+      "Test: openclaw hooks list - verify self-improvement appears",
+      "Test: openclaw hooks enable self-improvement",
+      "Test: start new session, verify SELF_IMPROVEMENT_REMINDER.md injected",
+      "Verify: sub-agent sessions do NOT get the reminder injected"
+    ],
+    "passes": false
+  },
+  {
+    "category": "feature",
+    "description": "Create amcp-bootstrap hook (agent:bootstrap) - recovery check, identity verify, VBR, inject status",
+    "steps": [
+      "Create ~/.openclaw/hooks/amcp-bootstrap/handler.js",
+      "Import required modules (fs, path, child_process for calling scripts)",
+      "Check last session death: compare last-checkpoint.json timestamp vs expected session end",
+      "If death detected (unexpected gap): set recoveryNeeded flag",
+      "If recoveryNeeded: inject recovery instructions into bootstrapFiles",
+      "Call checkpoint-verify.sh --quick to VBR last checkpoint",
+      "Verify identity: compare ~/.amcp/identity.json AID with checkpoint AID",
+      "Read death count from amcp-stats.json",
+      "Inject AMCP status message: deaths, last checkpoint CID, identity status",
+      "Create HOOK.md with events: [agent:bootstrap], emoji: 🔄",
+      "Test: openclaw hooks enable amcp-bootstrap",
+      "Test: /new session shows AMCP status injected",
+      "Test: simulate death, verify recovery offered on next bootstrap"
+    ],
+    "passes": false
+  },
+  {
+    "category": "feature",
+    "description": "Create amcp-pre-death hook (command:reset, command:stop) - checkpoint before death, save session state",
+    "steps": [
+      "Create ~/.openclaw/hooks/amcp-pre-death/handler.js",
+      "Listen for events: command:reset AND command:stop",
+      "On trigger: log pre-death event with timestamp to ~/.amcp/death-log.json",
+      "Call checkpoint.sh synchronously (no --quick flag, full checkpoint before death)",
+      "Save session summary: write key decisions/tasks to memory/YYYY-MM-DD.md",
+      "Increment death count in ~/.amcp/amcp-stats.json",
+      "Push message to event.messages: Checkpoint CID for user visibility",
+      "Create HOOK.md with events: [command:reset, command:stop], emoji: 💀",
+      "Test: openclaw hooks enable amcp-pre-death",
+      "Test: /reset triggers checkpoint, verify CID in output",
+      "Test: /stop triggers checkpoint, verify CID in output",
+      "Verify: checkpoint is recoverable (run checkpoint-verify.sh)"
+    ],
+    "passes": false
+  },
+  {
+    "category": "feature",
+    "description": "Add context % monitoring to heartbeat - checkpoint at 60% threshold (compensates for no compaction event)",
+    "steps": [
+      "Open ~/.openclaw/workspace/HEARTBEAT.md",
+      "Add to CRITICAL CHECKS section: Context % check",
+      "Rule: If context > 60% AND critical work in progress → checkpoint",
+      "Add command: session_status | grep Context to check %",
+      "Add decision tree: >60% = consider checkpoint, >75% = checkpoint now, >85% = emergency checkpoint",
+      "Document: This compensates for OpenClaw having no compaction event",
+      "Create helper script: scripts/context-check.sh that parses session_status",
+      "Test: run context-check.sh, verify it returns current %",
+      "Test: manually at 60%+, verify checkpoint decision works"
+    ],
+    "passes": false
+  },
+  {
+    "category": "feature",
+    "description": "Convert watchdog.sh to gateway:startup hook - register watchdog monitoring on gateway start",
+    "steps": [
+      "Create ~/.openclaw/hooks/amcp-watchdog/handler.js",
+      "On gateway:startup: check if watchdog is already running",
+      "If not running: spawn watchdog.sh in background",
+      "Log watchdog PID for tracking",
+      "Create HOOK.md with events: [gateway:startup], emoji: 👁️",
+      "Test: restart gateway, verify watchdog auto-starts",
+      "Test: kill gateway, verify watchdog detects and attempts recovery"
+    ],
+    "passes": false
+  },
+  {
+    "category": "feature",
+    "description": "Convert init.sh to gateway:startup hook - initialize AMCP identity on first run",
+    "steps": [
+      "Create ~/.openclaw/hooks/amcp-init/handler.js",
+      "On gateway:startup: check if ~/.amcp/identity.json exists",
+      "If not exists (first run): call init.sh to create identity",
+      "If exists: verify identity integrity",
+      "Log initialization status",
+      "Create HOOK.md with events: [gateway:startup], emoji: 🎬",
+      "Test: delete identity.json, restart gateway, verify auto-created",
+      "Test: with existing identity, verify skips initialization"
+    ],
+    "passes": false
+  },
+  {
+    "category": "feature",
+    "description": "Improve heartbeat cron to integrate auto-checkpoint and Solvr sync logic (heartbeats are crons, not hook events)",
+    "steps": [
+      "Review current heartbeat cron configuration in OpenClaw config",
+      "Review auto-checkpoint.sh logic: what triggers checkpoint?",
+      "Update HEARTBEAT.md to include: time-since-checkpoint check, context % check, Solvr sync",
+      "Add to HEARTBEAT.md: If >4h since checkpoint → run checkpoint.sh",
+      "Add to HEARTBEAT.md: If context >60% → run checkpoint.sh",
+      "Add to HEARTBEAT.md: Call solvr-heartbeat.sh for Solvr sync",
+      "Create scripts/heartbeat-enhanced.sh that wraps all these checks",
+      "Test: trigger heartbeat manually, verify enhanced logic runs",
+      "Note: Cannot be a hook - heartbeat is cron, not event"
+    ],
+    "passes": false
+  },
+  {
+    "category": "feature",
+    "description": "Convert notify.sh to multi-event hook - notify on death, recovery, errors",
+    "steps": [
+      "Review notify.sh: what does it notify about?",
+      "Create ~/.openclaw/hooks/amcp-notify/handler.js",
+      "On relevant events: call notify.sh with event details",
+      "Events to listen: command:stop (death), agent:bootstrap (recovery check), agent:error (future)",
+      "Format notification with event type, timestamp, details",
+      "Create HOOK.md with events: [command:stop, agent:bootstrap], emoji: 📢",
+      "Test: /stop triggers notification",
+      "Test: recovery scenario triggers notification"
+    ],
+    "passes": false
+  }
+]

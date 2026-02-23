@@ -1,0 +1,205 @@
+[
+  {
+    "id": 1,
+    "category": "refactor",
+    "priority": "high",
+    "description": "Consolidate diagnostic scripts into diagnose.sh with subcommands",
+    "current_scripts": ["diagnose.sh", "claude-diagnose.sh", "condense-error.sh", "detect-failure.py", "generate-problem-summary.py"],
+    "target": "diagnose.sh",
+    "steps": [
+      "Backup current diagnose.sh",
+      "Add 'claude' subcommand that runs claude-diagnose.sh logic",
+      "Add 'condense' subcommand that runs condense-error.sh logic",
+      "Add 'failure' subcommand that runs detect-failure.py logic",
+      "Add 'summary' subcommand that runs generate-problem-summary.py logic",
+      "Update proactive-amcp.sh to use new subcommands",
+      "Test all subcommands work correctly",
+      "Remove old scripts after verification",
+      "Update SKILL.md documentation"
+    ],
+    "passes": true
+  },
+  {
+    "id": 2,
+    "category": "refactor",
+    "priority": "high",
+    "description": "Consolidate config scripts into config.sh with subcommands",
+    "current_scripts": ["config.sh", "backup-config.sh", "try-fix-config.sh", "config-evaluators.sh"],
+    "target": "config.sh",
+    "steps": [
+      "Backup current config.sh",
+      "Add 'backup' subcommand from backup-config.sh",
+      "Add 'fix' subcommand from try-fix-config.sh",
+      "Add 'evaluators' subcommand from config-evaluators.sh",
+      "Preserve existing config.sh functions (they're dependencies)",
+      "Update all scripts that call the old scripts",
+      "Test: proactive-amcp config backup, config fix, config evaluators",
+      "Remove old scripts after verification"
+    ],
+    "passes": false
+  },
+  {
+    "id": 3,
+    "category": "refactor",
+    "priority": "high",
+    "description": "Consolidate checkpoint variants into checkpoint.sh with flags",
+    "current_scripts": ["checkpoint.sh", "full-checkpoint.sh", "auto-checkpoint.sh", "smart-checkpoint-filter.sh", "smart-checkpoint-trigger.sh"],
+    "target": "checkpoint.sh",
+    "steps": [
+      "Backup current checkpoint.sh",
+      "Add --full flag for full-checkpoint.sh logic",
+      "Add --auto flag for auto-checkpoint.sh logic", 
+      "Add --smart flag for smart-checkpoint-*.sh logic",
+      "Preserve default checkpoint behavior (incremental)",
+      "Update proactive-amcp.sh CLI to pass flags",
+      "Update any scripts calling full-checkpoint.sh directly",
+      "Test: checkpoint, checkpoint --full, checkpoint --auto",
+      "Remove old scripts after verification"
+    ],
+    "passes": false
+  },
+  {
+    "id": 4,
+    "category": "refactor",
+    "priority": "medium",
+    "description": "Consolidate memory scripts into memory.sh",
+    "current_scripts": ["memory-prune.sh", "memory-prune-batch.sh", "memory-evolution.sh"],
+    "target": "memory.sh",
+    "steps": [
+      "Create new memory.sh with subcommands",
+      "Add 'prune' subcommand from memory-prune.sh",
+      "Add 'prune-batch' subcommand from memory-prune-batch.sh",
+      "Add 'evolution' subcommand from memory-evolution.sh",
+      "Update proactive-amcp.sh to add 'memory' command",
+      "Test all subcommands",
+      "Remove old scripts after verification"
+    ],
+    "passes": false
+  },
+  {
+    "id": 5,
+    "category": "refactor",
+    "priority": "medium",
+    "description": "Consolidate ontology/validation scripts into ontology.sh (mark as advanced/optional)",
+    "current_scripts": ["validate-ontology.py", "prune-ontology.py", "compute-entity-similarity.py", "temporal-queries.py", "validate-skill-contract.py", "validate-skill-contract.sh", "detect-contract-conflicts.py", "detect-contract-conflicts.sh"],
+    "target": "ontology.sh",
+    "steps": [
+      "Create new ontology.sh wrapper with subcommands",
+      "Add 'validate' subcommand calling validate-ontology.py",
+      "Add 'prune' subcommand calling prune-ontology.py",
+      "Add 'similarity' subcommand calling compute-entity-similarity.py",
+      "Add 'temporal' subcommand calling temporal-queries.py",
+      "Add 'contract' subcommand calling validate-skill-contract.py",
+      "Add 'conflicts' subcommand calling detect-contract-conflicts.py",
+      "Keep Python files but remove shell wrappers",
+      "Update proactive-amcp.sh: consolidate ontology commands under 'ontology' parent",
+      "Add note in SKILL.md: 'Advanced: ontology commands for semantic validation'",
+      "Test all subcommands"
+    ],
+    "passes": false
+  },
+  {
+    "id": 6,
+    "category": "refactor",
+    "priority": "medium",
+    "description": "Consolidate Solvr scripts into solvr.sh (keep solvr-integration.sh as lib)",
+    "current_scripts": ["solvr-register.sh", "solvr-heartbeat.sh", "pin-to-solvr.sh", "register-checkpoint-solvr.sh", "resurrect-from-solvr.sh"],
+    "target": "solvr.sh",
+    "steps": [
+      "Create new solvr.sh with subcommands",
+      "Keep solvr-integration.sh as shared library (source it)",
+      "Add 'register' subcommand from solvr-register.sh",
+      "Add 'heartbeat' subcommand from solvr-heartbeat.sh",
+      "Add 'pin' subcommand from pin-to-solvr.sh",
+      "Add 'checkpoint' subcommand from register-checkpoint-solvr.sh",
+      "Add 'resurrect' subcommand from resurrect-from-solvr.sh",
+      "Update proactive-amcp.sh to use solvr.sh subcommands",
+      "Test all Solvr operations still work",
+      "Remove old scripts after verification"
+    ],
+    "passes": false
+  },
+  {
+    "id": 7,
+    "category": "refactor",
+    "priority": "low",
+    "description": "Consolidate learning scripts into learning.sh",
+    "current_scripts": ["learning.py", "learning-report.py"],
+    "target": "learning.sh",
+    "steps": [
+      "Create learning.sh wrapper",
+      "Add 'log' subcommand calling learning.py",
+      "Add 'report' subcommand calling learning-report.py",
+      "Keep Python files, remove if shell-only wrapper exists",
+      "Update proactive-amcp.sh learning command"
+    ],
+    "passes": false
+  },
+  {
+    "id": 8,
+    "category": "cleanup",
+    "priority": "low",
+    "description": "Remove or merge remaining utility scripts",
+    "current_scripts": ["post-checkpoint-metadata.sh", "spawn-child.sh", "link-identity.sh", "list-checkpoints.sh", "session-fix.sh", "fix-openclaw-session.py", "inject-secrets.sh", "scan-secrets.sh", "pre-commit-secrets.sh", "recreate-venvs.sh", "groq-status.sh", "init-services.sh", "migrate-pins.sh", "checkpoint-decrypt.sh"],
+    "target": "various",
+    "steps": [
+      "Review each script for actual usage",
+      "inject-secrets.sh, scan-secrets.sh, pre-commit-secrets.sh → secrets.sh",
+      "list-checkpoints.sh, checkpoint-decrypt.sh → merge into checkpoint.sh",
+      "groq-status.sh → merge into status.sh --groq",
+      "session-fix.sh, fix-openclaw-session.py → merge into diagnose.sh fix",
+      "Keep: init-services.sh, install.sh, recreate-venvs.sh (setup scripts)",
+      "Evaluate: spawn-child.sh, link-identity.sh, migrate-pins.sh (keep if used)",
+      "Remove post-checkpoint-metadata.sh if unused"
+    ],
+    "passes": false
+  },
+  {
+    "id": 9,
+    "category": "documentation",
+    "priority": "high",
+    "description": "Update SKILL.md with new consolidated command structure",
+    "steps": [
+      "Document new subcommand structure",
+      "Add migration notes for users of old scripts",
+      "Mark ontology commands as 'Advanced'",
+      "Update examples to use new syntax",
+      "Add deprecation warnings for direct script calls"
+    ],
+    "passes": false
+  },
+  {
+    "id": 10,
+    "category": "testing",
+    "priority": "high",
+    "description": "Create test suite verifying no functionality loss",
+    "steps": [
+      "Create test/consolidation-test.sh",
+      "Test each consolidated command matches old behavior",
+      "Test checkpoint variants: default, --full, --auto, --smart",
+      "Test diagnose subcommands: claude, condense, failure, summary",
+      "Test config subcommands: backup, fix, evaluators",
+      "Test solvr subcommands: register, pin, resurrect",
+      "Test memory subcommands: prune, evolution",
+      "Verify proactive-amcp.sh CLI still works for all commands",
+      "Run full AMCP workflow: init → checkpoint → simulate death → resurrect"
+    ],
+    "passes": false
+  },
+  {
+    "id": 11,
+    "category": "release",
+    "priority": "high",
+    "description": "Bump version to 0.9.0 and publish consolidated skill",
+    "steps": [
+      "Update version to 0.9.0 in package.json, _meta.json, skill.json, SKILL.md",
+      "Update CHANGELOG.md with consolidation notes",
+      "Run npm publish",
+      "Run clawdhub publish",
+      "Verify both registries have 0.9.0",
+      "Update local installation",
+      "Announce breaking changes (script paths changed)"
+    ],
+    "passes": false
+  }
+]

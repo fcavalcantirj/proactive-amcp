@@ -29,8 +29,8 @@ setup() {
   # Copy scripts into isolated sandbox
   export SANDBOXED_SCRIPTS="$TEST_DIR/scripts"
   mkdir -p "$SANDBOXED_SCRIPTS"
-  for f in watchdog.sh diagnose.sh session-fix.sh fix-openclaw-session.py \
-           try-fix-config.sh backup-config.sh notify.sh condense-error.sh; do
+  for f in watchdog.sh diagnose.sh _diagnose-condense.sh session-fix.sh fix-openclaw-session.py \
+           try-fix-config.sh backup-config.sh notify.sh; do
     if [ -f "$REAL_SCRIPT_DIR/$f" ]; then
       cp "$REAL_SCRIPT_DIR/$f" "$SANDBOXED_SCRIPTS/"
       chmod +x "$SANDBOXED_SCRIPTS/$f"

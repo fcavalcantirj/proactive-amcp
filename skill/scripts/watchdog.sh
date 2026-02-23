@@ -419,13 +419,13 @@ should_retry_resurrection() {
 # ============================================================
 condense_error_msg() {
   local msg="$1"
-  # Only condense if condense-error.sh exists and message is long
-  if [ "${#msg}" -le 100 ] || [ ! -x "$SCRIPT_DIR/condense-error.sh" ]; then
+  # Only condense if diagnose.sh exists and message is long
+  if [ "${#msg}" -le 100 ] || [ ! -x "$SCRIPT_DIR/diagnose.sh" ]; then
     echo "$msg"
     return
   fi
   local condensed
-  condensed=$("$SCRIPT_DIR/condense-error.sh" "$msg" 2>/dev/null || true)
+  condensed=$("$SCRIPT_DIR/diagnose.sh" condense "$msg" 2>/dev/null || true)
   echo "${condensed:-$msg}"
 }
 

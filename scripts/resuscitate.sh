@@ -153,9 +153,9 @@ else:
   fi
 
   local summary_file="$HOME/.amcp/open-problems-summary.md"
-  if [ -f "$SCRIPT_DIR/generate-problem-summary.py" ]; then
+  if [ -x "$SCRIPT_DIR/diagnose.sh" ]; then
     log "Generating open problem summary..."
-    python3 "$SCRIPT_DIR/generate-problem-summary.py" --output "$summary_file" 2>&1 | tee -a "$RECOVERY_LOG" || true
+    "$SCRIPT_DIR/diagnose.sh" summary --output "$summary_file" 2>&1 | tee -a "$RECOVERY_LOG" || true
     if [ -f "$summary_file" ] && [ -s "$summary_file" ]; then
       log "Open problems written to $summary_file"
     fi
