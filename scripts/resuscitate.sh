@@ -409,18 +409,18 @@ try_fix_config() {
     return 0
   fi
 
-  log "Attempting: fix config via try-fix-config.sh (3-tier)"
+  log "Attempting: fix config via config.sh fix (3-tier)"
 
   # Delegate to standalone config fix script (Tier A: backup, Tier B: doctor, Tier C: minimal)
-  if [ -x "$SCRIPT_DIR/try-fix-config.sh" ]; then
-    if "$SCRIPT_DIR/try-fix-config.sh" 2>&1 | tee -a "$RECOVERY_LOG"; then
+  if [ -x "$SCRIPT_DIR/config.sh" ]; then
+    if "$SCRIPT_DIR/config.sh" fix 2>&1 | tee -a "$RECOVERY_LOG"; then
       log "Config fix succeeded"
       return 0
     fi
     log "Standalone config fix exhausted all tiers"
   else
-    log "try-fix-config.sh not found, falling back to inline backup restore"
-    # Inline fallback: simple backup restore (in case try-fix-config.sh missing)
+    log "config.sh not found, falling back to inline backup restore"
+    # Inline fallback: simple backup restore (in case config.sh fix missing)
     local backup_dir="$HOME/.amcp/config-backups"
     if [ -d "$backup_dir" ]; then
       local latest_backup

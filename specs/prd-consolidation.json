@@ -36,7 +36,7 @@
       "Test: proactive-amcp config backup, config fix, config evaluators",
       "Remove old scripts after verification"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": 3,

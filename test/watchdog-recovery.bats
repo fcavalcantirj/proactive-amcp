@@ -30,7 +30,7 @@ setup() {
   export SANDBOXED_SCRIPTS="$TEST_DIR/scripts"
   mkdir -p "$SANDBOXED_SCRIPTS"
   for f in watchdog.sh diagnose.sh _diagnose-condense.sh session-fix.sh fix-openclaw-session.py \
-           try-fix-config.sh backup-config.sh notify.sh; do
+           config.sh _config-fix.sh _config-backup.sh _config-evaluators.sh notify.sh; do
     if [ -f "$REAL_SCRIPT_DIR/$f" ]; then
       cp "$REAL_SCRIPT_DIR/$f" "$SANDBOXED_SCRIPTS/"
       chmod +x "$SANDBOXED_SCRIPTS/$f"
@@ -323,7 +323,7 @@ EOOC
   # Watchdog tries openclaw doctor --fix first for semantic errors
   [[ "$output" == *"semantic"* ]] || [[ "$output" == *"config"* ]]
 
-  # After enough failures, escalation should trigger try-fix-config.sh which uses backup
+  # After enough failures, escalation should trigger config.sh fix which uses backup
   # The first check might not escalate immediately, so check state progression
   local state
   state=$(read_state)
@@ -656,7 +656,7 @@ EOAMCP
   [ "$status" -eq 0 ]
   [ "$(read_state)" = "HEALTHY" ]
 
-  # backup-config.sh should have been called (via guard pattern)
+  # config.sh backup should have been called (via guard pattern)
   # If it ran, we may see backup files or at least no crash
-  # The key assertion is that watchdog didn't fail due to backup-config
+  # The key assertion is that watchdog didn't fail due to config backup
 }

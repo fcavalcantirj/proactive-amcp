@@ -19,6 +19,8 @@ Usage:
   config set <key> <value>   Set a config value using dot-path notation
   config get [key]           Get a config value (or print all, redacted)
   config evaluators          Manage evaluator array (list/add/remove/show)
+  config backup              Create/list/restore OpenClaw config backups
+  config fix                 3-tier config recovery (backup restore → doctor → minimal)
 
 Examples:
   config set pinata.jwt eyJhbGciOi...
@@ -30,6 +32,9 @@ Examples:
   config set checkpoint.schedule "0 */4 * * *"
   config get pinata.jwt
   config get
+  config backup --list
+  config backup --restore
+  config fix --dry-run
 
 Config path: $CONFIG_FILE
 EOF
@@ -266,7 +271,13 @@ case "$SUBCOMMAND" in
     config_get "$@"
     ;;
   evaluators)
-    exec "$SCRIPT_DIR/config-evaluators.sh" "$@"
+    exec "$SCRIPT_DIR/_config-evaluators.sh" "$@"
+    ;;
+  backup)
+    exec "$SCRIPT_DIR/_config-backup.sh" "$@"
+    ;;
+  fix)
+    exec "$SCRIPT_DIR/_config-fix.sh" "$@"
     ;;
   -h|--help|"")
     usage

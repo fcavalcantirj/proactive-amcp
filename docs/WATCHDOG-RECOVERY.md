@@ -214,8 +214,8 @@ When the same error appears 5+ times in `errorHistory`, the watchdog bypasses no
 
 | Stuck Error Type | Escalated Action |
 |--|--|
-| `config_semantic_invalid` | Try config repair (`try-fix-config.sh`) |
-| `gateway_unresponsive` | Try config repair (`try-fix-config.sh`) |
+| `config_semantic_invalid` | Try config repair (`config.sh fix`) |
+| `gateway_unresponsive` | Try config repair (`config.sh fix`) |
 | All others | Force resurrection immediately |
 
 ### Crash-Loop Detection

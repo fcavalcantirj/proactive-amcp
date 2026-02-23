@@ -585,7 +585,7 @@ do_check() {
     fi
     update_state "HEALTHY" 0 ""
     # Backup config on healthy check (only when valid and changed)
-    [ -x "$SCRIPT_DIR/backup-config.sh" ] && "$SCRIPT_DIR/backup-config.sh" 2>/dev/null || true
+    [ -x "$SCRIPT_DIR/config.sh" ] && "$SCRIPT_DIR/config.sh" backup 2>/dev/null || true
     echo "✅ HEALTHY"
     return 0
   fi
@@ -707,8 +707,8 @@ do_check() {
     # Route by stuck error type
     if echo "$stuck_errors" | grep -q "config_semantic_invalid"; then
       echo "🔧 Escalation: config_semantic_invalid → skipping restart, direct config restoration"
-      if [ -x "$SCRIPT_DIR/try-fix-config.sh" ]; then
-        if "$SCRIPT_DIR/try-fix-config.sh" 2>&1; then
+      if [ -x "$SCRIPT_DIR/config.sh" ]; then
+        if "$SCRIPT_DIR/config.sh" fix 2>&1; then
           echo "✅ Config restored via escalation"
           update_state "HEALTHY" 0 ""
           [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "✅ [$AGENT_NAME] Stuck config error auto-fixed via escalation (after $failures failures)"
@@ -720,8 +720,8 @@ do_check() {
 
     if echo "$stuck_errors" | grep -q "gateway_unresponsive"; then
       echo "🔧 Escalation: gateway_unresponsive → trying config fix before resurrection"
-      if [ -x "$SCRIPT_DIR/try-fix-config.sh" ]; then
-        if "$SCRIPT_DIR/try-fix-config.sh" 2>&1; then
+      if [ -x "$SCRIPT_DIR/config.sh" ]; then
+        if "$SCRIPT_DIR/config.sh" fix 2>&1; then
           echo "✅ Config restored via escalation (gateway was unresponsive)"
           update_state "HEALTHY" 0 ""
           [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "✅ [$AGENT_NAME] Stuck gateway error auto-fixed via config restoration (after $failures failures)"

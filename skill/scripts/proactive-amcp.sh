@@ -175,7 +175,7 @@ case "${1:-}" in
     ;;
   backup-config)
     shift
-    exec "$SCRIPT_DIR/backup-config.sh" "$@"
+    exec "$SCRIPT_DIR/config.sh" backup "$@"
     ;;
   migrate-pins)
     shift

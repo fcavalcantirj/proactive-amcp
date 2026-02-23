@@ -1,5 +1,6 @@
 #!/bin/bash
-# backup-config.sh — Automatic OpenClaw config backup system
+# _config-backup.sh — Automatic OpenClaw config backup system
+# Invoked via: config.sh backup (or directly for backwards compat)
 #
 # Creates timestamped backups of ~/.openclaw/openclaw.json when config is valid.
 # Deduplicates via SHA-256 hash. Keeps last N backups, prunes older ones.

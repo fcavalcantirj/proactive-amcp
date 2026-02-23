@@ -638,7 +638,7 @@ setup_config_backups() {
   # Create initial backup if OpenClaw config exists
   local openclaw_config="${OPENCLAW_CONFIG:-$HOME/.openclaw/openclaw.json}"
   if [ -f "$openclaw_config" ]; then
-    if "$SCRIPT_DIR/backup-config.sh" 2>/dev/null; then
+    if "$SCRIPT_DIR/config.sh" backup 2>/dev/null; then
       ok "Config backup directory initialized with initial backup"
     else
       info "Config backup directory created at $backup_dir"

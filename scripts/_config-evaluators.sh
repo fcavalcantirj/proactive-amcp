@@ -1,5 +1,6 @@
 #!/bin/bash
-# config-evaluators.sh — Manage evaluators array and consensus config in ~/.amcp/config.json
+# _config-evaluators.sh — Manage evaluators array and consensus config in ~/.amcp/config.json
+# Invoked via: config.sh evaluators (or directly for backwards compat)
 #
 # Usage:
 #   config-evaluators.sh list                    List configured evaluators

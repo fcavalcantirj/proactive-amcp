@@ -3043,3 +3043,27 @@
   - Subcommand dispatch verified: 4 targets in diagnose.sh case statement
   - All dispatch targets exist as files
   - proactive-amcp.sh routes diagnose/condense-error/detect-failure through diagnose.sh
+
+## PRD-Consolidation Task 2: Consolidate config scripts into config.sh with subcommands [DONE]
+
+- Consolidated 4 scripts into config.sh with subcommand dispatch:
+  - `config.sh` (289L): main dispatcher with set/get/evaluators/backup/fix subcommands
+  - `_config-backup.sh` (261L): OpenClaw config backup/restore/list (was backup-config.sh)
+  - `_config-fix.sh` (342L): 3-tier config recovery (was try-fix-config.sh)
+  - `_config-evaluators.sh` (469L): evaluator array management (was config-evaluators.sh)
+- Follows diagnose.sh consolidation pattern: underscore-prefixed internal files, dispatched from main script
+- Updated all callers in scripts/, skill/, package/, test/, docs/:
+  - `proactive-amcp.sh`: backup-config command → config.sh backup
+  - `watchdog.sh`: backup-config.sh guard → config.sh backup guard; try-fix-config.sh → config.sh fix
+  - `resuscitate.sh`: try-fix-config.sh → config.sh fix (with inline fallback preserved)
+  - `init.sh`: backup-config.sh → config.sh backup
+  - `test/watchdog-recovery.bats`: sandbox copies updated to new filenames
+  - `docs/WATCHDOG-RECOVERY.md`: try-fix-config.sh → config.sh fix in table
+- Removed old scripts: backup-config.sh, try-fix-config.sh, config-evaluators.sh (git mv to _prefixed)
+- All changes mirrored to skill/scripts/ and package/scripts/
+- Verification:
+  - bash -n passes on all modified scripts (config.sh, _config-backup.sh, _config-fix.sh, _config-evaluators.sh, proactive-amcp.sh, watchdog.sh, resuscitate.sh, init.sh + skill/ and package/ copies)
+  - File sizes: config.sh=289L, _config-backup.sh=261L, _config-fix.sh=342L, _config-evaluators.sh=469L (all under 800)
+  - Subcommand dispatch verified: 5 targets in config.sh case statement (set, get, evaluators, backup, fix)
+  - All dispatch targets exist as files
+  - Old script names no longer referenced in executable code (only in internal doc comments)
