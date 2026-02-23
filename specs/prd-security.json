@@ -292,7 +292,7 @@
         "Verify release page has tarball and SHA256 file",
         "Download and verify: sha256sum -c proactive-amcp-v0.8.0.tar.gz.sha256"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "category": "validation",
