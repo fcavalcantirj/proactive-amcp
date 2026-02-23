@@ -2890,3 +2890,19 @@
   - resuscitate.sh is 782 lines (under 800 limit)
   - checkpoint-decrypt.sh is 90 lines
   - Structural grep confirms: --key-file parsing, KEY_FILE variable, source checkpoint-decrypt.sh, all 3 decrypt functions called
+
+## Task: Create GitHub Actions workflow for signed releases (release category)
+
+- Created `.github/workflows/release.yml`
+- Triggers on push of tags matching `v*`
+- Sets `permissions: contents: write` for release creation
+- Job `release` on `ubuntu-latest`:
+  - Step 1: Checkout code via `actions/checkout@v4`
+  - Step 2: Create tarball: `tar -czvf proactive-amcp-<tag>.tar.gz skill/`
+  - Step 3: Generate SHA256: `sha256sum proactive-amcp-<tag>.tar.gz > proactive-amcp-<tag>.tar.gz.sha256`
+  - Step 4: Create GitHub Release via `softprops/action-gh-release@v1`
+    - Attaches both tarball and SHA256 checksum file
+    - Body includes verification command: `sha256sum -c proactive-amcp-<tag>.tar.gz.sha256`
+- Verification:
+  - YAML validates successfully via `python3 yaml.safe_load()`
+  - Follows same patterns as existing ci.yml workflow

@@ -212,7 +212,7 @@
         "Add body: 'SHA256 checksum included. Verify with: sha256sum -c proactive-amcp-*.sha256'",
         "Test: push tag v0.8.0 and verify release created with artifacts"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "category": "testing",

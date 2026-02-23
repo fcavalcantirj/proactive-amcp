@@ -1,0 +1,36 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create tarball
+        run: tar -czvf "proactive-amcp-${{ github.ref_name }}.tar.gz" skill/
+
+      - name: Generate SHA256
+        run: sha256sum "proactive-amcp-${{ github.ref_name }}.tar.gz" > "proactive-amcp-${{ github.ref_name }}.tar.gz.sha256"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            proactive-amcp-${{ github.ref_name }}.tar.gz
+            proactive-amcp-${{ github.ref_name }}.tar.gz.sha256
+          body: |
+            ## proactive-amcp ${{ github.ref_name }}
+
+            SHA256 checksum included. Verify with:
+            ```bash
+            sha256sum -c proactive-amcp-${{ github.ref_name }}.tar.gz.sha256
+            ```
