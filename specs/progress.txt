@@ -2986,3 +2986,32 @@
 - Workflow file and tag are correctly configured
 - When Actions is re-enabled, pushing a new tag will trigger the release automatically
 - Verification: git tag -l shows v0.8.0, release.yml uses v2 action with explicit GITHUB_TOKEN
+
+## Task 25: validation — Re-run security analysis and verify reduced warnings (DONE)
+- Ran comprehensive security validation against skill package v0.8.0
+- CHECK 1: 'undeclared env vars' warning RESOLVED
+  - skill/skill.json declares all 3 env vars: SOLVR_API_KEY, PINATA_JWT, NOTIFY_TARGET
+  - Each has description and required:false annotation
+  - jq validates JSON structure and field counts
+- CHECK 2: 'external code fetch' warning RESOLVED
+  - Zero git clone references in skill/ directory (grep confirms)
+  - All scripts bundled locally in skill/scripts/ (43 .sh + 11 .py files)
+  - No curl|bash or wget|sh patterns for external code execution
+- CHECK 3: 'persistence not declared' warning RESOLVED
+  - skill.json persistence object declares: createsSystemdUnits=true, createsCronJobs=true, createsIdentityFiles=true
+  - Matches actual behavior (init.sh creates systemd units or cron jobs, identity.json created by init)
+- CHECK 4: SECURITY.md present with 8 sections
+  - Data Collected, Data NOT Collected, Network Endpoints, Persistent Components
+  - Encryption, How to Audit, How to Uninstall, Threat Model
+- CHECK 5: Encryption support verified
+  - checkpoint.sh supports --encrypt flag (AES-256-CBC encryption, key stored in checkpoint-keys.json)
+  - resuscitate.sh supports --key-file flag (auto-lookup in checkpoint-keys.json by CID)
+- CHECK 6: Release workflow verified
+  - .github/workflows/release.yml exists with SHA256 checksum generation
+  - Triggers on v* tags, creates GitHub Release with tarball + .sha256 file
+- Remaining warnings documented for future work:
+  - GitHub Actions runner unavailable (infrastructure issue, not code — workflow is correct)
+  - VirusTotal may flag agent automation scripts (watchdog, systemd units) as heuristic match
+    - Expected behavior for legitimate agent lifecycle management, not malware
+    - Scripts use standard tools (curl, jq, systemctl) for health monitoring
+  - Documentation placeholders (YOUR_KEY, YOUR_SOLVR_KEY) are examples, not leaked secrets
