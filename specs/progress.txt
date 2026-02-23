@@ -3112,3 +3112,28 @@
   - proactive-amcp.sh has both `memory)` and `memory-prune)` case entries
   - All memory-evolution.bats tests pass (7/7)
   - File sizes: memory.sh=93L, proactive-amcp.sh=251L (both well under 800)
+
+## Task: refactor — Consolidate ontology/validation scripts into ontology.sh (PRD task 5) (DONE)
+- Created `scripts/ontology.sh` (246 lines) — consolidated wrapper with 6 subcommands:
+  - `validate` → calls validate-ontology.py (schema validation for JSONL ontology graph)
+  - `prune` → calls prune-ontology.py (typed pruning policies per entity type)
+  - `similarity` → calls compute-entity-similarity.py (Levenshtein + keyword overlap)
+  - `temporal` → calls temporal-queries.py (cross-checkpoint entity history)
+  - `contract` → absorbed validate-skill-contract.sh logic, calls validate-skill-contract.py
+  - `conflicts` → absorbed detect-contract-conflicts.sh logic, calls detect-contract-conflicts.py
+- Removed old shell wrappers: validate-skill-contract.sh, detect-contract-conflicts.sh
+- Kept all 6 Python files intact (validate-ontology.py, prune-ontology.py, compute-entity-similarity.py, temporal-queries.py, validate-skill-contract.py, detect-contract-conflicts.py)
+- Updated proactive-amcp.sh:
+  - Added `ontology` parent command routing to ontology.sh
+  - Backward-compat aliases: `temporal-query` → ontology temporal, `prune` → ontology prune, `validate-contract` → ontology contract, `detect-conflicts` → ontology conflicts
+  - Updated usage/help text
+- Updated SKILL.md: added "Advanced: Ontology Commands" section with examples for all 6 subcommands
+- Updated test/skill-contract.bats: all 8 tests now call ontology.sh contract/conflicts instead of old shell wrappers
+- Updated Python docstrings: validate-skill-contract.py and detect-contract-conflicts.py now reference ontology.sh
+- Verification:
+  - bash -n passes on ontology.sh and proactive-amcp.sh
+  - python3 py_compile passes on all 6 Python files
+  - All 8 skill-contract tests pass through ontology.sh
+  - All 29 ontology-related tests pass (skill-contract 8 + ontology-checkpoint 6 + temporal-queries 8 + memory-evolution 7)
+  - No regressions (same pre-existing failures in diagnose, solvr-pinning, solvr-register, watchdog)
+  - File sizes: ontology.sh=246L, proactive-amcp.sh=257L (both well under 800)

@@ -8,7 +8,7 @@ Conflict types:
 - Equality vs inequality: Skill A says "X.p == v" and Skill B says "X.p != v"
 - Contradictory equality: Skill A says "X.p == v1" and Skill B says "X.p == v2" (v1 != v2)
 
-Called by detect-contract-conflicts.sh via environment variables:
+Called by ontology.sh conflicts via environment variables:
   _SKILLS_DIR    Path to skills directory
   _JSON_OUTPUT   'true' for JSON output
 """

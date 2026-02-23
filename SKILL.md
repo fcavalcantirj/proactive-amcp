@@ -340,6 +340,31 @@ bash SKILL_DIR/scripts/proactive-amcp.sh config set notify.target YOUR_TELEGRAM_
 bash SKILL_DIR/scripts/proactive-amcp.sh config get
 ```
 
+### Advanced: Ontology Commands
+
+Semantic validation, knowledge graph management, and temporal queries for the AMCP ontology layer.
+
+```bash
+# Validate ontology graph schema and integrity
+bash SKILL_DIR/scripts/proactive-amcp.sh ontology validate <graph.jsonl>
+
+# Prune entities by typed retention policies
+bash SKILL_DIR/scripts/proactive-amcp.sh ontology prune [--dry-run] [--config FILE] [--graph FILE]
+
+# Compute entity similarity for relation inference
+bash SKILL_DIR/scripts/proactive-amcp.sh ontology similarity --graph FILE --entity-id ID
+
+# Cross-checkpoint entity history
+bash SKILL_DIR/scripts/proactive-amcp.sh ontology temporal history <entity_id>
+bash SKILL_DIR/scripts/proactive-amcp.sh ontology temporal query <entity_id> --start YYYY-MM-DD --end YYYY-MM-DD
+
+# Validate skill ontology contracts
+bash SKILL_DIR/scripts/proactive-amcp.sh ontology contract <skill-name> [--json]
+
+# Detect cross-skill contract conflicts
+bash SKILL_DIR/scripts/proactive-amcp.sh ontology conflicts [--json]
+```
+
 ---
 
 ## What Gets Saved

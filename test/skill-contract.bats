@@ -67,7 +67,7 @@ EOF
     }
   }'
 
-  run bash "$REAL_SCRIPT_DIR/validate-skill-contract.sh" task-manager \
+  run bash "$REAL_SCRIPT_DIR/ontology.sh" contract task-manager \
     --graph "$GRAPH_DIR/graph.jsonl" --skills-dir "$SKILLS_DIR"
 
   [ "$status" -eq 0 ]
@@ -94,7 +94,7 @@ EOF
     }
   }'
 
-  run bash "$REAL_SCRIPT_DIR/validate-skill-contract.sh" task-manager \
+  run bash "$REAL_SCRIPT_DIR/ontology.sh" contract task-manager \
     --graph "$GRAPH_DIR/graph.jsonl" --skills-dir "$SKILLS_DIR"
 
   [ "$status" -eq 1 ]
@@ -120,7 +120,7 @@ EOF
     }
   }'
 
-  run bash "$REAL_SCRIPT_DIR/validate-skill-contract.sh" task-reader \
+  run bash "$REAL_SCRIPT_DIR/ontology.sh" contract task-reader \
     --graph "$GRAPH_DIR/graph.jsonl" --skills-dir "$SKILLS_DIR"
 
   [ "$status" -eq 1 ]
@@ -147,7 +147,7 @@ EOF
     }
   }'
 
-  run bash "$REAL_SCRIPT_DIR/validate-skill-contract.sh" action-writer \
+  run bash "$REAL_SCRIPT_DIR/ontology.sh" contract action-writer \
     --graph "$GRAPH_DIR/graph.jsonl" --skills-dir "$SKILLS_DIR" --json
 
   [ "$status" -eq 0 ]
@@ -184,7 +184,7 @@ assert 'Action' in data['entity_types_found'], f'Action not in entity_types_foun
     }
   }'
 
-  run bash "$REAL_SCRIPT_DIR/detect-contract-conflicts.sh" --skills-dir "$SKILLS_DIR"
+  run bash "$REAL_SCRIPT_DIR/ontology.sh" conflicts --skills-dir "$SKILLS_DIR"
 
   [ "$status" -eq 1 ]
   [[ "$output" == *"CONFLICTS FOUND"* ]]
@@ -197,7 +197,7 @@ assert 'Action' in data['entity_types_found'], f'Action not in entity_types_foun
 @test "invalid contract JSON rejected with error" {
   echo "not valid json {{{" > "$TEST_DIR/bad-contract.json"
 
-  run bash "$REAL_SCRIPT_DIR/validate-skill-contract.sh" \
+  run bash "$REAL_SCRIPT_DIR/ontology.sh" contract \
     --contract "$TEST_DIR/bad-contract.json" \
     --graph "$GRAPH_DIR/graph.jsonl"
 
@@ -208,7 +208,7 @@ assert 'Action' in data['entity_types_found'], f'Action not in entity_types_foun
 @test "no ontologyContract field: validation skipped gracefully" {
   create_skill_without_contract "plain-skill"
 
-  run bash "$REAL_SCRIPT_DIR/validate-skill-contract.sh" plain-skill \
+  run bash "$REAL_SCRIPT_DIR/ontology.sh" contract plain-skill \
     --graph "$GRAPH_DIR/graph.jsonl" --skills-dir "$SKILLS_DIR"
 
   [ "$status" -eq 0 ]
@@ -239,7 +239,7 @@ assert 'Action' in data['entity_types_found'], f'Action not in entity_types_foun
     }
   }'
 
-  run bash "$REAL_SCRIPT_DIR/detect-contract-conflicts.sh" --skills-dir "$SKILLS_DIR"
+  run bash "$REAL_SCRIPT_DIR/ontology.sh" conflicts --skills-dir "$SKILLS_DIR"
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"No conflicts"* ]]

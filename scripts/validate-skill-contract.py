@@ -4,7 +4,7 @@
 Reads contract from skill.json (ontologyContract field) or direct contract file.
 Checks preconditions against current graph entities.
 
-Called by validate-skill-contract.sh via environment variables:
+Called by ontology.sh contract via environment variables:
   _CONTRACT_SOURCE  Path to skill.json or direct contract JSON
   _GRAPH_PATH       Path to graph.jsonl
   _JSON_OUTPUT      'true' for JSON output

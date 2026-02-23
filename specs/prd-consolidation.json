@@ -96,7 +96,7 @@
       "Add note in SKILL.md: 'Advanced: ontology commands for semantic validation'",
       "Test all subcommands"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": 6,
