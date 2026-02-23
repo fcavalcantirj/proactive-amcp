@@ -1,6 +1,6 @@
 ---
 name: proactive-amcp
-version: 0.7.8
+version: 0.7.9
 description: Your agent's safety net. Watchdog resurrection, free IPFS pinning via Solvr, learning commands (/remember, /stuck, /learned), and a plugin that checkpoints automatically on lifecycle events.
 triggers:
   - amcp

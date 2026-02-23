@@ -2,7 +2,8 @@
 
 # Count passed and total requirements in PRD
 
-prd_file="specs/prd-v1.json"
+# Accept PRD file as argument or env var, default to prd-v1.json
+prd_file="${1:-${PRD_FILE:-specs/prd-v1.json}}"
 
 if [ ! -f "$prd_file" ]; then
   echo "0/0 (0%) - PRD not found"

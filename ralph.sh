@@ -36,6 +36,9 @@ if [ -z "$1" ]; then
   exit 1
 fi
 
+# PRD file - from env var or default
+PRD_FILE="${PRD_FILE:-specs/prd-v1.json}"
+
 echo -e "${DIM}Claude processes running:${NC}"
 ps aux | grep -i claude | grep -v grep | awk '{print "  PID:", $2}' || echo "  None"
 echo ""
@@ -61,7 +64,7 @@ for ((i=1; i<=$1; i++)); do
   echo ""
   iter_start=$(date +%s)
 
-  claude --dangerously-skip-permissions --no-session-persistence -p --output-format json "@SKILL.md @README.md @specs/prd-v1.json @specs/progress.txt \
+  claude --dangerously-skip-permissions --no-session-persistence -p --output-format json "@SKILL.md @README.md @${PRD_FILE} @specs/progress.txt \
 
 === GOLDEN RULES (MUST FOLLOW) ===
 • NO MOCKS, NO STUBS - real implementation only (learned from notify.sh test-stub bug!)
@@ -74,15 +77,12 @@ for ((i=1; i<=$1; i++)); do
 
 === WORKFLOW ===
 
-PHASE RESTRICTION: ONLY work on tasks where phase=7. Phase 1, 2, and 3 are COMPLETE.
-If all phase 4 tasks pass, STOP and report PHASE_4_COMPLETE.
-
-1. Find the highest-priority requirement in specs/prd-v1.json where passes=false AND phase=7 and work ONLY on that.
-2. Implement the requirement in scripts/ (bash) or as a new command.
-3. Test: run 'bash -n scripts/<script>.sh' for syntax validation.
-4. Test: run structural grep checks where applicable.
+1. Find the first task in ${PRD_FILE} where passes=false and work ONLY on that.
+2. Implement the requirement following the task steps.
+3. Test: run 'bash -n scripts/<script>.sh' for syntax validation (if bash).
+4. Test: run structural checks where applicable.
 5. Update specs/progress.txt with what you did.
-6. Update specs/prd-v1.json with passes=true for completed requirement.
+6. Update ${PRD_FILE} with passes=true for completed task.
 7. COMMIT: Run 'git add .' then 'git commit -m \"message\"'.
 8. PUSH: Run 'git push'.
 
