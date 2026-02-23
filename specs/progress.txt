@@ -2801,3 +2801,9 @@
 - chmod +x applied, verified executable (-rwxrwxr-x)
 - bash -n syntax check passes
 - bash skill/scripts/status.sh --help shows usage with basic/--full/--json modes and exit codes
+
+## Task: bundling — Copy pin-to-solvr.sh into skill package
+- Copied scripts/pin-to-solvr.sh to skill/scripts/pin-to-solvr.sh (4349 bytes)
+- chmod +x applied, verified executable (-rwxrwxr-x)
+- bash -n syntax check passes
+- bash skill/scripts/pin-to-solvr.sh --help shows usage with file_path, name, --dry-run options

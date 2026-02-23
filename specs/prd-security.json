@@ -112,7 +112,7 @@
         "Verify executable: chmod +x skill/scripts/pin-to-solvr.sh",
         "Test: bash skill/scripts/pin-to-solvr.sh --help shows usage or runs without error"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "category": "bundling",
