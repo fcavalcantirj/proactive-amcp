@@ -2807,3 +2807,13 @@
 - chmod +x applied, verified executable (-rwxrwxr-x)
 - bash -n syntax check passes
 - bash skill/scripts/pin-to-solvr.sh --help shows usage with file_path, name, --dry-run options
+
+## Task: bundling — Copy remaining utility scripts into skill package
+- Listed all scripts in scripts/: 42 .sh files and 11 .py files
+- Identified 8 .sh and 2 .py already in skill/scripts/ from previous tasks
+- Copied 34 remaining .sh files: auto-checkpoint.sh, backup-config.sh, claude-diagnose.sh, condense-error.sh, config-evaluators.sh, config.sh, detect-contract-conflicts.sh, diagnose.sh, full-checkpoint.sh, groq-status.sh, inject-secrets.sh, install.sh, link-identity.sh, list-checkpoints.sh, memory-evolution.sh, memory-prune-batch.sh, memory-prune.sh, migrate-pins.sh, notify.sh, post-checkpoint-metadata.sh, pre-commit-secrets.sh, recreate-venvs.sh, register-checkpoint-solvr.sh, resurrect-from-solvr.sh, scan-secrets.sh, session-fix.sh, smart-checkpoint-filter.sh, smart-checkpoint-trigger.sh, solvr-heartbeat.sh, solvr-register.sh, spawn-child.sh, try-fix-config.sh, validate-skill-contract.sh, watchdog.sh
+- Copied 9 remaining .py files: compute-entity-similarity.py, detect-contract-conflicts.py, detect-failure.py, fix-openclaw-session.py, generate-problem-summary.py, prune-ontology.py, temporal-queries.py, validate-ontology.py, validate-skill-contract.py
+- chmod +x applied to all .sh and .py files
+- All 42 .sh files pass bash -n syntax check
+- skill/scripts/ now has 42 .sh + 11 .py = 53 total scripts (matches source)
+- bash skill/scripts/proactive-amcp.sh --help works correctly from skill package

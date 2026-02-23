@@ -124,7 +124,7 @@
         "chmod +x all copied scripts",
         "Verify: ls skill/scripts/*.sh shows all scripts"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "category": "docs",
