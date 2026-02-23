@@ -57,7 +57,7 @@
         "Verify executable: chmod +x skill/scripts/resuscitate.sh",
         "Test: bash skill/scripts/resuscitate.sh --help shows usage or runs without error"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "category": "bundling",

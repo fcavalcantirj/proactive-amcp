@@ -2766,3 +2766,8 @@
 - Verified file exists and is executable (chmod +x): -rwxrwxr-x, 12973 bytes
 - Syntax check passes: bash -n skill/scripts/checkpoint.sh
 - Note: --help test shows expected error about missing scan-secrets.sh (not yet bundled — later task)
+
+## Task: bundling — Copy resuscitate.sh into skill package
+- Copied scripts/resuscitate.sh to skill/scripts/resuscitate.sh
+- Verified file exists and is executable (chmod +x): -rwxrwxr-x, 24553 bytes
+- Syntax check passes: bash -n skill/scripts/resuscitate.sh
