@@ -2740,3 +2740,16 @@
   - Stale approaches rotation: check and update via heartbeat --json + PATCH API
   - Suggested actions template: action types table + processing script template
   - Heartbeat includes Solvr intelligence briefing as step 1 of rotation
+
+## Task: metadata — Create skill.json with complete metadata declarations
+- Created skill/skill.json with:
+  - name: proactive-amcp, version: 0.8.0
+  - description with persistence warning
+  - 3 requiredEnvVars: SOLVR_API_KEY, PINATA_JWT, NOTIFY_TARGET (all optional)
+  - requiredBinaries: bash, curl, jq
+  - optionalBinaries: git, systemctl, crontab
+  - persistence: createsSystemdUnits, createsCronJobs, createsIdentityFiles (all true)
+  - networkAccess: 3 endpoints (api.solvr.dev, api.pinata.cloud, ipfs.solvr.dev)
+  - dataExposed: "Checkpoints contain workspace files, memory, config. Plaintext by default."
+- Validated: cat skill/skill.json | jq . passes
+- All structural checks verified (3 env vars, correct names, 3 binaries, persistence flags, 3 endpoints, dataExposed content)

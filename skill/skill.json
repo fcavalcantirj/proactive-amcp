@@ -1,0 +1,46 @@
+{
+  "name": "proactive-amcp",
+  "version": "0.8.0",
+  "description": "Agent checkpointing and resurrection via IPFS/Solvr. Creates optional systemd/cron jobs.",
+  "requiredEnvVars": [
+    {
+      "name": "SOLVR_API_KEY",
+      "description": "Solvr API key for agent registration and pinning",
+      "required": false
+    },
+    {
+      "name": "PINATA_JWT",
+      "description": "Pinata JWT for direct IPFS pinning",
+      "required": false
+    },
+    {
+      "name": "NOTIFY_TARGET",
+      "description": "Telegram chat ID for resurrection notifications",
+      "required": false
+    }
+  ],
+  "requiredBinaries": ["bash", "curl", "jq"],
+  "optionalBinaries": ["git", "systemctl", "crontab"],
+  "persistence": {
+    "createsSystemdUnits": true,
+    "createsCronJobs": true,
+    "createsIdentityFiles": true
+  },
+  "networkAccess": {
+    "endpoints": [
+      {
+        "host": "api.solvr.dev",
+        "purpose": "Agent registration, knowledge search, IPFS pinning"
+      },
+      {
+        "host": "api.pinata.cloud",
+        "purpose": "Direct IPFS pinning (alternative to Solvr)"
+      },
+      {
+        "host": "ipfs.solvr.dev",
+        "purpose": "IPFS gateway for checkpoint retrieval"
+      }
+    ]
+  },
+  "dataExposed": "Checkpoints contain workspace files, memory, config. Plaintext by default."
+}

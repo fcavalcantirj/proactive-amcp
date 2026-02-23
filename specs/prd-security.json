@@ -1,0 +1,322 @@
+{
+  "name": "proactive-amcp-security-hardening",
+  "version": "0.8.0",
+  "spec": "specs/SECURITY-HARDENING.md",
+  "created": "2026-02-23",
+  "tasks": [
+    {
+      "category": "metadata",
+      "description": "Create skill.json with complete metadata declarations",
+      "steps": [
+        "Create skill/skill.json file",
+        "Add name: 'proactive-amcp'",
+        "Add version: '0.8.0'",
+        "Add description with persistence warning: 'Agent checkpointing and resurrection via IPFS/Solvr. Creates optional systemd/cron jobs.'",
+        "Add requiredEnvVars array with 3 entries",
+        "Entry 1: { name: 'SOLVR_API_KEY', description: 'Solvr API key for agent registration and pinning', required: false }",
+        "Entry 2: { name: 'PINATA_JWT', description: 'Pinata JWT for direct IPFS pinning', required: false }",
+        "Entry 3: { name: 'NOTIFY_TARGET', description: 'Telegram chat ID for resurrection notifications', required: false }",
+        "Add requiredBinaries: ['bash', 'curl', 'jq']",
+        "Add optionalBinaries: ['git', 'systemctl', 'crontab']",
+        "Add persistence object with createsSystemdUnits: true, createsCronJobs: true, createsIdentityFiles: true",
+        "Add networkAccess object listing api.solvr.dev, api.pinata.cloud, IPFS gateways",
+        "Add dataExposed: 'Checkpoints contain workspace files, memory, config. Plaintext by default.'",
+        "Verify: cat skill/skill.json | jq . validates as JSON"
+      ],
+      "passes": true
+    },
+    {
+      "category": "bundling",
+      "description": "Copy proactive-amcp.sh into skill package",
+      "steps": [
+        "Create skill/scripts/ directory if not exists",
+        "Copy scripts/proactive-amcp.sh to skill/scripts/proactive-amcp.sh",
+        "Verify file exists: ls -la skill/scripts/proactive-amcp.sh",
+        "Verify executable: chmod +x skill/scripts/proactive-amcp.sh",
+        "Test: bash skill/scripts/proactive-amcp.sh --help shows usage"
+      ],
+      "passes": false
+    },
+    {
+      "category": "bundling",
+      "description": "Copy checkpoint.sh into skill package",
+      "steps": [
+        "Copy scripts/checkpoint.sh to skill/scripts/checkpoint.sh",
+        "Verify file exists: ls -la skill/scripts/checkpoint.sh",
+        "Verify executable: chmod +x skill/scripts/checkpoint.sh",
+        "Test: bash skill/scripts/checkpoint.sh --help shows usage or runs without error"
+      ],
+      "passes": false
+    },
+    {
+      "category": "bundling",
+      "description": "Copy resuscitate.sh into skill package",
+      "steps": [
+        "Copy scripts/resuscitate.sh to skill/scripts/resuscitate.sh",
+        "Verify file exists: ls -la skill/scripts/resuscitate.sh",
+        "Verify executable: chmod +x skill/scripts/resuscitate.sh",
+        "Test: bash skill/scripts/resuscitate.sh --help shows usage or runs without error"
+      ],
+      "passes": false
+    },
+    {
+      "category": "bundling",
+      "description": "Copy init.sh into skill package",
+      "steps": [
+        "Copy scripts/init.sh to skill/scripts/init.sh",
+        "Verify file exists: ls -la skill/scripts/init.sh",
+        "Verify executable: chmod +x skill/scripts/init.sh",
+        "Test: bash skill/scripts/init.sh --help shows usage or runs without error"
+      ],
+      "passes": false
+    },
+    {
+      "category": "bundling",
+      "description": "Copy learning.sh into skill package",
+      "steps": [
+        "Copy scripts/learning.sh to skill/scripts/learning.sh",
+        "Verify file exists: ls -la skill/scripts/learning.sh",
+        "Verify executable: chmod +x skill/scripts/learning.sh",
+        "Test: bash skill/scripts/learning.sh --help shows usage or runs without error"
+      ],
+      "passes": false
+    },
+    {
+      "category": "bundling",
+      "description": "Copy solvr-integration.sh into skill package",
+      "steps": [
+        "Copy scripts/solvr-integration.sh to skill/scripts/solvr-integration.sh",
+        "Verify file exists: ls -la skill/scripts/solvr-integration.sh",
+        "Verify executable: chmod +x skill/scripts/solvr-integration.sh",
+        "Test: bash skill/scripts/solvr-integration.sh --help shows usage or runs without error"
+      ],
+      "passes": false
+    },
+    {
+      "category": "bundling",
+      "description": "Copy status.sh into skill package",
+      "steps": [
+        "Copy scripts/status.sh to skill/scripts/status.sh",
+        "Verify file exists: ls -la skill/scripts/status.sh",
+        "Verify executable: chmod +x skill/scripts/status.sh",
+        "Test: bash skill/scripts/status.sh shows status output"
+      ],
+      "passes": false
+    },
+    {
+      "category": "bundling",
+      "description": "Copy pin-to-solvr.sh into skill package",
+      "steps": [
+        "Copy scripts/pin-to-solvr.sh to skill/scripts/pin-to-solvr.sh",
+        "Verify file exists: ls -la skill/scripts/pin-to-solvr.sh",
+        "Verify executable: chmod +x skill/scripts/pin-to-solvr.sh",
+        "Test: bash skill/scripts/pin-to-solvr.sh --help shows usage or runs without error"
+      ],
+      "passes": false
+    },
+    {
+      "category": "bundling",
+      "description": "Copy remaining utility scripts into skill package",
+      "steps": [
+        "List all scripts: ls scripts/*.sh",
+        "Identify any scripts not yet copied (full-checkpoint.sh, smart-checkpoint-*.sh, etc.)",
+        "Copy each remaining .sh file to skill/scripts/",
+        "chmod +x all copied scripts",
+        "Verify: ls skill/scripts/*.sh shows all scripts"
+      ],
+      "passes": false
+    },
+    {
+      "category": "docs",
+      "description": "Update SKILL.md to remove git clone instructions",
+      "steps": [
+        "Read current skill/SKILL.md",
+        "Find section referencing 'git clone https://github.com/fcavalcantirj/proactive-amcp'",
+        "Replace with: 'Scripts are bundled in this skill package at scripts/'",
+        "Update any paths from external repo to local skill/scripts/ paths",
+        "Remove any curl | bash install patterns",
+        "Update version to 0.8.0 in frontmatter",
+        "Verify: grep -i 'git clone' skill/SKILL.md returns nothing"
+      ],
+      "passes": false
+    },
+    {
+      "category": "docs",
+      "description": "Create SECURITY.md documenting data flows",
+      "steps": [
+        "Create skill/SECURITY.md file",
+        "Add header: '# Security & Data Flow Documentation'",
+        "Add section: '## Data Collected' listing all files included in checkpoints",
+        "List: SOUL.md, MEMORY.md, USER.md, TOOLS.md, memory/*.md, identity.json, config.json",
+        "Add section: '## Data NOT Collected' listing excluded files",
+        "List: OpenClaw config (API keys), AgentMemory vault, system files outside workspace",
+        "Add section: '## Network Endpoints' listing all contacted services",
+        "List: api.solvr.dev (registration, pinning), api.pinata.cloud (direct IPFS), IPFS gateways",
+        "Add section: '## Persistent Components' listing systemd/cron created",
+        "Add section: '## Encryption' noting plaintext default, --encrypt option coming",
+        "Add section: '## How to Audit' with commands to inspect scripts before running",
+        "Add section: '## How to Uninstall' with cleanup commands",
+        "Verify: cat skill/SECURITY.md shows complete documentation"
+      ],
+      "passes": false
+    },
+    {
+      "category": "encryption",
+      "description": "Add --encrypt flag to checkpoint.sh",
+      "steps": [
+        "Open scripts/checkpoint.sh",
+        "Add ENCRYPT=false variable at top",
+        "Add argument parsing: if [[ $1 == '--encrypt' ]]; then ENCRYPT=true; shift; fi",
+        "After tarball creation, add encryption block",
+        "If ENCRYPT=true: generate random 32-byte key with openssl rand -hex 32",
+        "Encrypt tarball: openssl enc -aes-256-cbc -salt -in checkpoint.tar.gz -out checkpoint.tar.gz.enc -pass pass:$KEY",
+        "Save key to ~/.amcp/checkpoint-keys.json with CID as key",
+        "Pin encrypted file instead of plaintext",
+        "Update output to show 'Encrypted checkpoint' when --encrypt used",
+        "Test: ./scripts/checkpoint.sh --encrypt creates encrypted checkpoint",
+        "Test: key saved in ~/.amcp/checkpoint-keys.json"
+      ],
+      "passes": false
+    },
+    {
+      "category": "encryption",
+      "description": "Add --key-file flag to resuscitate.sh",
+      "steps": [
+        "Open scripts/resuscitate.sh",
+        "Add KEY_FILE='' variable at top",
+        "Add argument parsing for --key-file /path",
+        "Add argument parsing for --cid <cid>",
+        "After downloading checkpoint, detect if encrypted (check file magic or .enc extension)",
+        "If encrypted and --key-file provided: decrypt with openssl",
+        "If encrypted and no --key-file: look up key in ~/.amcp/checkpoint-keys.json by CID",
+        "If key not found: error with 'Checkpoint is encrypted. Provide --key-file or ensure key exists in ~/.amcp/checkpoint-keys.json'",
+        "Decrypt: openssl enc -aes-256-cbc -d -in checkpoint.tar.gz.enc -out checkpoint.tar.gz -pass pass:$KEY",
+        "Continue with normal extraction",
+        "Test: ./scripts/resuscitate.sh --cid <encrypted-cid> --key-file /path/to/key works"
+      ],
+      "passes": false
+    },
+    {
+      "category": "release",
+      "description": "Create GitHub Actions workflow for signed releases",
+      "steps": [
+        "Create .github/workflows/release.yml",
+        "Add name: 'Release'",
+        "Add on: push: tags: 'v*'",
+        "Add job: release with ubuntu-latest",
+        "Step 1: Checkout code",
+        "Step 2: Create tarball: tar -czvf proactive-amcp-${{ github.ref_name }}.tar.gz skill/",
+        "Step 3: Generate SHA256: sha256sum proactive-amcp-*.tar.gz > proactive-amcp-${{ github.ref_name }}.tar.gz.sha256",
+        "Step 4: Create GitHub Release using softprops/action-gh-release@v1",
+        "Attach files: proactive-amcp-*.tar.gz, proactive-amcp-*.sha256",
+        "Add body: 'SHA256 checksum included. Verify with: sha256sum -c proactive-amcp-*.sha256'",
+        "Test: push tag v0.8.0 and verify release created with artifacts"
+      ],
+      "passes": false
+    },
+    {
+      "category": "testing",
+      "description": "Test bundled skill installs without external fetch",
+      "steps": [
+        "Create test directory: mkdir -p /tmp/test-skill-install",
+        "Copy skill/ folder to test directory",
+        "Simulate ClawdHub install by running: ls skill/scripts/*.sh",
+        "Verify all required scripts present: proactive-amcp.sh, checkpoint.sh, resuscitate.sh, init.sh",
+        "Run skill/scripts/proactive-amcp.sh status (should work without git clone)",
+        "Verify: grep -r 'git clone' skill/ returns nothing",
+        "Verify: no network calls needed for script availability"
+      ],
+      "passes": false
+    },
+    {
+      "category": "testing",
+      "description": "Test skill.json is valid and complete",
+      "steps": [
+        "Run: cat skill/skill.json | jq .",
+        "Verify .requiredEnvVars has 3 entries",
+        "Verify .requiredEnvVars[0].name == 'SOLVR_API_KEY'",
+        "Verify .requiredBinaries includes 'bash', 'curl', 'jq'",
+        "Verify .persistence.createsSystemdUnits == true",
+        "Verify .networkAccess.endpoints is array with 3 entries",
+        "Verify .dataExposed contains 'Plaintext by default'"
+      ],
+      "passes": false
+    },
+    {
+      "category": "testing",
+      "description": "Test encrypted checkpoint round-trip",
+      "steps": [
+        "Create test workspace with SOUL.md, MEMORY.md",
+        "Run: ./scripts/checkpoint.sh --encrypt",
+        "Verify output shows 'Encrypted checkpoint'",
+        "Capture CID from output",
+        "Verify key stored: cat ~/.amcp/checkpoint-keys.json | jq '.[\"<CID>\"]'",
+        "Delete test workspace files",
+        "Run: ./scripts/resuscitate.sh --cid <CID>",
+        "Verify: key automatically found and checkpoint decrypted",
+        "Verify: SOUL.md, MEMORY.md restored"
+      ],
+      "passes": false
+    },
+    {
+      "category": "publish",
+      "description": "Publish v0.8.0 to npm",
+      "steps": [
+        "Update package.json version to 0.8.0",
+        "Update skill/SKILL.md frontmatter version to 0.8.0",
+        "Run: npm version 0.8.0 --no-git-tag-version (if not already updated)",
+        "Run: npm publish",
+        "Verify: npm view proactive-amcp version returns 0.8.0"
+      ],
+      "passes": false
+    },
+    {
+      "category": "publish",
+      "description": "Publish v0.8.0 to ClawdHub",
+      "steps": [
+        "Verify skill/SKILL.md version is 0.8.0",
+        "Verify skill/scripts/ contains all bundled scripts",
+        "Run: clawdhub publish skill --slug proactive-amcp --version 0.8.0",
+        "Verify: clawdhub search proactive-amcp shows v0.8.0"
+      ],
+      "passes": false
+    },
+    {
+      "category": "publish",
+      "description": "Create GitHub release v0.8.0 with signed artifacts",
+      "steps": [
+        "Commit all changes: git add -A && git commit -m 'v0.8.0: Security hardening'",
+        "Create tag: git tag v0.8.0",
+        "Push: git push origin main --tags",
+        "Verify GitHub Actions workflow runs",
+        "Verify release page has tarball and SHA256 file",
+        "Download and verify: sha256sum -c proactive-amcp-v0.8.0.tar.gz.sha256"
+      ],
+      "passes": false
+    },
+    {
+      "category": "validation",
+      "description": "Re-run security analysis and verify reduced warnings",
+      "steps": [
+        "Submit updated skill to same security analyzer that flagged issues",
+        "Verify: 'undeclared env vars' warning resolved (skill.json declares them)",
+        "Verify: 'external code fetch' warning resolved (scripts bundled)",
+        "Verify: 'persistence not declared' warning resolved (skill.json has persistence object)",
+        "Document any remaining warnings for future work",
+        "If VirusTotal still flags: document as expected behavior (legitimate agent automation)"
+      ],
+      "passes": false
+    }
+  ],
+  "summary": {
+    "total": 22,
+    "metadata": 1,
+    "bundling": 9,
+    "docs": 2,
+    "encryption": 2,
+    "release": 1,
+    "testing": 3,
+    "publish": 3,
+    "validation": 1
+  }
+}
