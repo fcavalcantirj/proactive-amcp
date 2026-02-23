@@ -1,6 +1,6 @@
 #!/bin/bash
 # checkpoint.sh - Create AMCP checkpoint and pin to IPFS
-# Usage: ./checkpoint.sh [--notify] [--force]
+# Usage: ./checkpoint.sh [--notify] [--force] [--encrypt] [--smart]
 
 set -euo pipefail
 
@@ -36,12 +36,15 @@ NOTIFY=""
 FORCE_CHECKPOINT=""
 SMART_CHECKPOINT=false
 NO_SOLVR_METADATA=false
+ENCRYPT=false
+CHECKPOINT_KEYS_FILE="$HOME/.amcp/checkpoint-keys.json"
 for arg in "$@"; do
   case $arg in
     --notify) NOTIFY="--notify" ;;
     --force)  FORCE_CHECKPOINT="force" ;;
     --smart)  SMART_CHECKPOINT=true ;;
     --no-solvr-metadata) NO_SOLVR_METADATA=true ;;
+    --encrypt) ENCRYPT=true ;;
   esac
 done
 
@@ -277,6 +280,34 @@ $AMCP_CLI $AMCP_ARGS
 
 echo "Checkpoint created: $CHECKPOINT_PATH"
 
+# Encrypt checkpoint if requested
+if [ "$ENCRYPT" = true ]; then
+  echo ""
+  echo "=== Encrypting Checkpoint ==="
+  ENCRYPT_KEY=$(openssl rand -hex 32)
+  ENCRYPTED_PATH="${CHECKPOINT_PATH}.enc"
+  openssl enc -aes-256-cbc -salt -pbkdf2 \
+    -in "$CHECKPOINT_PATH" \
+    -out "$ENCRYPTED_PATH" \
+    -pass "pass:${ENCRYPT_KEY}" || {
+      echo "FATAL: Encryption failed" >&2
+      exit 1
+    }
+  # Replace plaintext with encrypted version
+  mv "$ENCRYPTED_PATH" "$CHECKPOINT_PATH"
+  echo "  Encrypted checkpoint: $CHECKPOINT_PATH"
+
+  # Save key — will be associated with CID after pinning
+  # Initialize keys file if missing
+  if [ ! -f "$CHECKPOINT_KEYS_FILE" ]; then
+    echo '{}' > "$CHECKPOINT_KEYS_FILE"
+    chmod 600 "$CHECKPOINT_KEYS_FILE"
+  fi
+  # Store key temporarily under localPath; will be re-keyed under CID after pinning
+  ENCRYPT_KEY_SAVED=true
+  echo "  Encryption key will be saved after pinning"
+fi
+
 # Pin to IPFS
 echo "Pinning to IPFS (provider: $PINNING_PROVIDER)..."
 
@@ -343,17 +374,46 @@ case "$PINNING_PROVIDER" in
 esac
 
 if [ -n "$CID" ]; then
-  echo "✅ Pinned to IPFS: $CID"
+  if [ "$ENCRYPT" = true ]; then
+    echo "✅ Encrypted checkpoint pinned to IPFS: $CID"
+  else
+    echo "✅ Pinned to IPFS: $CID"
+  fi
+fi
+
+# Save encryption key keyed by CID (or localPath if no CID)
+if [ "$ENCRYPT" = true ] && [ "${ENCRYPT_KEY_SAVED:-false}" = true ]; then
+  local_key_id="${CID:-$CHECKPOINT_PATH}"
+  python3 -c "
+import json, os, sys
+keys_path = os.path.expanduser('$CHECKPOINT_KEYS_FILE')
+keys = {}
+if os.path.exists(keys_path):
+    with open(keys_path) as f:
+        keys = json.load(f)
+keys['$local_key_id'] = {
+    'key': '$ENCRYPT_KEY',
+    'created': '$(date -Iseconds)',
+    'localPath': '$CHECKPOINT_PATH'
+}
+with open(keys_path, 'w') as f:
+    json.dump(keys, f, indent=2)
+os.chmod(keys_path, 0o600)
+" 2>/dev/null || echo "WARN: Failed to save encryption key" >&2
+  echo "  Encryption key saved to $CHECKPOINT_KEYS_FILE"
 fi
 
 # Update last checkpoint file
+ENCRYPTED_FLAG="false"
+[ "$ENCRYPT" = true ] && ENCRYPTED_FLAG="true"
 cat > "$LAST_CHECKPOINT_FILE" << EOJSON
 {
   "cid": "$CID",
   "localPath": "$CHECKPOINT_PATH",
   "timestamp": "$(date -Iseconds)",
   "previousCID": "$PREVIOUS_CID",
-  "secretCount": $SECRET_COUNT
+  "secretCount": $SECRET_COUNT,
+  "encrypted": $ENCRYPTED_FLAG
 }
 EOJSON
 

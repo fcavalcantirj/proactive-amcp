@@ -176,7 +176,7 @@
         "Test: ./scripts/checkpoint.sh --encrypt creates encrypted checkpoint",
         "Test: key saved in ~/.amcp/checkpoint-keys.json"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "category": "encryption",

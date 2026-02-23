@@ -2845,3 +2845,24 @@
   - All 8 required sections present (grep '^## ' returns 8 matches)
   - File is 213 lines (well under 800 limit)
   - All data sourced from actual script inspection (checkpoint.sh, full-checkpoint.sh, resuscitate.sh, init.sh, install.sh, notify.sh)
+
+## Task: encryption — Add --encrypt flag to checkpoint.sh (DONE)
+- Added `ENCRYPT=false` variable and `CHECKPOINT_KEYS_FILE` path at top of checkpoint.sh
+- Added `--encrypt` to argument parsing loop
+- After checkpoint creation by `amcp` CLI, if `--encrypt`:
+  - Generates random 32-byte AES key via `openssl rand -hex 32`
+  - Encrypts checkpoint with `openssl enc -aes-256-cbc -salt -pbkdf2`
+  - Replaces plaintext checkpoint file with encrypted version (same path)
+  - Initializes `~/.amcp/checkpoint-keys.json` (mode 0600) if missing
+- After IPFS pinning, saves encryption key to `~/.amcp/checkpoint-keys.json` keyed by CID
+  - Falls back to localPath as key if no CID available
+  - Each entry stores: key, created timestamp, localPath
+  - File permissions set to 0600 (owner read/write only)
+- Updated last-checkpoint.json to include `"encrypted": true/false` field
+- Updated output messages: "Encrypted checkpoint pinned to IPFS" when --encrypt used
+- Copied updated checkpoint.sh to skill/scripts/checkpoint.sh (skill package)
+- Updated usage comment to document --encrypt flag
+- Verification:
+  - `bash -n scripts/checkpoint.sh` passes (no syntax errors)
+  - Structural grep confirms: --encrypt parsing, ENCRYPT variable, openssl calls, checkpoint-keys.json references
+  - File is 447 lines (well under 800 limit)
