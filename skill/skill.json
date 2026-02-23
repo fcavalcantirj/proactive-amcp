@@ -1,21 +1,26 @@
 {
   "name": "proactive-amcp",
-  "version": "0.9.1",
-  "description": "Agent checkpointing and resurrection via IPFS/Solvr. Creates optional systemd/cron jobs.",
+  "version": "0.9.2",
+  "description": "Make your agent proactive — auto-checkpoint before death, resurrect from IPFS, self-heal via watchdog.",
   "requiredEnvVars": [
     {
       "name": "SOLVR_API_KEY",
-      "description": "Solvr API key for agent registration and pinning",
-      "required": false
+      "description": "Solvr API key for agent registration and free IPFS pinning (get via 'solvr register')",
+      "required": true
     },
     {
       "name": "PINATA_JWT",
-      "description": "Pinata JWT for direct IPFS pinning",
+      "description": "Pinata JWT for direct IPFS pinning (alternative to Solvr)",
       "required": false
     },
     {
       "name": "NOTIFY_TARGET",
       "description": "Telegram chat ID for resurrection notifications",
+      "required": false
+    },
+    {
+      "name": "GROQ_API_KEY",
+      "description": "Groq API key for smart checkpoint filtering and memory pruning",
       "required": false
     }
   ],
