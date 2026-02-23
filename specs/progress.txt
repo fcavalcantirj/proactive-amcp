@@ -2829,3 +2829,19 @@
   - grep -i 'git clone' skill/SKILL.md returns nothing
   - grep 'curl.*|.*bash' skill/SKILL.md returns nothing
   - Version in frontmatter is 0.8.0
+
+## Task: docs — Create SECURITY.md documenting data flows (DONE)
+- Created `skill/SECURITY.md` (213 lines) — comprehensive security and data flow documentation
+- Sections included:
+  - **Data Collected**: Lists all files in checkpoints (SOUL.md, MEMORY.md, USER.md, TOOLS.md, AGENTS.md, memory/*.md, ontology graph, learning JSONL, identity.json, config.json, venvs manifest)
+  - **Data NOT Collected**: OpenClaw API keys (stripped), AgentMemory vault, system files outside workspace, SSH/GPG keys, .git/, node_modules, .venv/
+  - **Network Endpoints**: api.solvr.dev, api.pinata.cloud, IPFS gateways (solvr, ipfs.io, cloudflare), api.groq.com, Telegram API, AgentMail — all with purpose and trigger conditions
+  - **Persistent Components**: systemd units (amcp-watchdog.service, amcp-checkpoint.service/timer), cron fallback, all files created on disk with paths and permissions
+  - **Encryption**: Documents Ed25519-to-X25519 + ChaCha20-Poly1305 AEAD, secret extraction, staging cleanup
+  - **How to Audit**: Commands to inspect scripts, grep for network calls, dry-run checkpoint, check systemd units
+  - **How to Uninstall**: Stop services, remove data, remove skill, remove git hooks — with warnings about identity loss
+  - **Threat Model**: Bonus section covering identity theft, checkpoint tampering, secret leakage, MITM, stale creds, concurrent resurrection
+- Verification:
+  - All 8 required sections present (grep '^## ' returns 8 matches)
+  - File is 213 lines (well under 800 limit)
+  - All data sourced from actual script inspection (checkpoint.sh, full-checkpoint.sh, resuscitate.sh, init.sh, install.sh, notify.sh)

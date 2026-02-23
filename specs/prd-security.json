@@ -158,7 +158,7 @@
         "Add section: '## How to Uninstall' with cleanup commands",
         "Verify: cat skill/SECURITY.md shows complete documentation"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "category": "encryption",
