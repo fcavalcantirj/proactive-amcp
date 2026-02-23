@@ -1,6 +1,6 @@
 {
   "name": "proactive-amcp",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "description": "Agent checkpointing and resurrection via IPFS/Solvr. Creates optional systemd/cron jobs.",
   "requiredEnvVars": [
     {
