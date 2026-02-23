@@ -43,12 +43,12 @@ echo "[NOTIFY] $*" >> "${HOME}/.amcp/notifications.log"
 EONOTIFY
   chmod +x "$SANDBOXED_SCRIPTS/notify.sh"
 
-  # Mock register-checkpoint-solvr.sh (no-op)
-  cat > "$SANDBOXED_SCRIPTS/register-checkpoint-solvr.sh" << 'EOREG'
+  # Mock solvr.sh (no-op for checkpoint registration and pin)
+  cat > "$SANDBOXED_SCRIPTS/solvr.sh" << 'EOSOLVR'
 #!/bin/bash
 exit 0
-EOREG
-  chmod +x "$SANDBOXED_SCRIPTS/register-checkpoint-solvr.sh"
+EOSOLVR
+  chmod +x "$SANDBOXED_SCRIPTS/solvr.sh"
 
   # Mock recreate-venvs.sh (no-op)
   cat > "$SANDBOXED_SCRIPTS/recreate-venvs.sh" << 'EOVENV'

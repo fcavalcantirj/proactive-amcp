@@ -2,8 +2,8 @@
 # Tests for Solvr pinning integration
 #
 # Verifies:
-# - pin-to-solvr.sh with mock Solvr CLI returns CID
-# - pin-to-solvr.sh without API key fails gracefully
+# - _solvr-pin.sh with mock Solvr CLI returns CID
+# - _solvr-pin.sh without API key fails gracefully
 # - checkpoint.sh --full with provider=solvr uses Solvr
 # - checkpoint.sh --full with provider=both uses both
 # - resuscitate.sh tries Solvr gateway first
@@ -19,7 +19,7 @@ setup() {
   # Sandbox scripts
   export SANDBOXED_SCRIPTS="$TEST_DIR/scripts"
   mkdir -p "$SANDBOXED_SCRIPTS"
-  for f in pin-to-solvr.sh checkpoint.sh _checkpoint-full.sh scan-secrets.sh resuscitate.sh solvr-integration.sh inject-secrets.sh; do
+  for f in _solvr-pin.sh _solvr-checkpoint.sh solvr.sh checkpoint.sh _checkpoint-full.sh scan-secrets.sh resuscitate.sh solvr-integration.sh inject-secrets.sh; do
     if [ -f "$REAL_SCRIPT_DIR/$f" ]; then
       cp "$REAL_SCRIPT_DIR/$f" "$SANDBOXED_SCRIPTS/"
       chmod +x "$SANDBOXED_SCRIPTS/$f"
@@ -195,17 +195,17 @@ teardown() {
 }
 
 # ============================================================
-# Test 1: pin-to-solvr.sh with valid file returns CID
+# Test 1: _solvr-pin.sh with valid file returns CID
 # ============================================================
 
-@test "pin-to-solvr.sh with valid file returns CID" {
+@test "_solvr-pin.sh with valid file returns CID" {
   # Create a test file
   echo "test checkpoint data" > "$TEST_DIR/test.amcp"
 
   # Export Solvr API key
   export SOLVR_API_KEY="solvr_test_key_for_pinning_12345678901234567890"
 
-  run bash "$SANDBOXED_SCRIPTS/pin-to-solvr.sh" "$TEST_DIR/test.amcp" "test-checkpoint"
+  run bash "$SANDBOXED_SCRIPTS/_solvr-pin.sh" "$TEST_DIR/test.amcp" "test-checkpoint"
   echo "OUTPUT: $output"
   [ "$status" -eq 0 ]
   # Should output a CID (bafy... format from mock)
@@ -217,10 +217,10 @@ teardown() {
 }
 
 # ============================================================
-# Test 2: pin-to-solvr.sh with missing API key fails gracefully
+# Test 2: _solvr-pin.sh with missing API key fails gracefully
 # ============================================================
 
-@test "pin-to-solvr.sh with missing API key fails gracefully" {
+@test "_solvr-pin.sh with missing API key fails gracefully" {
   echo "test data" > "$TEST_DIR/test.amcp"
 
   # No SOLVR_API_KEY set, and config has no solvr.apiKey
@@ -228,7 +228,7 @@ teardown() {
   local empty_config="$TEST_DIR/empty-config.json"
   echo '{}' > "$empty_config"
 
-  run bash -c "CONFIG_FILE='$empty_config' SOLVR_API_KEY='' bash '$SANDBOXED_SCRIPTS/pin-to-solvr.sh' '$TEST_DIR/test.amcp'"
+  run bash -c "CONFIG_FILE='$empty_config' SOLVR_API_KEY='' bash '$SANDBOXED_SCRIPTS/_solvr-pin.sh' '$TEST_DIR/test.amcp'"
   echo "OUTPUT: $output"
   [ "$status" -ne 0 ]
   [[ "$output" == *"No Solvr API key"* ]]
@@ -403,14 +403,14 @@ with open('$AMCP_DIR/config.json', 'w') as f:
 }
 
 # ============================================================
-# Test 8: pin-to-solvr.sh --dry-run does not call Solvr CLI
+# Test 8: _solvr-pin.sh --dry-run does not call Solvr CLI
 # ============================================================
 
-@test "pin-to-solvr.sh --dry-run shows plan without pinning" {
+@test "_solvr-pin.sh --dry-run shows plan without pinning" {
   echo "test data" > "$TEST_DIR/test.amcp"
   export SOLVR_API_KEY="solvr_test_key_for_pinning_12345678901234567890"
 
-  run bash "$SANDBOXED_SCRIPTS/pin-to-solvr.sh" "$TEST_DIR/test.amcp" "test-pin" --dry-run
+  run bash "$SANDBOXED_SCRIPTS/_solvr-pin.sh" "$TEST_DIR/test.amcp" "test-pin" --dry-run
   echo "OUTPUT: $output"
   [ "$status" -eq 0 ]
   [[ "$output" == *"DRY RUN"* ]]

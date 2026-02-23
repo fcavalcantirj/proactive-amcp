@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# Tests for solvr-register.sh — auto-registration of child Solvr accounts
+# Tests for _solvr-register.sh — auto-registration of child Solvr accounts
 #
 # Verifies:
 #   - Already registered (SOLVR_API_KEY exists) → exits 0, no registration
@@ -27,7 +27,7 @@ setup() {
   # Copy scripts into sandbox
   export SANDBOXED_SCRIPTS="$TEST_DIR/scripts"
   mkdir -p "$SANDBOXED_SCRIPTS"
-  for f in solvr-register.sh config.sh notify.sh; do
+  for f in _solvr-register.sh config.sh notify.sh; do
     if [ -f "$REAL_SCRIPT_DIR/$f" ]; then
       cp "$REAL_SCRIPT_DIR/$f" "$SANDBOXED_SCRIPTS/"
       chmod +x "$SANDBOXED_SCRIPTS/$f"
@@ -95,7 +95,7 @@ EOCURL
 @test "solvr-register: already registered via env SOLVR_API_KEY exits 0" {
   export SOLVR_API_KEY="solvr_existing_key"
 
-  run bash "$SANDBOXED_SCRIPTS/solvr-register.sh"
+  run bash "$SANDBOXED_SCRIPTS/_solvr-register.sh"
 
   echo "STATUS: $status"
   echo "OUTPUT: $output"
@@ -118,7 +118,7 @@ with open('$OC_CONFIG','w') as f:
     json.dump(d, f)
 "
 
-  run bash "$SANDBOXED_SCRIPTS/solvr-register.sh"
+  run bash "$SANDBOXED_SCRIPTS/_solvr-register.sh"
 
   echo "STATUS: $status"
   echo "OUTPUT: $output"
@@ -140,7 +140,7 @@ with open('$AMCP_CONFIG','w') as f:
     json.dump(d, f)
 "
 
-  run bash "$SANDBOXED_SCRIPTS/solvr-register.sh"
+  run bash "$SANDBOXED_SCRIPTS/_solvr-register.sh"
 
   echo "STATUS: $status"
   echo "OUTPUT: $output"
@@ -155,7 +155,7 @@ with open('$AMCP_CONFIG','w') as f:
 @test "solvr-register: root agent (no parentSolvrName) warns and exits 0" {
   unset SOLVR_API_KEY 2>/dev/null || true
 
-  run bash "$SANDBOXED_SCRIPTS/solvr-register.sh"
+  run bash "$SANDBOXED_SCRIPTS/_solvr-register.sh"
 
   echo "STATUS: $status"
   echo "OUTPUT: $output"
@@ -194,7 +194,7 @@ with open('$AMCP_CONFIG','w') as f:
   # Mock curl for Solvr API (real jq handles JSON parsing)
   create_solvr_mock_curl "TestParent" "solvr_child_abc"
 
-  run bash "$SANDBOXED_SCRIPTS/solvr-register.sh" --instance-name "dana"
+  run bash "$SANDBOXED_SCRIPTS/_solvr-register.sh" --instance-name "dana"
 
   echo "STATUS: $status"
   echo "OUTPUT: $output"
@@ -224,7 +224,7 @@ with open('$AMCP_CONFIG','w') as f:
 
   create_solvr_mock_curl "MockParent" "solvr_new_child_key"
 
-  run bash "$SANDBOXED_SCRIPTS/solvr-register.sh" --instance-name "worker1"
+  run bash "$SANDBOXED_SCRIPTS/_solvr-register.sh" --instance-name "worker1"
 
   echo "STATUS: $status"
   echo "OUTPUT: $output"
@@ -266,7 +266,7 @@ exit 1
 EOCURL
   chmod +x "$MOCK_BIN/curl"
 
-  run bash "$SANDBOXED_SCRIPTS/solvr-register.sh" --instance-name "test" --dry-run
+  run bash "$SANDBOXED_SCRIPTS/_solvr-register.sh" --instance-name "test" --dry-run
 
   echo "STATUS: $status"
   echo "OUTPUT: $output"
@@ -298,7 +298,7 @@ with open('$AMCP_CONFIG','w') as f:
     json.dump(d, f, indent=2)
 "
 
-  run bash "$SANDBOXED_SCRIPTS/solvr-register.sh"
+  run bash "$SANDBOXED_SCRIPTS/_solvr-register.sh"
 
   echo "STATUS: $status"
   echo "OUTPUT: $output"

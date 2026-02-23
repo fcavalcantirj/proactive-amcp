@@ -3137,3 +3137,31 @@
   - All 29 ontology-related tests pass (skill-contract 8 + ontology-checkpoint 6 + temporal-queries 8 + memory-evolution 7)
   - No regressions (same pre-existing failures in diagnose, solvr-pinning, solvr-register, watchdog)
   - File sizes: ontology.sh=246L, proactive-amcp.sh=257L (both well under 800)
+
+## Task 6: refactor — Consolidate Solvr scripts into solvr.sh (DONE)
+- Created `scripts/solvr.sh` (106L) — thin dispatcher with 5 subcommands:
+  - `register` → `_solvr-register.sh` (from solvr-register.sh)
+  - `heartbeat` → `_solvr-heartbeat.sh` (from solvr-heartbeat.sh)
+  - `pin` → `_solvr-pin.sh` (from pin-to-solvr.sh)
+  - `checkpoint` → `_solvr-checkpoint.sh` (from register-checkpoint-solvr.sh)
+  - `resurrect` → `_solvr-resurrect.sh` (from resurrect-from-solvr.sh)
+- Kept `solvr-integration.sh` as shared library (sourced by resuscitate.sh, not consolidated)
+- Renamed old standalone scripts to `_solvr-*` prefix (internal implementation files)
+- Updated `proactive-amcp.sh`:
+  - Added `solvr` command routing to `solvr.sh`
+  - Changed `register|solvr-register` → routes through `solvr.sh register`
+  - Changed `heartbeat` → routes through `solvr.sh heartbeat`
+  - Changed `resurrect` → routes through `solvr.sh resurrect`
+  - Updated usage/help text to show `solvr` as the primary hub command
+- Updated `checkpoint.sh`:
+  - `pin_to_solvr()` now calls `solvr.sh pin` instead of `pin-to-solvr.sh`
+  - `register_with_solvr()` now calls `solvr.sh checkpoint` instead of `register-checkpoint-solvr.sh`
+- Updated test files:
+  - `test/solvr-register.bats`: references `_solvr-register.sh` (renamed)
+  - `test/solvr-pinning.bats`: copies `_solvr-pin.sh`, `_solvr-checkpoint.sh`, `solvr.sh` into sandbox
+  - `test/encrypted-roundtrip.bats`: creates mock `solvr.sh` instead of `register-checkpoint-solvr.sh`
+- Verification:
+  - bash -n passes on all 8 modified scripts (solvr.sh + 5 internal + proactive-amcp.sh + checkpoint.sh)
+  - No remaining references to old script names in functional code
+  - File sizes: solvr.sh=106L, _solvr-register.sh=457L, _solvr-heartbeat.sh=407L, _solvr-pin.sh=149L, _solvr-checkpoint.sh=157L, _solvr-resurrect.sh=501L (all under 800)
+  - proactive-amcp.sh=265L, checkpoint.sh=753L (both under 800)

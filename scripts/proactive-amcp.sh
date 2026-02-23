@@ -8,8 +8,9 @@
 #   config           Manage ~/.amcp/config.json (set/get)
 #   install          Non-interactive setup for fleet tools (e.g. openclaw-deploy)
 #   diagnose         Diagnostic hub: health, claude, condense, failure, summary subcommands
-#   register         Register on Solvr (alias: solvr-register)
-#   solvr-register   Auto-register child Solvr account on first boot
+#   solvr            Solvr operations hub: register, heartbeat, pin, checkpoint, resurrect
+#   register         Register on Solvr (alias: solvr register)
+#   solvr-register   Auto-register child Solvr account on first boot (backward compat)
 #   migrate-pins     Transfer historical checkpoints from Pinata to Solvr
 #   problem          Problem CRUD: create, update, get, list, close
 #   learning         Learning CRUD: create, verify, get, list
@@ -23,8 +24,8 @@
 #   checkpoint         Create checkpoint (supports --full, --auto, --trigger, --smart)
 #   claim-info         Display Solvr claim URL to link agent to human account
 #   link-identity      Link AMCP identity to Solvr agent (proves AID ownership)
-#   heartbeat          Send heartbeat to Solvr and display agent status briefing (--json, --quiet)
-#   resurrect          Resurrect agent from Solvr resurrection bundle (--agent-id, --json, --dry-run)
+#   heartbeat          Send heartbeat to Solvr (alias: solvr heartbeat)
+#   resurrect          Resurrect from Solvr bundle (alias: solvr resurrect)
 #   checkpoints        List all agent checkpoints from Solvr (--json for machine output)
 #   backup-config      Create/list/restore OpenClaw config backups
 #   groq               Groq intelligence: status, request-key (free tier via Solvr)
@@ -49,15 +50,15 @@ Commands:
   install          Non-interactive setup for fleet tools (accepts --pinata-jwt, --notify-target, etc.)
   config           Manage ~/.amcp/config.json (set/get secrets and settings)
   diagnose         Diagnostic hub (subcommands: health, claude, condense, failure, summary)
-  register         Register on Solvr (alias for solvr-register)
-  solvr-register   Auto-register child Solvr account on first boot
+  solvr            Solvr operations: register, heartbeat, pin, checkpoint, resurrect
+  register         Register on Solvr (alias for: solvr register)
   migrate-pins     Transfer historical checkpoints from Pinata to Solvr
   problem          Problem CRUD: create, update, get, list, close
   learning         Learning CRUD: create, verify, get, list
   ontology         Ontology management (advanced): validate, prune, similarity, temporal, contract, conflicts
   checkpoint       Create checkpoint (--full, --auto, --trigger, --smart, --encrypt)
-  heartbeat        Send heartbeat to Solvr and display agent status briefing (--json, --quiet)
-  resurrect        Resurrect agent from Solvr resurrection bundle (--agent-id, --json, --dry-run)
+  heartbeat        Send heartbeat to Solvr (alias for: solvr heartbeat)
+  resurrect        Resurrect from Solvr bundle (alias for: solvr resurrect)
   checkpoints      List all agent checkpoints from Solvr (--json for machine output)
   backup-config    Create/list/restore OpenClaw config backups
   memory           Memory management: prune, prune-batch, evolution
@@ -153,21 +154,28 @@ case "${1:-}" in
     shift
     exec "$SCRIPT_DIR/diagnose.sh" "$@"
     ;;
-  register|solvr-register)
+  solvr)
     shift
-    exec "$SCRIPT_DIR/solvr-register.sh" "$@"
+    exec "$SCRIPT_DIR/solvr.sh" "$@"
+    ;;
+  register|solvr-register)
+    # Backward compat: register → solvr register
+    shift
+    exec "$SCRIPT_DIR/solvr.sh" register "$@"
     ;;
   checkpoint)
     shift
     exec "$SCRIPT_DIR/checkpoint.sh" --full "$@"
     ;;
   heartbeat)
+    # Backward compat: heartbeat → solvr heartbeat
     shift
-    exec "$SCRIPT_DIR/solvr-heartbeat.sh" "$@"
+    exec "$SCRIPT_DIR/solvr.sh" heartbeat "$@"
     ;;
   resurrect)
+    # Backward compat: resurrect → solvr resurrect
     shift
-    exec "$SCRIPT_DIR/resurrect-from-solvr.sh" "$@"
+    exec "$SCRIPT_DIR/solvr.sh" resurrect "$@"
     ;;
   checkpoints)
     shift

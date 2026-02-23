@@ -408,9 +408,9 @@ pin_to_pinata() {
 }
 
 pin_to_solvr() {
-  if [ -x "$SCRIPT_DIR/pin-to-solvr.sh" ]; then
+  if [ -x "$SCRIPT_DIR/solvr.sh" ]; then
     local solvr_output
-    solvr_output=$("$SCRIPT_DIR/pin-to-solvr.sh" "$CHECKPOINT_PATH" "amcp-${CHECKPOINT_TYPE:-quick}-$AGENT_NAME-$TIMESTAMP") || {
+    solvr_output=$("$SCRIPT_DIR/solvr.sh" pin "$CHECKPOINT_PATH" "amcp-${CHECKPOINT_TYPE:-quick}-$AGENT_NAME-$TIMESTAMP") || {
       echo "⚠️ Solvr pin failed"
       SOLVR_CID=""
       return 1
@@ -419,7 +419,7 @@ pin_to_solvr() {
     echo "  Solvr: $SOLVR_CID"
     return 0
   else
-    echo "⚠️ pin-to-solvr.sh not found"
+    echo "⚠️ solvr.sh not found"
     return 1
   fi
 }
@@ -453,8 +453,8 @@ do_pinning() {
 
 # Register checkpoint with Solvr unified API (best-effort, non-blocking)
 register_with_solvr() {
-  if [ "$NO_SOLVR_METADATA" = false ] && [ -n "$CID" ] && [ -x "$SCRIPT_DIR/register-checkpoint-solvr.sh" ]; then
-    "$SCRIPT_DIR/register-checkpoint-solvr.sh" \
+  if [ "$NO_SOLVR_METADATA" = false ] && [ -n "$CID" ] && [ -x "$SCRIPT_DIR/solvr.sh" ]; then
+    "$SCRIPT_DIR/solvr.sh" checkpoint \
       --cid "$CID" \
       --checkpoint-path "$CHECKPOINT_PATH" \
       --name "amcp-${CHECKPOINT_TYPE:-quick}-$AGENT_NAME-$TIMESTAMP" \

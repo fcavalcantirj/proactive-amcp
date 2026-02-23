@@ -117,7 +117,7 @@
       "Test all Solvr operations still work",
       "Remove old scripts after verification"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": 7,
