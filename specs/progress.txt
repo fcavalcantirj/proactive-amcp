@@ -2779,3 +2779,13 @@
 - Also copied dependency scripts/init-services.sh to skill/scripts/init-services.sh (required by init.sh)
 - init-services.sh syntax check passes: bash -n skill/scripts/init-services.sh
 - Test: bash skill/scripts/init.sh --help shows full setup wizard banner with AMCP description
+
+## Task: bundling — Copy learning.sh into skill package
+- PRD says "learning.sh" but actual files are learning.py and learning-report.py (Python, not Bash)
+- Copied scripts/learning.py to skill/scripts/learning.py (16850 bytes)
+- Copied scripts/learning-report.py to skill/scripts/learning-report.py (5798 bytes)
+- Both files chmod +x and verified executable
+- Python syntax check passes: py_compile on both files
+- learning.py --help shows: "Problem and Learning entity CRUD operations" with problem/learning subcommands
+- learning-report.py --help shows: "Generate learning metrics report" with --output, --learning-dir, --json flags
+- diff confirms skill copies match source files exactly

@@ -79,7 +79,7 @@
         "Verify executable: chmod +x skill/scripts/learning.sh",
         "Test: bash skill/scripts/learning.sh --help shows usage or runs without error"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "category": "bundling",
