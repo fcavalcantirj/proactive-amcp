@@ -19,7 +19,7 @@ setup() {
   # Sandbox scripts
   export SANDBOXED_SCRIPTS="$TEST_DIR/scripts"
   mkdir -p "$SANDBOXED_SCRIPTS"
-  for f in full-checkpoint.sh scan-secrets.sh validate-ontology.py; do
+  for f in checkpoint.sh _checkpoint-full.sh scan-secrets.sh validate-ontology.py; do
     if [ -f "$REAL_SCRIPT_DIR/$f" ]; then
       cp "$REAL_SCRIPT_DIR/$f" "$SANDBOXED_SCRIPTS/"
       chmod +x "$SANDBOXED_SCRIPTS/$f"
@@ -129,7 +129,7 @@ teardown() {
 }
 
 run_checkpoint() {
-  bash "$SANDBOXED_SCRIPTS/full-checkpoint.sh" "$@"
+  bash "$SANDBOXED_SCRIPTS/checkpoint.sh" --full "$@"
 }
 
 create_sample_graph() {

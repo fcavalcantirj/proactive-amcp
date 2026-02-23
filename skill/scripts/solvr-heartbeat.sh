@@ -399,9 +399,9 @@ fi
 # ============================================================
 # Smart checkpoint trigger (proactive self-checkpointing)
 # ============================================================
-SMART_CHECKPOINT_SCRIPT="$SCRIPT_DIR/smart-checkpoint-trigger.sh"
-if [ -x "$SMART_CHECKPOINT_SCRIPT" ]; then
-  "$SMART_CHECKPOINT_SCRIPT" --trigger heartbeat --quiet 2>/dev/null || true
+CHECKPOINT_SCRIPT="$SCRIPT_DIR/checkpoint.sh"
+if [ -x "$CHECKPOINT_SCRIPT" ]; then
+  "$CHECKPOINT_SCRIPT" --trigger heartbeat --quiet 2>/dev/null || true
 fi
 
 exit 0

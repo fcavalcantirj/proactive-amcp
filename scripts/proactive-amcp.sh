@@ -15,10 +15,11 @@
 #   learning         Learning CRUD: create, verify, get, list
 #   temporal-query   Cross-checkpoint entity history queries
 #   prune            Prune ontology graph by typed retention policies
-#   memory-prune     Groq-powered memory file pruning (archive/condense/keep)
+#   memory           Memory management hub: prune, prune-batch, evolution subcommands
+#   memory-prune     Groq-powered memory file pruning (alias for: memory prune)
 #   validate-contract  Validate skill ontology contracts against graph.jsonl
 #   detect-conflicts   Detect cross-skill ontology contract conflicts
-#   checkpoint         Create checkpoint (delegates to full-checkpoint.sh, supports --smart)
+#   checkpoint         Create checkpoint (supports --full, --auto, --trigger, --smart)
 #   claim-info         Display Solvr claim URL to link agent to human account
 #   link-identity      Link AMCP identity to Solvr agent (proves AID ownership)
 #   heartbeat          Send heartbeat to Solvr and display agent status briefing (--json, --quiet)
@@ -54,12 +55,13 @@ Commands:
   learning         Learning CRUD: create, verify, get, list
   temporal-query   Cross-checkpoint entity history queries
   prune            Prune ontology graph by typed retention policies
-  checkpoint       Create checkpoint (supports --smart for Groq content selection)
+  checkpoint       Create checkpoint (--full, --auto, --trigger, --smart, --encrypt)
   heartbeat        Send heartbeat to Solvr and display agent status briefing (--json, --quiet)
   resurrect        Resurrect agent from Solvr resurrection bundle (--agent-id, --json, --dry-run)
   checkpoints      List all agent checkpoints from Solvr (--json for machine output)
   backup-config    Create/list/restore OpenClaw config backups
-  memory-prune     Groq-powered memory file pruning (archive/condense/keep)
+  memory           Memory management: prune, prune-batch, evolution
+  memory-prune     Groq-powered memory pruning (alias for: memory prune)
   validate-contract  Validate skill ontology contracts against graph.jsonl
   detect-conflicts   Detect cross-skill ontology contract conflicts
   claim-info         Display Solvr claim URL to link agent to human account
@@ -159,7 +161,7 @@ case "${1:-}" in
     ;;
   checkpoint)
     shift
-    exec "$SCRIPT_DIR/full-checkpoint.sh" "$@"
+    exec "$SCRIPT_DIR/checkpoint.sh" --full "$@"
     ;;
   heartbeat)
     shift
@@ -205,9 +207,14 @@ case "${1:-}" in
     shift
     exec python3 "$SCRIPT_DIR/prune-ontology.py" "$@"
     ;;
-  memory-prune)
+  memory)
     shift
-    exec "$SCRIPT_DIR/memory-prune.sh" "$@"
+    exec "$SCRIPT_DIR/memory.sh" "$@"
+    ;;
+  memory-prune)
+    # Backward compat: memory-prune → memory prune
+    shift
+    exec "$SCRIPT_DIR/memory.sh" prune "$@"
     ;;
   validate-contract)
     shift

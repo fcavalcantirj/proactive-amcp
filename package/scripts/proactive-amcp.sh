@@ -14,7 +14,8 @@
 #   temporal-query   Cross-checkpoint entity history queries
 #   detect-failure   Scan text for failure patterns, auto-create Problems
 #   prune            Prune ontology graph by typed retention policies
-#   memory-prune     Groq-powered memory file pruning (archive/condense/keep)
+#   memory           Memory management hub: prune, prune-batch, evolution subcommands
+#   memory-prune     Groq-powered memory file pruning (alias for: memory prune)
 #   validate-contract  Validate skill ontology contracts against graph.jsonl
 #   detect-conflicts   Detect cross-skill ontology contract conflicts
 #   checkpoint         Create checkpoint (delegates to full-checkpoint.sh, supports --smart)
@@ -49,7 +50,8 @@ Commands:
   detect-failure   Scan text for failure patterns, auto-create Problems
   prune            Prune ontology graph by typed retention policies
   checkpoint       Create checkpoint (supports --smart for Groq content selection)
-  memory-prune     Groq-powered memory file pruning (archive/condense/keep)
+  memory           Memory management: prune, prune-batch, evolution
+  memory-prune     Groq-powered memory pruning (alias for: memory prune)
   validate-contract  Validate skill ontology contracts against graph.jsonl
   detect-conflicts   Detect cross-skill ontology contract conflicts
   condense-error     Condense verbose error logs to ~100 char summaries (Groq)
@@ -164,9 +166,14 @@ case "${1:-}" in
     shift
     exec python3 "$SCRIPT_DIR/prune-ontology.py" "$@"
     ;;
-  memory-prune)
+  memory)
     shift
-    exec "$SCRIPT_DIR/memory-prune.sh" "$@"
+    exec "$SCRIPT_DIR/memory.sh" "$@"
+    ;;
+  memory-prune)
+    # Backward compat: memory-prune → memory prune
+    shift
+    exec "$SCRIPT_DIR/memory.sh" prune "$@"
     ;;
   validate-contract)
     shift

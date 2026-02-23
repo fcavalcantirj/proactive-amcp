@@ -216,10 +216,10 @@ record_attempt() {
 
 # Trigger smart checkpoint after successful recovery (capture fresh state)
 post_recovery_checkpoint() {
-  local trigger_script="$SCRIPT_DIR/smart-checkpoint-trigger.sh"
-  if [ -x "$trigger_script" ]; then
+  local checkpoint_script="$SCRIPT_DIR/checkpoint.sh"
+  if [ -x "$checkpoint_script" ]; then
     log "Creating post-recovery checkpoint..."
-    "$trigger_script" --trigger recovery --quiet 2>/dev/null || true
+    "$checkpoint_script" --trigger recovery --quiet 2>/dev/null || true
   fi
 }
 

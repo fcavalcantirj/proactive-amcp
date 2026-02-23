@@ -6,7 +6,7 @@
 # Reads death_count from amcp-stats.json, computes memory_hash from checkpoint file.
 # Graceful: failures are logged but never block the checkpoint flow.
 #
-# Called by checkpoint.sh and full-checkpoint.sh after successful IPFS pinning.
+# Called by checkpoint.sh (quick and --full modes) after successful IPFS pinning.
 
 set -euo pipefail
 

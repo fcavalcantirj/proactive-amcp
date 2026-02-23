@@ -26,7 +26,7 @@ setup() {
   # Copy scripts into isolated sandbox
   export SANDBOXED_SCRIPTS="$TEST_DIR/scripts"
   mkdir -p "$SANDBOXED_SCRIPTS"
-  for f in watchdog.sh checkpoint.sh full-checkpoint.sh resuscitate.sh \
+  for f in watchdog.sh checkpoint.sh _checkpoint-full.sh resuscitate.sh \
            solvr-integration.sh diagnose.sh session-fix.sh scan-secrets.sh config.sh \
            proactive-amcp.sh init.sh install.sh notify.sh; do
     if [ -f "$REAL_SCRIPT_DIR/$f" ]; then
@@ -92,13 +92,13 @@ teardown() {
 }
 
 # ============================================================
-# Test 3: full-checkpoint.sh with fake identity exits 1 before staging
+# Test 3: checkpoint.sh --full with fake identity exits 1 before staging
 # ============================================================
-@test "fake identity: full-checkpoint.sh exits 1 before staging content" {
+@test "fake identity: checkpoint.sh --full exits 1 before staging content" {
   local checkpoint_dir="$HOME/.amcp/checkpoints"
   mkdir -p "$checkpoint_dir"
 
-  run bash "$SANDBOXED_SCRIPTS/full-checkpoint.sh"
+  run bash "$SANDBOXED_SCRIPTS/checkpoint.sh" --full
 
   echo "STATUS: $status"
   echo "OUTPUT: $output"

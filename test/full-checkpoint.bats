@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
-# Tests for full-checkpoint.sh staging security
+# Tests for checkpoint.sh --full staging security
 #
-# Verifies that full-checkpoint.sh:
+# Verifies that checkpoint.sh --full:
 # - EXCLUDES secrets from staging (config.json, secrets-full.json, cache/)
 # - INCLUDES identity.json in staging
 # - EXCLUDES openclaw.json and auth-profiles.json (contain secrets)
@@ -18,7 +18,7 @@ setup() {
   # Sandbox scripts
   export SANDBOXED_SCRIPTS="$TEST_DIR/scripts"
   mkdir -p "$SANDBOXED_SCRIPTS"
-  for f in full-checkpoint.sh scan-secrets.sh checkpoint.sh; do
+  for f in checkpoint.sh _checkpoint-full.sh scan-secrets.sh; do
     if [ -f "$REAL_SCRIPT_DIR/$f" ]; then
       cp "$REAL_SCRIPT_DIR/$f" "$SANDBOXED_SCRIPTS/"
       chmod +x "$SANDBOXED_SCRIPTS/$f"
@@ -174,7 +174,7 @@ teardown() {
 }
 
 run_full_checkpoint() {
-  bash "$SANDBOXED_SCRIPTS/full-checkpoint.sh" "$@"
+  bash "$SANDBOXED_SCRIPTS/checkpoint.sh" --full "$@"
 }
 
 # Helper: check what's in the staging directory after STAGE 2

@@ -150,12 +150,12 @@ def save_stats(stats):
 def trigger_smart_checkpoint(trigger_type="learning"):
     """Trigger smart checkpoint after learning capture."""
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    trigger_script = os.path.join(script_dir, "smart-checkpoint-trigger.sh")
-    
-    if os.path.isfile(trigger_script) and os.access(trigger_script, os.X_OK):
+    checkpoint_script = os.path.join(script_dir, "checkpoint.sh")
+
+    if os.path.isfile(checkpoint_script) and os.access(checkpoint_script, os.X_OK):
         try:
             subprocess.run(
-                [trigger_script, "--trigger", trigger_type, "--quiet"],
+                [checkpoint_script, "--trigger", trigger_type, "--quiet"],
                 capture_output=True,
                 timeout=60
             )

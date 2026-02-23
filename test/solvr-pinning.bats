@@ -4,8 +4,8 @@
 # Verifies:
 # - pin-to-solvr.sh with mock Solvr CLI returns CID
 # - pin-to-solvr.sh without API key fails gracefully
-# - full-checkpoint.sh with provider=solvr uses Solvr
-# - full-checkpoint.sh with provider=both uses both
+# - checkpoint.sh --full with provider=solvr uses Solvr
+# - checkpoint.sh --full with provider=both uses both
 # - resuscitate.sh tries Solvr gateway first
 # - CID fields stored correctly in last-checkpoint.json
 
@@ -19,7 +19,7 @@ setup() {
   # Sandbox scripts
   export SANDBOXED_SCRIPTS="$TEST_DIR/scripts"
   mkdir -p "$SANDBOXED_SCRIPTS"
-  for f in pin-to-solvr.sh full-checkpoint.sh checkpoint.sh scan-secrets.sh resuscitate.sh solvr-integration.sh inject-secrets.sh; do
+  for f in pin-to-solvr.sh checkpoint.sh _checkpoint-full.sh scan-secrets.sh resuscitate.sh solvr-integration.sh inject-secrets.sh; do
     if [ -f "$REAL_SCRIPT_DIR/$f" ]; then
       cp "$REAL_SCRIPT_DIR/$f" "$SANDBOXED_SCRIPTS/"
       chmod +x "$SANDBOXED_SCRIPTS/$f"
@@ -235,10 +235,10 @@ teardown() {
 }
 
 # ============================================================
-# Test 3: full-checkpoint.sh with provider=solvr uses Solvr
+# Test 3: checkpoint.sh --full with provider=solvr uses Solvr
 # ============================================================
 
-@test "full-checkpoint.sh with provider=solvr uploads to Solvr" {
+@test "checkpoint.sh --full with provider=solvr uploads to Solvr" {
   # Set provider to solvr in config
   python3 -c "
 import json
@@ -251,7 +251,7 @@ with open('$AMCP_DIR/config.json', 'w') as f:
 
   export SOLVR_API_KEY="solvr_test_key_for_pinning_12345678901234567890"
 
-  run bash "$SANDBOXED_SCRIPTS/full-checkpoint.sh"
+  run bash "$SANDBOXED_SCRIPTS/checkpoint.sh" --full
   echo "OUTPUT: $output"
   [ "$status" -eq 0 ]
   [[ "$output" == *"FULL CHECKPOINT COMPLETE"* ]]
@@ -266,10 +266,10 @@ with open('$AMCP_DIR/config.json', 'w') as f:
 }
 
 # ============================================================
-# Test 4: full-checkpoint.sh with provider=both uploads to both
+# Test 4: checkpoint.sh --full with provider=both uploads to both
 # ============================================================
 
-@test "full-checkpoint.sh with provider=both uploads to both" {
+@test "checkpoint.sh --full with provider=both uploads to both" {
   # Set provider to both in config
   python3 -c "
 import json
@@ -282,7 +282,7 @@ with open('$AMCP_DIR/config.json', 'w') as f:
 
   export SOLVR_API_KEY="solvr_test_key_for_pinning_12345678901234567890"
 
-  run bash "$SANDBOXED_SCRIPTS/full-checkpoint.sh"
+  run bash "$SANDBOXED_SCRIPTS/checkpoint.sh" --full
   echo "OUTPUT: $output"
   [ "$status" -eq 0 ]
   [[ "$output" == *"FULL CHECKPOINT COMPLETE"* ]]
@@ -388,7 +388,7 @@ with open('$AMCP_DIR/config.json', 'w') as f:
 
   export SOLVR_API_KEY="solvr_test_key_for_pinning_12345678901234567890"
 
-  run bash "$SANDBOXED_SCRIPTS/full-checkpoint.sh"
+  run bash "$SANDBOXED_SCRIPTS/checkpoint.sh" --full
   echo "OUTPUT: $output"
   [ "$status" -eq 0 ]
 

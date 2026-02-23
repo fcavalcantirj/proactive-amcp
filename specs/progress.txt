@@ -3067,3 +3067,48 @@
   - Subcommand dispatch verified: 5 targets in config.sh case statement (set, get, evaluators, backup, fix)
   - All dispatch targets exist as files
   - Old script names no longer referenced in executable code (only in internal doc comments)
+
+## PRD Consolidation Task 3: Consolidate checkpoint variants into checkpoint.sh with flags (DONE)
+- Consolidated 5 checkpoint-related scripts into checkpoint.sh with flags + _checkpoint-full.sh helper:
+  - `checkpoint.sh` (753L): main entry point with shared functions, quick mode (default), --auto, --trigger TYPE
+  - `_checkpoint-full.sh` (610L): full checkpoint implementation, sourced by checkpoint.sh when --full used
+  - smart-checkpoint-filter.sh: kept as-is (Groq utility, not a checkpoint variant)
+- Follows source pattern (not exec) since full mode needs shared functions (identity validation, pinning, rotation)
+- Flags: --full, --auto, --trigger TYPE, --smart, --notify, --force, --encrypt, --dry-run, --skip-evolution, --no-solvr-metadata, --quiet, --interval N, --pause N
+- Updated all callers:
+  - proactive-amcp.sh: full-checkpoint.sh → checkpoint.sh --full
+  - resuscitate.sh: smart-checkpoint-trigger.sh → checkpoint.sh --trigger recovery
+  - solvr-heartbeat.sh: smart-checkpoint-trigger.sh → checkpoint.sh --trigger heartbeat
+  - learning.py: smart-checkpoint-trigger.sh → checkpoint.sh --trigger
+- Updated test files: full-checkpoint.bats, fake-identity.bats, solvr-pinning.bats, ontology-checkpoint.bats, soul-drift.bats
+  - Sandbox copy lists updated to include checkpoint.sh + _checkpoint-full.sh instead of full-checkpoint.sh
+  - run_full_checkpoint/run_checkpoint helpers call checkpoint.sh --full
+- Removed old scripts: full-checkpoint.sh, auto-checkpoint.sh, smart-checkpoint-trigger.sh (from scripts/, skill/scripts/, package/scripts/)
+- All changes mirrored to skill/scripts/ and package/scripts/
+- Updated comment references in register-checkpoint-solvr.sh and post-checkpoint-metadata.sh
+- Verification:
+  - bash -n passes on all modified bash scripts
+  - File sizes: checkpoint.sh=753L, _checkpoint-full.sh=610L (both under 800)
+  - No remaining references to deleted scripts in executable code
+  - Auto mode correctly calls checkpoint.sh recursively without --auto flag (no infinite recursion)
+
+## PRD Task 4: Consolidate memory scripts into memory.sh (DONE)
+- Created `scripts/memory.sh` (93 lines) — consolidated memory management dispatcher
+  - `memory prune [options]` → delegates to memory-prune.sh (Groq sync evaluation)
+  - `memory prune --batch [options]` → delegates to memory-prune-batch.sh (Groq batch API)
+  - `memory prune-batch [options]` → delegates to memory-prune-batch.sh directly
+  - `memory evolution [options]` → delegates to memory-evolution.sh (Zettelkasten entity linking)
+- Updated `scripts/proactive-amcp.sh` (251 lines):
+  - Added `memory` command routing to memory.sh
+  - Kept `memory-prune` as backward-compatible alias → `memory prune`
+  - Updated usage/help text in header comments and usage function
+- Kept existing implementation scripts (memory-prune.sh=442L, memory-prune-batch.sh=621L, memory-evolution.sh=279L)
+  as-is — total would exceed 800 line limit if merged into one file
+- Copied memory.sh to package/scripts/ and skill/scripts/
+- Updated proactive-amcp.sh in all three locations (scripts/, package/scripts/, skill/scripts/)
+- Verification:
+  - bash -n passes on all 6 modified/created scripts
+  - memory.sh dispatches to all 3 underlying scripts (verified via grep)
+  - proactive-amcp.sh has both `memory)` and `memory-prune)` case entries
+  - All memory-evolution.bats tests pass (7/7)
+  - File sizes: memory.sh=93L, proactive-amcp.sh=251L (both well under 800)
