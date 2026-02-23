@@ -24,10 +24,10 @@ setup() {
   local scripts_to_copy=(
     checkpoint.sh
     resuscitate.sh
-    checkpoint-decrypt.sh
-    scan-secrets.sh
+    _checkpoint-decrypt.sh
+    _secrets-scan.sh
     solvr-integration.sh
-    inject-secrets.sh
+    _secrets-inject.sh
   )
   for f in "${scripts_to_copy[@]}"; do
     if [ -f "$REAL_SCRIPT_DIR/$f" ]; then
@@ -336,7 +336,7 @@ with open(lcp, 'w') as f:
   run bash "$SANDBOXED_SCRIPTS/resuscitate.sh"
   echo "RESUSCITATE OUTPUT: $output"
 
-  # Should show decryption messages (logged by checkpoint-decrypt.sh)
+  # Should show decryption messages (logged by _checkpoint-decrypt.sh)
   [[ "$output" == *"encrypted"* ]] || [[ "$output" == *"Decrypt"* ]] || [[ "$output" == *"decrypt"* ]]
 
   # Step 5: Verify content restored — content is copied to CONTENT_DIR
@@ -432,7 +432,7 @@ with open(lcp, 'w') as f:
 }
 
 # ============================================================
-# Encryption detection tests (checkpoint-decrypt.sh helpers)
+# Encryption detection tests (_checkpoint-decrypt.sh helpers)
 # ============================================================
 
 @test "is_checkpoint_encrypted detects openssl-encrypted files" {
@@ -450,7 +450,7 @@ with open(lcp, 'w') as f:
   KEY_FILE=""
   TEMP_FILES=()
   log() { echo "$*"; }
-  source "$SANDBOXED_SCRIPTS/checkpoint-decrypt.sh"
+  source "$SANDBOXED_SCRIPTS/_checkpoint-decrypt.sh"
 
   # Plaintext should NOT be detected as encrypted
   ! is_checkpoint_encrypted "$plain_file"
@@ -473,7 +473,7 @@ with open(lcp, 'w') as f:
   KEY_FILE=""
   TEMP_FILES=()
   log() { echo "$*"; }
-  source "$SANDBOXED_SCRIPTS/checkpoint-decrypt.sh"
+  source "$SANDBOXED_SCRIPTS/_checkpoint-decrypt.sh"
 
   # Decrypt should succeed
   decrypt_checkpoint "$enc_file" "$test_key"
@@ -493,7 +493,7 @@ with open(lcp, 'w') as f:
   KEY_FILE=""
   TEMP_FILES=()
   log() { echo "$*"; }
-  source "$SANDBOXED_SCRIPTS/checkpoint-decrypt.sh"
+  source "$SANDBOXED_SCRIPTS/_checkpoint-decrypt.sh"
 
   # Decrypt with wrong key should fail
   ! decrypt_checkpoint "$enc_file" "wrongkeywrongkeywrongkeywrongkey"
@@ -519,7 +519,7 @@ EOF
   KEY_FILE="$key_file"
   TEMP_FILES=()
   log() { echo "$*"; }
-  source "$SANDBOXED_SCRIPTS/checkpoint-decrypt.sh"
+  source "$SANDBOXED_SCRIPTS/_checkpoint-decrypt.sh"
 
   # resolve_decrypt_key should return key-file content, not checkpoint-keys.json content
   local resolved

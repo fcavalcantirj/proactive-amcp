@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# Tests for session-fix.sh
+# Tests for _diagnose-fix.sh
 #
 # IMPORTANT: Tests run against a COPY in a temp dir. Never touches live sessions.
 
@@ -13,7 +13,7 @@ setup() {
   # Sandbox scripts
   export SANDBOXED_SCRIPTS="$TEST_DIR/scripts"
   mkdir -p "$SANDBOXED_SCRIPTS"
-  for f in session-fix.sh fix-openclaw-session.py; do
+  for f in _diagnose-fix.sh fix-openclaw-session.py; do
     if [ -f "$REAL_SCRIPT_DIR/$f" ]; then
       cp "$REAL_SCRIPT_DIR/$f" "$SANDBOXED_SCRIPTS/"
       chmod +x "$SANDBOXED_SCRIPTS/$f"
@@ -78,11 +78,11 @@ EOLINES
 }
 
 run_session_fix() {
-  bash "$SANDBOXED_SCRIPTS/session-fix.sh" "$@"
+  bash "$SANDBOXED_SCRIPTS/_diagnose-fix.sh" "$@"
 }
 
 # ============================================================
-# session-fix.sh tests
+# _diagnose-fix.sh tests
 # ============================================================
 
 @test "session-fix: dry-run by default (no changes)" {

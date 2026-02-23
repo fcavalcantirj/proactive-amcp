@@ -3181,3 +3181,46 @@
   - bash -n passes on both learning.sh and proactive-amcp.sh
   - No shell scripts reference learning.py or learning-report.py directly except learning.sh
   - File sizes: learning.sh=105L, proactive-amcp.sh=262L (both well under 800)
+
+## Task 8: cleanup — Remove or merge remaining utility scripts (DONE)
+- Reviewed all 14 utility scripts for actual usage across codebase (scripts, tests, docs)
+- Created `scripts/secrets.sh` (71L) — consolidated secret management hub
+  - `scan` → _secrets-scan.sh (was scan-secrets.sh)
+  - `inject` → _secrets-inject.sh (was inject-secrets.sh)
+  - `pre-commit` → _secrets-precommit.sh (was pre-commit-secrets.sh)
+- Merged list-checkpoints.sh into checkpoint.sh:
+  - Renamed to _checkpoint-list.sh, added `list` subcommand dispatch in checkpoint.sh
+  - proactive-amcp.sh `checkpoints` now routes through `checkpoint.sh list`
+- Merged checkpoint-decrypt.sh into checkpoint.sh:
+  - Renamed to _checkpoint-decrypt.sh, updated source reference in resuscitate.sh
+- Merged groq-status.sh into status.sh:
+  - Renamed to _status-groq.sh, added `groq` subcommand dispatch in status.sh
+  - proactive-amcp.sh `groq` now routes through `status.sh groq`
+  - Updated init.sh reference
+- Merged session-fix.sh into diagnose.sh:
+  - Renamed to _diagnose-fix.sh, added `fix` subcommand dispatch in diagnose.sh
+  - Updated diagnose.sh fix_cmd string references
+  - Updated watchdog.sh diagnostic message
+  - proactive-amcp.sh `session-fix` backward compat routes to `diagnose.sh fix`
+- Removed post-checkpoint-metadata.sh (orphaned — no callers in codebase)
+- Kept scripts (still in active use):
+  - spawn-child.sh (external tool for openclaw-deploy)
+  - link-identity.sh (active, used by proactive-amcp.sh, init.sh, _solvr-register.sh)
+  - migrate-pins.sh (active, used by proactive-amcp.sh)
+  - init-services.sh (active, sourced by init.sh)
+  - recreate-venvs.sh (active, called by resuscitate.sh and _solvr-resurrect.sh)
+- Updated proactive-amcp.sh:
+  - Added `secrets` command
+  - Changed `checkpoints` → `checkpoint.sh list`
+  - Changed `groq` → `status.sh groq`
+  - Added `session-fix` backward compat → `diagnose.sh fix`
+- Updated 12 test files to reference new _ prefix names:
+  - resuscitate.bats, full-checkpoint.bats, inject-secrets.bats, session-fix.bats
+  - soul-drift.bats, ontology-checkpoint.bats, solvr-pinning.bats, fake-identity.bats
+  - watchdog.bats, watchdog-recovery.bats, encrypted-roundtrip.bats, diagnose.bats
+- Verification:
+  - All 16 modified/created bash scripts pass `bash -n` syntax check
+  - All hub scripts under 800 lines (checkpoint.sh=760, diagnose.sh=783, status.sh=627)
+  - No old script names remain in scripts/ code (only in comments of renamed files)
+  - No old script names remain in test/ files
+  - All structural dispatch routes verified working

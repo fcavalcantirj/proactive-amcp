@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
-# Tests for inject-secrets.sh
+# Tests for _secrets-inject.sh
 #
-# IMPORTANT: Tests run against a COPY of inject-secrets.sh in a temp dir.
+# IMPORTANT: Tests run against a COPY of _secrets-inject.sh in a temp dir.
 
 REAL_SCRIPT_DIR="$(cd "$(dirname "$BATS_TEST_FILENAME")/.." && pwd)/scripts"
 HELPER="$(cd "$(dirname "$BATS_TEST_FILENAME")" && pwd)/test_helper.sh"
@@ -14,8 +14,8 @@ setup() {
   # Copy script into isolated sandbox
   export SANDBOXED_SCRIPTS="$TEST_DIR/scripts"
   mkdir -p "$SANDBOXED_SCRIPTS"
-  cp "$REAL_SCRIPT_DIR/inject-secrets.sh" "$SANDBOXED_SCRIPTS/"
-  chmod +x "$SANDBOXED_SCRIPTS/inject-secrets.sh"
+  cp "$REAL_SCRIPT_DIR/_secrets-inject.sh" "$SANDBOXED_SCRIPTS/"
+  chmod +x "$SANDBOXED_SCRIPTS/_secrets-inject.sh"
 
   # Mock notify.sh in sandbox
   cat > "$SANDBOXED_SCRIPTS/notify.sh" << 'EONOTIFY'
@@ -35,7 +35,7 @@ teardown() {
   local secrets_file
   secrets_file=$(create_sample_secrets)
 
-  run bash "$SANDBOXED_SCRIPTS/inject-secrets.sh" "$secrets_file"
+  run bash "$SANDBOXED_SCRIPTS/_secrets-inject.sh" "$secrets_file"
   echo "OUTPUT: $output"
   echo "STATUS: $status"
   [ "$status" -eq 0 ]
@@ -47,7 +47,7 @@ teardown() {
   local secrets_file
   secrets_file=$(create_sample_secrets)
 
-  run bash "$SANDBOXED_SCRIPTS/inject-secrets.sh" "$secrets_file"
+  run bash "$SANDBOXED_SCRIPTS/_secrets-inject.sh" "$secrets_file"
   [ "$status" -eq 0 ]
 
   # Verify the JSON was updated
@@ -64,7 +64,7 @@ teardown() {
   # Create empty bashrc
   touch "$HOME/.bashrc"
 
-  run bash "$SANDBOXED_SCRIPTS/inject-secrets.sh" "$secrets_file"
+  run bash "$SANDBOXED_SCRIPTS/_secrets-inject.sh" "$secrets_file"
   [ "$status" -eq 0 ]
 
   # Verify bashrc has the secret
@@ -78,7 +78,7 @@ teardown() {
   local secrets_file
   secrets_file=$(create_sample_secrets)
 
-  run bash "$SANDBOXED_SCRIPTS/inject-secrets.sh" "$secrets_file"
+  run bash "$SANDBOXED_SCRIPTS/_secrets-inject.sh" "$secrets_file"
   [ "$status" -eq 0 ]
 
   # Verify systemd env file exists and has the key
@@ -91,7 +91,7 @@ teardown() {
   local secrets_file
   secrets_file=$(create_sample_secrets)
 
-  run bash "$SANDBOXED_SCRIPTS/inject-secrets.sh" "$secrets_file"
+  run bash "$SANDBOXED_SCRIPTS/_secrets-inject.sh" "$secrets_file"
   [ "$status" -eq 0 ]
 
   # Verify backup directory was created with content
@@ -103,13 +103,13 @@ teardown() {
 @test "inject-secrets: rejects invalid JSON input" {
   echo "not json" > "$TEST_DIR/bad-secrets.json"
 
-  run bash "$SANDBOXED_SCRIPTS/inject-secrets.sh" "$TEST_DIR/bad-secrets.json"
+  run bash "$SANDBOXED_SCRIPTS/_secrets-inject.sh" "$TEST_DIR/bad-secrets.json"
   [ "$status" -ne 0 ]
   [[ "$output" == *"not valid JSON"* ]]
 }
 
 @test "inject-secrets: fails with no arguments" {
-  run bash "$SANDBOXED_SCRIPTS/inject-secrets.sh"
+  run bash "$SANDBOXED_SCRIPTS/_secrets-inject.sh"
   [ "$status" -ne 0 ]
   [[ "$output" == *"Usage"* ]]
 }
@@ -132,7 +132,7 @@ teardown() {
 ]
 EOF
 
-  run bash "$SANDBOXED_SCRIPTS/inject-secrets.sh" "$TEST_DIR/secrets.json"
+  run bash "$SANDBOXED_SCRIPTS/_secrets-inject.sh" "$TEST_DIR/secrets.json"
   [ "$status" -eq 0 ]
   [[ "$output" == *"SKIP"* ]]
 }

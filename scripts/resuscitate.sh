@@ -445,8 +445,8 @@ try_fix_config() {
 }
 
 # Source checkpoint decryption helpers
-# shellcheck source=checkpoint-decrypt.sh
-source "$SCRIPT_DIR/checkpoint-decrypt.sh"
+# shellcheck source=_checkpoint-decrypt.sh
+source "$SCRIPT_DIR/_checkpoint-decrypt.sh"
 
 try_rehydrate() {
   local cid="$1"
@@ -550,10 +550,10 @@ try_rehydrate() {
   # Inject secrets
   if [ -f "$secrets_file" ] && [ -s "$secrets_file" ]; then
     log "Injecting secrets..."
-    if [ -x "$SCRIPT_DIR/inject-secrets.sh" ]; then
-      "$SCRIPT_DIR/inject-secrets.sh" "$secrets_file" 2>&1 | tee -a "$RECOVERY_LOG" || true
+    if [ -x "$SCRIPT_DIR/_secrets-inject.sh" ]; then
+      "$SCRIPT_DIR/_secrets-inject.sh" "$secrets_file" 2>&1 | tee -a "$RECOVERY_LOG" || true
     else
-      log "inject-secrets.sh not found, skipping"
+      log "_secrets-inject.sh not found, skipping"
     fi
   fi
 

@@ -3,11 +3,11 @@
 # Usage: proactive-amcp.sh <command> [args...]
 #
 # Commands:
-#   status           Check AMCP readiness (--full for comprehensive, --json for machine output)
+#   status           Check AMCP readiness (--full, --json, groq subcommand)
 #   init             Interactive setup: validate/create identity, start services
 #   config           Manage ~/.amcp/config.json (set/get)
 #   install          Non-interactive setup for fleet tools (e.g. openclaw-deploy)
-#   diagnose         Diagnostic hub: health, claude, condense, failure, summary subcommands
+#   diagnose         Diagnostic hub: health, claude, condense, failure, summary, fix subcommands
 #   solvr            Solvr operations hub: register, heartbeat, pin, checkpoint, resurrect
 #   register         Register on Solvr (alias: solvr register)
 #   solvr-register   Auto-register child Solvr account on first boot (backward compat)
@@ -22,13 +22,14 @@
 #   validate-contract  Validate skill ontology contracts (alias for: ontology contract)
 #   detect-conflicts   Detect cross-skill ontology conflicts (alias for: ontology conflicts)
 #   checkpoint         Create checkpoint (supports --full, --auto, --trigger, --smart)
+#   checkpoints        List all agent checkpoints from Solvr (alias for: checkpoint list)
+#   secrets            Secret management hub: scan, inject, pre-commit
 #   claim-info         Display Solvr claim URL to link agent to human account
 #   link-identity      Link AMCP identity to Solvr agent (proves AID ownership)
 #   heartbeat          Send heartbeat to Solvr (alias: solvr heartbeat)
 #   resurrect          Resurrect from Solvr bundle (alias: solvr resurrect)
-#   checkpoints        List all agent checkpoints from Solvr (--json for machine output)
 #   backup-config      Create/list/restore OpenClaw config backups
-#   groq               Groq intelligence: status, request-key (free tier via Solvr)
+#   groq               Groq intelligence: status, request-key (alias for: status groq)
 
 set -euo pipefail
 
@@ -49,7 +50,7 @@ Commands:
   init             Interactive setup: validate/create identity, start watchdog + checkpoint services
   install          Non-interactive setup for fleet tools (accepts --pinata-jwt, --notify-target, etc.)
   config           Manage ~/.amcp/config.json (set/get secrets and settings)
-  diagnose         Diagnostic hub (subcommands: health, claude, condense, failure, summary)
+  diagnose         Diagnostic hub (subcommands: health, claude, condense, failure, summary, fix)
   solvr            Solvr operations: register, heartbeat, pin, checkpoint, resurrect
   register         Register on Solvr (alias for: solvr register)
   migrate-pins     Transfer historical checkpoints from Pinata to Solvr
@@ -57,15 +58,16 @@ Commands:
   learning         Learning CRUD: create, verify, get, list
   ontology         Ontology management (advanced): validate, prune, similarity, temporal, contract, conflicts
   checkpoint       Create checkpoint (--full, --auto, --trigger, --smart, --encrypt)
+  checkpoints      List all agent checkpoints from Solvr (alias for: checkpoint list)
+  secrets          Secret management: scan, inject, pre-commit
   heartbeat        Send heartbeat to Solvr (alias for: solvr heartbeat)
   resurrect        Resurrect from Solvr bundle (alias for: solvr resurrect)
-  checkpoints      List all agent checkpoints from Solvr (--json for machine output)
   backup-config    Create/list/restore OpenClaw config backups
   memory           Memory management: prune, prune-batch, evolution
   memory-prune     Groq-powered memory pruning (alias for: memory prune)
-  claim-info         Display Solvr claim URL to link agent to human account
-  link-identity      Link AMCP identity to Solvr agent (proves AID ownership)
-  groq               Groq intelligence: status, request-key (free tier via Solvr)
+  groq             Groq intelligence: status, request-key (alias for: status groq)
+  claim-info       Display Solvr claim URL to link agent to human account
+  link-identity    Link AMCP identity to Solvr agent (proves AID ownership)
 
 Run '$(basename "$0") <command> --help' for details.
 EOF
@@ -178,8 +180,9 @@ case "${1:-}" in
     exec "$SCRIPT_DIR/solvr.sh" resurrect "$@"
     ;;
   checkpoints)
+    # Consolidated: checkpoints → checkpoint list
     shift
-    exec "$SCRIPT_DIR/list-checkpoints.sh" "$@"
+    exec "$SCRIPT_DIR/checkpoint.sh" list "$@"
     ;;
   backup-config)
     shift
@@ -188,6 +191,10 @@ case "${1:-}" in
   migrate-pins)
     shift
     exec "$SCRIPT_DIR/migrate-pins.sh" "$@"
+    ;;
+  secrets)
+    shift
+    exec "$SCRIPT_DIR/secrets.sh" "$@"
     ;;
   problem)
     # Backward compat: problem → learning.sh problem
@@ -239,6 +246,11 @@ case "${1:-}" in
     shift
     exec "$SCRIPT_DIR/diagnose.sh" condense "$@"
     ;;
+  session-fix)
+    # Backward compat: session-fix → diagnose fix
+    shift
+    exec "$SCRIPT_DIR/diagnose.sh" fix "$@"
+    ;;
   claim-info)
     shift
     do_claim_info
@@ -248,8 +260,9 @@ case "${1:-}" in
     exec "$SCRIPT_DIR/link-identity.sh" "$@"
     ;;
   groq)
+    # Consolidated: groq → status groq
     shift
-    exec "$SCRIPT_DIR/groq-status.sh" "$@"
+    exec "$SCRIPT_DIR/status.sh" groq "$@"
     ;;
   -h|--help|"")
     usage

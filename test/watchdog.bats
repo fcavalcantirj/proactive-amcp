@@ -22,7 +22,7 @@ setup() {
   # Copy scripts into isolated sandbox so we never run against real gateway
   export SANDBOXED_SCRIPTS="$TEST_DIR/scripts"
   mkdir -p "$SANDBOXED_SCRIPTS"
-  for f in watchdog.sh diagnose.sh session-fix.sh fix-openclaw-session.py; do
+  for f in watchdog.sh diagnose.sh _diagnose-fix.sh fix-openclaw-session.py; do
     if [ -f "$REAL_SCRIPT_DIR/$f" ]; then
       cp "$REAL_SCRIPT_DIR/$f" "$SANDBOXED_SCRIPTS/"
       chmod +x "$SANDBOXED_SCRIPTS/$f"

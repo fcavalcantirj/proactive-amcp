@@ -450,8 +450,8 @@ json.dump(d, sys.stdout, indent=2)
         echo ""
         if prompt_yn "Request free Groq key from Solvr?" "y"; then
           # Attempt Solvr Groq integration
-          if "$SCRIPT_DIR/groq-status.sh" request-key 2>&1; then
-            # Read the key that groq-status.sh just stored
+          if "$SCRIPT_DIR/_status-groq.sh" request-key 2>&1; then
+            # Read the key that _status-groq.sh just stored
             local solvr_groq_key
             solvr_groq_key=$("$SCRIPT_DIR/config.sh" get groq.apiKey 2>/dev/null || echo "")
             if [ -n "$solvr_groq_key" ]; then

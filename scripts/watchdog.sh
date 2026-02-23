@@ -3,7 +3,7 @@
 # Usage: ./watchdog.sh [--continuous]
 #
 # Uses diagnose.sh to detect issues, then routes to the right fix:
-#   session_corrupted       → session-fix.sh + gateway restart (lightweight)
+#   session_corrupted       → diagnose fix + gateway restart (lightweight)
 #   gateway_down            → full resurrection
 #   gateway_unresponsive    → gateway restart
 #   config_invalid          → resurrection (config fix tier)
@@ -444,7 +444,7 @@ get_suggested_fix() {
     config_invalid|config_semantic_invalid)
       echo "jq . ~/.openclaw/openclaw.json; ls ~/.amcp/config-backups/ and restore latest" ;;
     session_corrupted|session_stuck)
-      echo "proactive-amcp session-fix; systemctl --user restart openclaw-gateway" ;;
+      echo "proactive-amcp diagnose fix; systemctl --user restart openclaw-gateway" ;;
     crash_loop_detected)
       echo "STOP auto-recovery. Review ~/.amcp/recovery-*.log for root cause" ;;
     auth_expired)

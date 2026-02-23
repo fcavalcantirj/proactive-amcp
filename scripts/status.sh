@@ -27,6 +27,13 @@ CHECKPOINT_DIR="${CHECKPOINT_DIR:-$HOME/.amcp/checkpoints}"
 SESSION_DIR="${SESSION_DIR:-$HOME/.openclaw/agents/main/sessions}"
 
 # ============================================================
+# Subcommand dispatch (groq)
+# ============================================================
+case "${1:-}" in
+  groq) shift; exec "$SCRIPT_DIR/_status-groq.sh" "$@" ;;
+esac
+
+# ============================================================
 # Parse args
 # ============================================================
 MODE="basic"       # basic | full

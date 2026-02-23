@@ -30,6 +30,7 @@ case "${1:-}" in
   condense) shift; exec "$SCRIPT_DIR/_diagnose-condense.sh" "$@" ;;
   failure)  shift; exec python3 "$SCRIPT_DIR/detect-failure.py" "$@" ;;
   summary)  shift; exec python3 "$SCRIPT_DIR/generate-problem-summary.py" "$@" ;;
+  fix)      shift; exec "$SCRIPT_DIR/_diagnose-fix.sh" "$@" ;;
   health)   shift ;;  # Fall through to health checks below
 esac
 
@@ -238,7 +239,7 @@ PYEOF
     add_finding "session_corrupted" "critical" \
       "Session $session_id has corrupted tool_use blocks (${err_count} cascading 400 errors)" \
       "$session_path" \
-      "$SCRIPT_DIR/session-fix.sh --fix --session-dir $SESSION_DIR --session-id $session_id"
+      "$SCRIPT_DIR/_diagnose-fix.sh --fix --session-dir $SESSION_DIR --session-id $session_id"
 
     i=$((i + 1))
   done
@@ -497,7 +498,7 @@ PYEOF
     add_finding "session_stuck" "critical" \
       "Session $session_id is stuck: $err_count errors in last 20 turns (patterns: $err_types)" \
       "$SESSION_DIR" \
-      "$SCRIPT_DIR/session-fix.sh --fix --session-dir $SESSION_DIR --session-id $session_id"
+      "$SCRIPT_DIR/_diagnose-fix.sh --fix --session-dir $SESSION_DIR --session-id $session_id"
 
     i=$((i + 1))
   done

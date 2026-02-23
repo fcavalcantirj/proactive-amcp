@@ -29,7 +29,7 @@ setup() {
   # Copy scripts into isolated sandbox
   export SANDBOXED_SCRIPTS="$TEST_DIR/scripts"
   mkdir -p "$SANDBOXED_SCRIPTS"
-  for f in watchdog.sh diagnose.sh _diagnose-condense.sh session-fix.sh fix-openclaw-session.py \
+  for f in watchdog.sh diagnose.sh _diagnose-condense.sh _diagnose-fix.sh fix-openclaw-session.py \
            config.sh _config-fix.sh _config-backup.sh _config-evaluators.sh notify.sh; do
     if [ -f "$REAL_SCRIPT_DIR/$f" ]; then
       cp "$REAL_SCRIPT_DIR/$f" "$SANDBOXED_SCRIPTS/"
@@ -372,12 +372,12 @@ EOOC
   create_mock_systemctl
 
   # Corrupt the session-fix script so it fails
-  cat > "$SANDBOXED_SCRIPTS/session-fix.sh" << 'EOFIX'
+  cat > "$SANDBOXED_SCRIPTS/_diagnose-fix.sh" << 'EOFIX'
 #!/bin/bash
 echo "session-fix FAILED"
 exit 1
 EOFIX
-  chmod +x "$SANDBOXED_SCRIPTS/session-fix.sh"
+  chmod +x "$SANDBOXED_SCRIPTS/_diagnose-fix.sh"
 
   # First check: session fix fails, should count as failure
   run run_watchdog

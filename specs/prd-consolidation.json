@@ -152,7 +152,7 @@
       "Evaluate: spawn-child.sh, link-identity.sh, migrate-pins.sh (keep if used)",
       "Remove post-checkpoint-metadata.sh if unused"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": 9,

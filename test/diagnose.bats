@@ -179,7 +179,7 @@ for f in d['findings']:
         print(f['fix_command'])
         break
 ")
-  [[ "$fix_cmd" == *"session-fix"* ]]
+  [[ "$fix_cmd" == *"_diagnose-fix"* ]]
 }
 
 @test "diagnose: session corruption finding includes session path" {
