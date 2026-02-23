@@ -35,7 +35,7 @@
         "Verify executable: chmod +x skill/scripts/proactive-amcp.sh",
         "Test: bash skill/scripts/proactive-amcp.sh --help shows usage"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "category": "bundling",

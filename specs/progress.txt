@@ -2753,3 +2753,10 @@
   - dataExposed: "Checkpoints contain workspace files, memory, config. Plaintext by default."
 - Validated: cat skill/skill.json | jq . passes
 - All structural checks verified (3 env vars, correct names, 3 binaries, persistence flags, 3 endpoints, dataExposed content)
+
+## Task: bundling — Copy proactive-amcp.sh into skill package
+- Created skill/scripts/ directory
+- Copied scripts/proactive-amcp.sh to skill/scripts/proactive-amcp.sh
+- Verified file exists and is executable (chmod +x)
+- Syntax check passes: bash -n skill/scripts/proactive-amcp.sh
+- Test: bash skill/scripts/proactive-amcp.sh --help shows full usage output with all commands
