@@ -133,7 +133,7 @@
       "Keep Python files, remove if shell-only wrapper exists",
       "Update proactive-amcp.sh learning command"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": 8,

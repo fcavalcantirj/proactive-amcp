@@ -190,16 +190,13 @@ case "${1:-}" in
     exec "$SCRIPT_DIR/migrate-pins.sh" "$@"
     ;;
   problem)
+    # Backward compat: problem → learning.sh problem
     shift
-    exec python3 "$SCRIPT_DIR/learning.py" problem "$@"
+    exec "$SCRIPT_DIR/learning.sh" problem "$@"
     ;;
   learning)
     shift
-    if [ "${1:-}" = "report" ]; then
-      shift
-      exec python3 "$SCRIPT_DIR/learning-report.py" "$@"
-    fi
-    exec python3 "$SCRIPT_DIR/learning.py" learning "$@"
+    exec "$SCRIPT_DIR/learning.sh" "$@"
     ;;
   ontology)
     shift

@@ -3165,3 +3165,19 @@
   - No remaining references to old script names in functional code
   - File sizes: solvr.sh=106L, _solvr-register.sh=457L, _solvr-heartbeat.sh=407L, _solvr-pin.sh=149L, _solvr-checkpoint.sh=157L, _solvr-resurrect.sh=501L (all under 800)
   - proactive-amcp.sh=265L, checkpoint.sh=753L (both under 800)
+
+## Task 7: Consolidate learning scripts into learning.sh (DONE)
+- Created `scripts/learning.sh` (105L) — consolidated wrapper for learning and problem management
+- Subcommands:
+  - `problem` → delegates to `learning.py problem` (CRUD: create, update, get, list, close)
+  - `log` → delegates to `learning.py learning` (CRUD: create, verify, get, list, check-unverified)
+  - `report` → delegates to `learning-report.py` (metrics report, --json, --output)
+  - Backward compat: direct learning actions (create, verify, get, list, check-unverified) pass through to `learning.py learning`
+- Updated `proactive-amcp.sh`:
+  - `problem` command now routes through `learning.sh problem` instead of calling `learning.py` directly
+  - `learning` command now routes through `learning.sh` instead of inline report/learning dispatch
+- Python files kept as implementation (learning.py=501L, learning-report.py=149L) — learning.sh is thin dispatcher
+- Verification:
+  - bash -n passes on both learning.sh and proactive-amcp.sh
+  - No shell scripts reference learning.py or learning-report.py directly except learning.sh
+  - File sizes: learning.sh=105L, proactive-amcp.sh=262L (both well under 800)
