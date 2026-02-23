@@ -138,7 +138,7 @@
         "Update version to 0.8.0 in frontmatter",
         "Verify: grep -i 'git clone' skill/SKILL.md returns nothing"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "category": "docs",

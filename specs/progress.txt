@@ -2817,3 +2817,15 @@
 - All 42 .sh files pass bash -n syntax check
 - skill/scripts/ now has 42 .sh + 11 .py = 53 total scripts (matches source)
 - bash skill/scripts/proactive-amcp.sh --help works correctly from skill package
+
+## Task: docs — Update SKILL.md to remove git clone instructions (DONE)
+- Updated skill/SKILL.md frontmatter version from 0.7.9 to 0.8.0
+- Removed `git clone https://github.com/fcavalcantirj/proactive-amcp ~/.openclaw/skills/proactive-amcp` from install section
+- Replaced with: "Scripts are bundled in this skill package at `scripts/`. No external fetch required."
+- Kept `clawhub install proactive-amcp` as the primary install method
+- No curl | bash patterns found (none to remove)
+- All paths already use SKILL_DIR (dynamic, no hardcoded external repo paths)
+- Verification:
+  - grep -i 'git clone' skill/SKILL.md returns nothing
+  - grep 'curl.*|.*bash' skill/SKILL.md returns nothing
+  - Version in frontmatter is 0.8.0
