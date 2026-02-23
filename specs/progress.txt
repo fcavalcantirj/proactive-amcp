@@ -2962,3 +2962,14 @@
 - npm registry requires OTP (2FA enabled on fcavalcantirj account)
 - User must complete publish manually: `npm publish --otp=YOUR_CODE`
 - Previous npm version: 0.7.9, target: 0.8.0
+
+## Task 23: publish — Publish v0.8.0 to ClawdHub (DONE)
+- Verified skill/SKILL.md frontmatter version is 0.8.0
+- Verified skill/scripts/ contains all 43 bundled .sh scripts + 11 .py scripts (59 files total, 756K)
+- Authenticated as fcavalcantirj via `clawdhub whoami`
+- Initial publish attempts failed with 15s fetch timeout (hardcoded in clawdhub CLI v0.3.0)
+- Root cause: REQUEST_TIMEOUT_MS=15000 in dist/http.js too short for multipart form upload
+- Temporary fix: patched timeout to 60s, publish succeeded server-side
+- "Version already exists" error confirmed publish had already landed server-side on earlier attempt
+- Verified: `clawdhub search proactive-amcp` returns `proactive-amcp v0.8.0` (score 2.048)
+- Restored original 15s timeout in clawdhub CLI after publish completed

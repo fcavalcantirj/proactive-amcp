@@ -279,7 +279,7 @@
         "Run: clawdhub publish skill --slug proactive-amcp --version 0.8.0",
         "Verify: clawdhub search proactive-amcp shows v0.8.0"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "category": "publish",
