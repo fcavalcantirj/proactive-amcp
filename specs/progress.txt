@@ -2906,3 +2906,15 @@
 - Verification:
   - YAML validates successfully via `python3 yaml.safe_load()`
   - Follows same patterns as existing ci.yml workflow
+
+## Task: Test bundled skill installs without external fetch (testing category)
+
+- Created test directory at /tmp/test-skill-install
+- Copied skill/ folder to test directory
+- Verified all 43 scripts present in skill/scripts/*.sh
+- Confirmed 4 required scripts present: proactive-amcp.sh, checkpoint.sh, resuscitate.sh, init.sh
+- Ran `bash skill/scripts/proactive-amcp.sh status` from test directory — output STATUS: READY
+- Verified: `grep -ri 'git clone' skill/` returns zero matches
+- Verified: no `curl | bash` patterns for fetching skill scripts (only Solvr CLI runtime dependency install)
+- All scripts are bundled locally — no network calls needed for script availability
+- Cleaned up test directory

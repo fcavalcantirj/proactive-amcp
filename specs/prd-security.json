@@ -226,7 +226,7 @@
         "Verify: grep -r 'git clone' skill/ returns nothing",
         "Verify: no network calls needed for script availability"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "category": "testing",
