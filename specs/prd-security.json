@@ -256,7 +256,7 @@
         "Verify: key automatically found and checkpoint decrypted",
         "Verify: SOUL.md, MEMORY.md restored"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "category": "publish",

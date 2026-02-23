@@ -2929,3 +2929,25 @@
 - Verified .networkAccess.endpoints is array with 3 entries (api.solvr.dev, api.pinata.cloud, ipfs.solvr.dev)
 - Verified .dataExposed contains 'Plaintext by default' — PASS
 - All 6 structural checks pass
+
+## Task: Test encrypted checkpoint round-trip (testing category)
+
+- Created `test/encrypted-roundtrip.bats` (528 lines) — 11 BATS integration tests
+- Tests use REAL openssl for encrypt/decrypt — all other commands (amcp CLI, curl, pgrep, systemctl) mocked
+- Test 1: checkpoint --encrypt creates encrypted file (verifies "Salted__" magic header)
+- Test 2: checkpoint --encrypt saves 64-char hex key to checkpoint-keys.json
+- Test 3: checkpoint --encrypt sets encrypted=true in last-checkpoint.json
+- Test 4: checkpoint without --encrypt creates plaintext checkpoint (no "Salted__" header, encrypted=false)
+- Test 5: Full round-trip — encrypt checkpoint, delete workspace, resuscitate auto-finds key, decrypts, restores SOUL.md + MEMORY.md with original content
+- Test 6: Round-trip with --key-file flag — removes checkpoint-keys.json, provides key via file, decrypts successfully
+- Test 7: Graceful failure when encrypted checkpoint has no key available
+- Test 8: is_checkpoint_encrypted detects openssl-encrypted vs plaintext files
+- Test 9: decrypt_checkpoint succeeds with correct key
+- Test 10: decrypt_checkpoint fails with wrong key
+- Test 11: resolve_decrypt_key prefers --key-file over checkpoint-keys.json entries
+- Bug fix: checkpoint.sh cleanup_smart() returned non-zero when SMART_STAGING was empty ([ -n "" ] && ... → exit 1 via trap). Fixed to use if/then.
+- Bug fix: checkpoint-decrypt.sh resolve_decrypt_key Priority 3 now scans entries' localPath properties (not just top-level keys) for path-based key resolution
+- Bug fix: resuscitate.bats sandbox missing checkpoint-decrypt.sh — added to setup() copy list
+- All modified scripts pass bash -n syntax check
+- All existing tests (full-checkpoint.bats, resuscitate.bats) still pass
+- All files under 800 lines

@@ -45,6 +45,7 @@ elif isinstance(entry, str):
   fi
 
   # Priority 3: lookup by local path in checkpoint-keys.json
+  # Checks both top-level key match and localPath property inside entries
   if [ -n "$checkpoint_path" ] && [ -f "$CHECKPOINT_KEYS_FILE" ]; then
     local key
     key=$(python3 -c "
@@ -52,11 +53,19 @@ import json, os, sys
 keys_path = os.path.expanduser('$CHECKPOINT_KEYS_FILE')
 with open(keys_path) as f:
     keys = json.load(f)
+# Direct key lookup
 entry = keys.get('$checkpoint_path', {})
-if isinstance(entry, dict):
-    print(entry.get('key', ''))
-elif isinstance(entry, str):
+if isinstance(entry, dict) and entry.get('key'):
+    print(entry['key'])
+    sys.exit(0)
+elif isinstance(entry, str) and entry:
     print(entry)
+    sys.exit(0)
+# Scan entries for matching localPath property
+for entry in keys.values():
+    if isinstance(entry, dict) and entry.get('localPath') == '$checkpoint_path':
+        print(entry.get('key', ''))
+        sys.exit(0)
 " 2>/dev/null || echo '')
     if [ -n "$key" ]; then
       echo "$key"

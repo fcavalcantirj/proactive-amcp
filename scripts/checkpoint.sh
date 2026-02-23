@@ -264,7 +264,9 @@ fi
 
 # Cleanup smart staging on exit
 cleanup_smart() {
-  [ -n "$SMART_STAGING" ] && rm -rf "$SMART_STAGING"
+  if [ -n "$SMART_STAGING" ]; then
+    rm -rf "$SMART_STAGING"
+  fi
 }
 trap 'cleanup; cleanup_smart' EXIT
 

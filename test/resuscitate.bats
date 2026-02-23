@@ -20,7 +20,8 @@ setup() {
   cp "$REAL_SCRIPT_DIR/resuscitate.sh" "$SANDBOXED_SCRIPTS/"
   cp "$REAL_SCRIPT_DIR/solvr-integration.sh" "$SANDBOXED_SCRIPTS/"
   cp "$REAL_SCRIPT_DIR/inject-secrets.sh" "$SANDBOXED_SCRIPTS/"
-  chmod +x "$SANDBOXED_SCRIPTS/resuscitate.sh" "$SANDBOXED_SCRIPTS/solvr-integration.sh" "$SANDBOXED_SCRIPTS/inject-secrets.sh"
+  cp "$REAL_SCRIPT_DIR/checkpoint-decrypt.sh" "$SANDBOXED_SCRIPTS/"
+  chmod +x "$SANDBOXED_SCRIPTS/resuscitate.sh" "$SANDBOXED_SCRIPTS/solvr-integration.sh" "$SANDBOXED_SCRIPTS/inject-secrets.sh" "$SANDBOXED_SCRIPTS/checkpoint-decrypt.sh"
 
   # Mock notify.sh in sandbox
   cat > "$SANDBOXED_SCRIPTS/notify.sh" << 'EONOTIFY'
