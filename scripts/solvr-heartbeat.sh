@@ -8,6 +8,9 @@
 
 set -euo pipefail
 
+# Get script directory for relative paths
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
 command -v python3 &>/dev/null || { echo "FATAL: python3 required but not found" >&2; exit 2; }
 command -v curl &>/dev/null || { echo "FATAL: curl required but not found" >&2; exit 2; }
 
