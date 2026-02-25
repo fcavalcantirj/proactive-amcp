@@ -1,12 +1,14 @@
 {
   "name": "proactive-amcp",
-  "version": "0.9.2",
-  "description": "Make your agent proactive — auto-checkpoint before death, resurrect from IPFS, self-heal via watchdog.",
+  "displayName": "Proactive AMCP",
+  "version": "0.9.5",
+  "description": "Make your agent proactive — auto-checkpoint before death, resurrect from IPFS, self-heal via watchdog. WARNING: Full checkpoints include secrets for complete resurrection.",
+  "homepage": "https://github.com/fcavalcantirj/proactive-amcp",
   "requiredEnvVars": [
     {
       "name": "SOLVR_API_KEY",
-      "description": "Solvr API key for agent registration and free IPFS pinning (get via 'solvr register')",
-      "required": true
+      "description": "Solvr API key for agent registration and IPFS pinning (optional - local checkpoints work without)",
+      "required": false
     },
     {
       "name": "PINATA_JWT",
@@ -20,32 +22,69 @@
     },
     {
       "name": "GROQ_API_KEY",
-      "description": "Groq API key for smart checkpoint filtering and memory pruning",
+      "description": "Groq API key for smart checkpoint filtering",
       "required": false
     }
   ],
   "requiredBinaries": ["bash", "curl", "jq"],
-  "optionalBinaries": ["git", "systemctl", "crontab"],
+  "optionalBinaries": ["git", "systemctl", "crontab", "openclaw", "agentmemory"],
   "persistence": {
     "createsSystemdUnits": true,
     "createsCronJobs": true,
     "createsIdentityFiles": true
   },
-  "networkAccess": {
-    "endpoints": [
+  "filesAccessed": {
+    "read": [
       {
-        "host": "api.solvr.dev",
-        "purpose": "Agent registration, knowledge search, IPFS pinning"
+        "path": "~/.openclaw/openclaw.json",
+        "purpose": "Read OpenClaw config including other skills' API keys for full checkpoint/resurrection",
+        "includesSecrets": true
       },
       {
-        "host": "api.pinata.cloud",
-        "purpose": "Direct IPFS pinning (alternative to Solvr)"
+        "path": "~/.openclaw/agents/*/agent/auth-profiles.json",
+        "purpose": "Read OAuth tokens for full checkpoint/resurrection",
+        "includesSecrets": true
       },
       {
-        "host": "ipfs.solvr.dev",
-        "purpose": "IPFS gateway for checkpoint retrieval"
+        "path": "~/.amcp/config.json",
+        "purpose": "AMCP identity and API keys",
+        "includesSecrets": true
+      },
+      {
+        "path": "~/.openclaw/workspace/",
+        "purpose": "Workspace files for checkpoint",
+        "includesSecrets": false
+      }
+    ],
+    "write": [
+      {
+        "path": "~/.amcp/",
+        "purpose": "AMCP identity, config, checkpoint metadata"
+      },
+      {
+        "path": "~/.openclaw/openclaw.json",
+        "purpose": "Config repair via 'openclaw doctor --fix' (only in recovery mode)"
       }
     ]
   },
-  "dataExposed": "Checkpoints contain workspace files, memory, config. Plaintext by default."
+  "systemModifications": {
+    "canModifyOpenclawConfig": true,
+    "canRemoveSkills": true,
+    "reason": "Recovery mode may regenerate minimal config if original is corrupted. User prompted before destructive actions."
+  },
+  "networkAccess": {
+    "endpoints": [
+      {"host": "api.solvr.dev", "purpose": "Agent registration, IPFS pinning"},
+      {"host": "api.pinata.cloud", "purpose": "Direct IPFS pinning"},
+      {"host": "ipfs.solvr.dev", "purpose": "Checkpoint retrieval"}
+    ]
+  },
+  "dataExposed": "FULL CHECKPOINTS INCLUDE SECRETS (API keys, OAuth tokens) for complete resurrection. Quick checkpoints exclude secrets. Checkpoints are plaintext by default; use --encrypt for encryption.",
+  "securityNotes": [
+    "Full checkpoints bundle ALL credentials to enable complete resurrection",
+    "Quick checkpoints (default) exclude secrets - safe for routine use",
+    "Use --encrypt flag for encrypted checkpoints",
+    "Recovery mode can modify OpenClaw config - user is prompted first",
+    "Review install.sh before running - creates systemd units"
+  ]
 }

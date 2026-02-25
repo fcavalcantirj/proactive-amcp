@@ -15,6 +15,8 @@
 #   --dry-run    Preview only (full mode only)
 #   --skip-evolution   Skip memory evolution (full mode only)
 #   --no-solvr-metadata  Skip Solvr registration
+#   --include-secrets    Include API keys/tokens in checkpoint (auto-enabled by --full)
+#   --no-secrets         Explicitly exclude secrets (default for quick mode)
 #
 # Auto mode flags:
 #   --interval N   Minutes between checkpoints (default: 60)
@@ -59,13 +61,14 @@ SKIP_EVOLUTION=false
 NO_SOLVR_METADATA=false
 ENCRYPT=false
 QUIET=false
+INCLUDE_SECRETS=false  # Only extract secrets when explicitly requested or --full mode
 INTERVAL_MINS="${INTERVAL_MINS:-60}"
 BATCH_PAUSE_MINS="${BATCH_PAUSE_MINS:-3}"
 TRIGGER_TYPE="manual"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --full)     MODE="full"; shift ;;
+    --full)     MODE="full"; INCLUDE_SECRETS=true; shift ;;
     --auto)     MODE="auto"; shift ;;
     --trigger)  MODE="trigger"; TRIGGER_TYPE="${2:-manual}"; shift 2 || shift ;;
     --trigger=*) MODE="trigger"; TRIGGER_TYPE="${1#*=}"; shift ;;
@@ -77,6 +80,8 @@ while [[ $# -gt 0 ]]; do
     --no-solvr-metadata) NO_SOLVR_METADATA=true; shift ;;
     --encrypt)  ENCRYPT=true; shift ;;
     --quiet|-q) QUIET=true; shift ;;
+    --include-secrets) INCLUDE_SECRETS=true; shift ;;
+    --no-secrets) INCLUDE_SECRETS=false; shift ;;
     --interval) INTERVAL_MINS="$2"; shift 2 ;;
     --pause)    BATCH_PAUSE_MINS="$2"; shift 2 ;;
     -h|--help)
@@ -590,12 +595,19 @@ echo "Content: $CONTENT_DIR"
 echo "Identity: $IDENTITY_PATH"
 [ -n "$PREVIOUS_CID" ] && echo "Previous CID: $PREVIOUS_CID"
 
-# Extract secrets
-echo "Extracting secrets..."
-extract_secrets > "$SECRETS_FILE"
-chmod 600 "$SECRETS_FILE"
-SECRET_COUNT=$(python3 -c "import json; print(len(json.load(open('$SECRETS_FILE'))))")
-echo "Found $SECRET_COUNT secrets"
+# Extract secrets (only if --full or --include-secrets)
+if [ "$INCLUDE_SECRETS" = true ]; then
+  echo "Extracting secrets (--full or --include-secrets)..."
+  extract_secrets > "$SECRETS_FILE"
+  chmod 600 "$SECRETS_FILE"
+  SECRET_COUNT=$(python3 -c "import json; print(len(json.load(open('$SECRETS_FILE'))))")
+  echo "Found $SECRET_COUNT secrets"
+else
+  echo "Skipping secrets (quick mode - use --full or --include-secrets to include)"
+  echo "[]" > "$SECRETS_FILE"
+  chmod 600 "$SECRETS_FILE"
+  SECRET_COUNT=0
+fi
 
 # Pre-validation: scan content for cleartext secrets
 scan_for_secrets "$CONTENT_DIR" "$FORCE_CHECKPOINT"

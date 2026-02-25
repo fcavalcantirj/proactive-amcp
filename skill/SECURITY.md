@@ -31,19 +31,34 @@ Secret patterns scanned (11 regex patterns in `scan-secrets.sh`): GitHub PAT, Op
 
 ---
 
-## Data NOT Collected
+## Data NOT Collected (Quick Mode)
 
-The following are explicitly excluded from checkpoints:
+Quick checkpoints (default) include ONLY workspace files:
 
-| Excluded | Reason |
-|----------|--------|
-| `~/.openclaw/openclaw.json` API keys | Gateway config metadata is sanitized; raw API keys are stripped |
+| Excluded from Quick Mode | Reason |
+|--------------------------|--------|
+| `~/.openclaw/openclaw.json` API keys | Quick mode = workspace only |
+| `~/.amcp/config.json` secrets | Quick mode = workspace only |
+| Auth profiles, OAuth tokens | Quick mode = workspace only |
 | AgentMemory vault contents | Not part of AMCP workspace |
-| System files outside workspace | Only `~/.openclaw/workspace/` and `~/.amcp/` are scoped |
+| System files outside workspace | Only `~/.openclaw/workspace/` scoped |
 | SSH keys, GPG keys | Not in scan scope |
 | Other users' home directories | Scripts only operate on `$HOME` |
-| `.git/` directories | Excluded from rsync during staging |
-| Node modules, `.venv/` | Excluded from rsync during staging |
+| `.git/` directories | Excluded from rsync |
+| Node modules, `.venv/` | Excluded from rsync |
+
+## Data INCLUDED in Full Checkpoints (--full)
+
+⚠️ **FULL checkpoints include ALL secrets for complete resurrection:**
+
+| Included in Full Mode | Purpose |
+|-----------------------|---------|
+| `~/.openclaw/openclaw.json` skill API keys | Restore other skills' credentials |
+| `~/.amcp/config.json` (Pinata, Solvr keys) | Restore AMCP configuration |
+| `~/.openclaw/auth-profiles.json` OAuth tokens | Restore authentication |
+| All secrets from AgentMemory CLI | Complete credential restoration |
+
+**Use `--full` only when you need complete resurrection capability and understand secrets will be bundled (encrypted).**
 
 ---
 

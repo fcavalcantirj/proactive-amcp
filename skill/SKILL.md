@@ -1,6 +1,6 @@
 ---
 name: proactive-amcp
-version: 0.9.2
+version: 0.9.3
 description: Make your agent proactive — auto-checkpoint before death, resurrect from IPFS, self-heal via watchdog. Includes Solvr integration for free pinning, learning commands (/remember, /stuck), and lifecycle hooks.
 triggers:
   - amcp
