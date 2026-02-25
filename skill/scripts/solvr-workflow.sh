@@ -13,18 +13,52 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CONFIG_FILE="${AMCP_CONFIG:-$HOME/.amcp/config.json}"
 
-# Get Solvr API key from AMCP config
+# Get Solvr API key from AMCP config or environment
 get_solvr_key() {
-  if [ -f "$CONFIG_FILE" ]; then
-    python3 -c "
-import json, sys
+  # Try environment first
+  if [ -n "${SOLVR_API_KEY:-}" ]; then
+    echo "$SOLVR_API_KEY"
+    return 0
+  fi
+  
+  # Try AMCP config
+  local config_file="${AMCP_CONFIG:-$HOME/.amcp/config.json}"
+  if [ -f "$config_file" ]; then
+    local key
+    key=$(python3 -c "
+import json, sys, os
 try:
-    c = json.load(open('$CONFIG_FILE'))
+    c = json.load(open(os.path.expanduser('$config_file')))
     key = c.get('apiKeys', {}).get('solvr') or c.get('solvr', {}).get('apiKey') or ''
-    print(key)
+    if key:
+        print(key)
 except:
     pass
-" 2>/dev/null || true
+" 2>/dev/null) || true
+    if [ -n "$key" ]; then
+      echo "$key"
+      return 0
+    fi
+  fi
+  
+  # Try OpenClaw config as fallback
+  local oc_config="$HOME/.openclaw/openclaw.json"
+  if [ -f "$oc_config" ]; then
+    local key
+    key=$(python3 -c "
+import json, sys, os
+try:
+    c = json.load(open(os.path.expanduser('$oc_config')))
+    key = c.get('skills', {}).get('entries', {}).get('solvr', {}).get('apiKey') or ''
+    if key:
+        print(key)
+except:
+    pass
+" 2>/dev/null) || true
+    if [ -n "$key" ]; then
+      echo "$key"
+      return 0
+    fi
   fi
 }
 
@@ -255,18 +289,19 @@ watchdog_solvr_workflow() {
   
   echo "📝 No existing solutions, posting problem to Solvr..." >&2
   
-  # 2. Post new problem
+  # 2. Post new problem (Solvr requires 50+ char description)
   local problem_title="[Watchdog] $error_summary"
   local problem_desc="Agent: $agent_name
 Error: $error_summary
 Timestamp: $(date -Iseconds)
-Auto-detected by proactive-amcp watchdog"
+Host: $(hostname)
+Auto-detected by proactive-amcp watchdog. This problem was automatically posted when no existing solutions were found on Solvr."
   
   local post_result
   post_result=$(post_problem "$problem_title" "$problem_desc" "watchdog,auto-diagnosed,amcp")
   
   local problem_id
-  problem_id=$(echo "$post_result" | python3 -c "import json,sys; print(json.load(sys.stdin).get('id',''))" 2>/dev/null || true)
+  problem_id=$(echo "$post_result" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('data',{}).get('id','') or d.get('id',''))" 2>/dev/null || true)
   
   if [ -n "$problem_id" ]; then
     echo "📌 Posted problem: $problem_id" >&2
