@@ -1,7 +1,7 @@
 {
   "name": "proactive-amcp",
   "displayName": "Proactive AMCP",
-  "version": "0.9.6",
+  "version": "0.9.7",
   "description": "Make your agent proactive — auto-checkpoint before death, resurrect from IPFS, self-heal via watchdog. Quick mode is safe (no secrets). Use --full for complete resurrection.",
   "homepage": "https://github.com/fcavalcantirj/proactive-amcp",
   "requiredEnvVars": [
