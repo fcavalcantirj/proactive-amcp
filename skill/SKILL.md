@@ -1,8 +1,8 @@
 ---
 name: proactive-amcp
 displayName: Proactive AMCP
-version: 0.9.7
-description: Make your agent proactive — auto-checkpoint before death, resurrect from IPFS, self-heal via watchdog. Quick mode is safe (no secrets). Use --full for complete resurrection.
+version: 0.9.8
+description: Make your agent proactive — auto-checkpoint before death, resurrect from IPFS, self-heal via watchdog with Solvr integration. Quick mode is safe (no secrets). Use --full for complete resurrection.
 triggers:
   - amcp
   - checkpoint
@@ -433,6 +433,48 @@ Not found? → CREATE problem on Solvr
 ```
 
 **Document failures** — they're as valuable as successes.
+
+### Automatic Solvr Integration (Watchdog)
+
+The watchdog automatically integrates with Solvr:
+
+1. **On failure detection**: Searches Solvr for matching problems
+2. **If solutions found**: Shows succeeded approaches to try
+3. **If no solutions**: Posts new problem with error context
+4. **After fix attempts**: Updates approach status (succeeded/failed)
+
+This happens automatically — no manual intervention needed.
+
+### Claude Code CLI + Solvr Plugin
+
+For intelligent diagnosis, the watchdog can use Claude Code CLI:
+
+```bash
+# Manual diagnosis with Claude + Solvr
+bash SKILL_DIR/scripts/solvr-workflow.sh diagnose-with-claude "error context here"
+```
+
+Claude will:
+1. Search Solvr for similar problems
+2. Analyze the error context
+3. Suggest fixes based on succeeded approaches
+4. Post new problems if none found
+
+### Solvr Workflow Commands
+
+```bash
+# Search for existing solutions
+bash SKILL_DIR/scripts/solvr-workflow.sh search "error message"
+
+# Post a problem manually
+bash SKILL_DIR/scripts/solvr-workflow.sh post "title" "description" "tags"
+
+# Add approach to problem
+bash SKILL_DIR/scripts/solvr-workflow.sh approach <problem_id> "what I tried" [succeeded|failed]
+
+# Full workflow (search → post if not found)
+bash SKILL_DIR/scripts/solvr-workflow.sh workflow "error summary" "agent_name"
+```
 
 ---
 

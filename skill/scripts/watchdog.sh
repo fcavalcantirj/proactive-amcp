@@ -564,6 +564,59 @@ try_fix_stuck_session() {
 }
 
 # ============================================================
+# Solvr workflow — search for solutions, post problems
+# ============================================================
+run_solvr_workflow() {
+  local error_summary="$1"
+  
+  if [ ! -x "$SCRIPT_DIR/solvr-workflow.sh" ]; then
+    echo "⚠️ Solvr workflow not available"
+    return 1
+  fi
+  
+  echo "🔍 Searching Solvr for existing solutions..."
+  local result
+  result=$("$SCRIPT_DIR/solvr-workflow.sh" workflow "$error_summary" "$AGENT_NAME" 2>&1) || true
+  
+  local action
+  action=$(echo "$result" | grep -o '"action":\s*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"/\1/' || echo "")
+  
+  if [ "$action" = "try_existing" ]; then
+    echo "✅ Solvr has solutions — check output above"
+    return 0
+  elif [ "$action" = "posted_problem" ]; then
+    local problem_id
+    problem_id=$(echo "$result" | grep -o '"problem_id":\s*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"/\1/' || echo "")
+    echo "📌 Posted to Solvr: $problem_id"
+    # Store problem_id for later approach updates
+    echo "$problem_id" > "$HOME/.amcp/current-solvr-problem.txt"
+    return 1
+  fi
+  
+  return 1
+}
+
+# Update Solvr approach after fix attempt
+update_solvr_approach() {
+  local status="$1"  # succeeded or failed
+  local method="$2"
+  
+  local problem_id
+  problem_id=$(cat "$HOME/.amcp/current-solvr-problem.txt" 2>/dev/null || echo "")
+  
+  if [ -z "$problem_id" ] || [ ! -x "$SCRIPT_DIR/solvr-workflow.sh" ]; then
+    return 0
+  fi
+  
+  echo "📝 Updating Solvr: approach $status"
+  "$SCRIPT_DIR/solvr-workflow.sh" approach "$problem_id" "$method" "$status" 2>/dev/null || true
+  
+  if [ "$status" = "succeeded" ]; then
+    rm -f "$HOME/.amcp/current-solvr-problem.txt"
+  fi
+}
+
+# ============================================================
 # Main check — diagnose then route
 # ============================================================
 do_check() {
@@ -626,6 +679,9 @@ do_check() {
   failures=$((failures + 1))
   echo "⚠️ Check failed ($failures/$FAIL_THRESHOLD): $errors"
 
+  # *** SOLVR WORKFLOW: Search for existing solutions first ***
+  run_solvr_workflow "$errors" || true
+
   # Crash-loop detection — immediate escalation, skip normal fix routing
   local has_crash_loop
   has_crash_loop=$(has_finding "$diag_json" "crash_loop_detected")
@@ -677,9 +733,11 @@ do_check() {
     fix_cmd=$(get_fix_command "$diag_json" "session_corrupted")
     if [ -n "$fix_cmd" ] && try_fix_session "$fix_cmd"; then
       update_state "HEALTHY" 0 ""
+      update_solvr_approach "succeeded" "session-fix.sh for session_corrupted"
       [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "✅ [$AGENT_NAME] Session corruption auto-fixed"
       return 0
     fi
+    update_solvr_approach "failed" "session-fix.sh for session_corrupted"
     echo "❌ Session fix failed, escalating to resurrection"
   fi
 
@@ -690,9 +748,11 @@ do_check() {
     echo "🔍 Diagnosis: session stuck (gateway still running)"
     if try_fix_stuck_session "$diag_json"; then
       update_state "HEALTHY" 0 ""
+      update_solvr_approach "succeeded" "tiered-fix for session_stuck"
       [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "✅ [$AGENT_NAME] Stuck session auto-fixed"
       return 0
     fi
+    update_solvr_approach "failed" "tiered-fix for session_stuck"
     echo "❌ Stuck session fix failed, escalating to resurrection"
   fi
 
