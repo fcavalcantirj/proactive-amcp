@@ -1,15 +1,15 @@
 #!/bin/bash
-# scan-secrets.sh — Scan a directory for cleartext secrets before checkpoint
+# audit-config.sh — Scan a directory for cleartext secrets before checkpoint
 #
 # Usage (sourced):
-#   source "$SCRIPT_DIR/scan-secrets.sh"
+#   source "$SCRIPT_DIR/audit-config.sh"
 #   scan_for_secrets "$CONTENT_DIR"       # exits 1 if secrets found
 #   scan_for_secrets "$CONTENT_DIR" force  # warns but continues
 #
 # Usage (standalone):
-#   ./scan-secrets.sh <directory> [--force]
+#   ./audit-config.sh <directory> [--force]
 
-# Secret patterns to detect (shared with pre-commit-secrets.sh)
+# Secret patterns to detect (shared with pre-commit-check.sh)
 _SECRET_PATTERNS=(
     'ghp_[a-zA-Z0-9]{36}'                          # GitHub PAT (classic)
     'github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59}'   # GitHub PAT (fine-grained)

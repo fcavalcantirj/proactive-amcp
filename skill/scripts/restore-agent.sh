@@ -1,6 +1,6 @@
 #!/bin/bash
-# resuscitate.sh - Full resurrection flow
-# Usage: ./resuscitate.sh [--from-cid <cid>] [--key-file <path>]
+# restore-agent.sh - Full resurrection flow
+# Usage: ./restore-agent.sh [--from-cid <cid>] [--key-file <path>]
 #
 # Solvr: SEARCH only (read-only). Agent posts after alive.
 
@@ -550,10 +550,10 @@ try_rehydrate() {
   # Inject secrets
   if [ -f "$secrets_file" ] && [ -s "$secrets_file" ]; then
     log "Injecting secrets..."
-    if [ -x "$SCRIPT_DIR/inject-secrets.sh" ]; then
-      "$SCRIPT_DIR/inject-secrets.sh" "$secrets_file" 2>&1 | tee -a "$RECOVERY_LOG" || true
+    if [ -x "$SCRIPT_DIR/load-credentials.sh" ]; then
+      "$SCRIPT_DIR/load-credentials.sh" "$secrets_file" 2>&1 | tee -a "$RECOVERY_LOG" || true
     else
-      log "inject-secrets.sh not found, skipping"
+      log "load-credentials.sh not found, skipping"
     fi
   fi
 

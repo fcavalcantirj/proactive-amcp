@@ -1,6 +1,6 @@
 #!/bin/bash
-# solvr-integration.sh - Solvr API integration for resuscitate.sh
-# Sourced by resuscitate.sh — provides search, solution matching,
+# solvr-integration.sh - Solvr API integration for restore-agent.sh
+# Sourced by restore-agent.sh — provides search, solution matching,
 # problem creation, and approach tracking functions.
 #
 # Requires: SOLVR_BASE, RECOVERY_LOG, AGENT_NAME,

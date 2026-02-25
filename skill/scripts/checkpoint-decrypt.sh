@@ -1,6 +1,6 @@
 #!/bin/bash
 # checkpoint-decrypt.sh — Encryption detection and decryption helpers for AMCP checkpoints
-# Sourced by resuscitate.sh. Not meant to be run standalone.
+# Sourced by restore-agent.sh. Not meant to be run standalone.
 #
 # Requires: CHECKPOINT_KEYS_FILE, KEY_FILE, TEMP_FILES array, log() function
 

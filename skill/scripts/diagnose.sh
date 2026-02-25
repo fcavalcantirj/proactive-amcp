@@ -92,7 +92,7 @@ check_gateway_process() {
   add_finding "gateway_down" "critical" \
     "Gateway process not running" \
     "" \
-    "$SCRIPT_DIR/resuscitate.sh"
+    "$SCRIPT_DIR/restore-agent.sh"
   return 1
 }
 
@@ -262,7 +262,7 @@ check_config() {
     add_finding "config_invalid" "critical" \
       "OpenClaw config is not valid JSON" \
       "$OPENCLAW_CONFIG" \
-      "$SCRIPT_DIR/resuscitate.sh"
+      "$SCRIPT_DIR/restore-agent.sh"
     return 1
   fi
 
@@ -629,7 +629,7 @@ check_auth_status() {
       add_finding "auth_expired" "critical" \
         "OAuth token expired — agent cannot authenticate to model provider" \
         "" \
-        "$SCRIPT_DIR/resuscitate.sh"
+        "$SCRIPT_DIR/restore-agent.sh"
       return 1
       ;;
     124)

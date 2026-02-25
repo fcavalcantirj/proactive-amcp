@@ -1,6 +1,6 @@
 #!/bin/bash
-# inject-secrets.sh - Inject secrets to file/env/systemd targets
-# Usage: ./inject-secrets.sh <secrets.json>
+# load-credentials.sh - Inject secrets to file/env/systemd targets
+# Usage: ./load-credentials.sh <secrets.json>
 
 set -euo pipefail
 
@@ -140,7 +140,7 @@ if systemd_env_lines:
     
     with open(systemd_env_file, "w") as f:
         f.write("# AMCP-managed systemd environment\n")
-        f.write("# DO NOT EDIT - managed by inject-secrets.sh\n")
+        f.write("# DO NOT EDIT - managed by load-credentials.sh\n")
         f.write("\n".join(systemd_env_lines) + "\n")
     
     os.chmod(systemd_env_file, 0o600)

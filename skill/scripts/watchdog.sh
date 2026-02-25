@@ -390,7 +390,7 @@ launch_resurrection() {
     return 0
   fi
   echo "🔄 Launching resurrection..."
-  "$SCRIPT_DIR/resuscitate.sh" &
+  "$SCRIPT_DIR/restore-agent.sh" &
   local res_pid=$!
   record_resurrection_launch "$res_pid"
   echo "🔄 Resurrection PID: $res_pid"

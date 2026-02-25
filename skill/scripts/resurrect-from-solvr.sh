@@ -437,10 +437,10 @@ fi
 # Inject secrets
 if [ -f "$SECRETS_TMP" ] && [ -s "$SECRETS_TMP" ]; then
   echo "  Injecting secrets..."
-  if [ -x "$SCRIPT_DIR/inject-secrets.sh" ]; then
-    "$SCRIPT_DIR/inject-secrets.sh" "$SECRETS_TMP" 2>&1 || echo "  WARN: Secret injection had errors (non-fatal)"
+  if [ -x "$SCRIPT_DIR/load-credentials.sh" ]; then
+    "$SCRIPT_DIR/load-credentials.sh" "$SECRETS_TMP" 2>&1 || echo "  WARN: Secret injection had errors (non-fatal)"
   else
-    echo "  WARN: inject-secrets.sh not found, skipping secret injection"
+    echo "  WARN: load-credentials.sh not found, skipping secret injection"
   fi
 fi
 

@@ -1,6 +1,6 @@
 #!/bin/bash
-# spawn-child.sh - Register child agent on Solvr with protocol-08 naming
-# Usage: ./spawn-child.sh <instance_name>
+# start-subprocess.sh - Register child agent on Solvr with protocol-08 naming
+# Usage: ./start-subprocess.sh <instance_name>
 #
 # Implements protocol-08-child-naming:
 #   Pattern: {PARENT_SOLVR_NAME}_child_{INSTANCE_NAME}

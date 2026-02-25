@@ -341,7 +341,7 @@ KEEP_CHECKPOINTS="${KEEP_CHECKPOINTS:-5}"
 AGENT_NAME="${AGENT_NAME:-ClaudiusThePirateEmperor}"
 
 # Source secret scanner
-source "$SCRIPT_DIR/scan-secrets.sh"
+source "$SCRIPT_DIR/audit-config.sh"
 
 # Pinata config — read from ~/.amcp/config.json
 PINATA_JWT="${PINATA_JWT:-$(python3 -c "import json; d=json.load(open('$HOME/.amcp/config.json')); print(d.get('pinata',{}).get('jwt',''))" 2>/dev/null || echo '')}"

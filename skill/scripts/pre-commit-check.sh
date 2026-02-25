@@ -1,11 +1,11 @@
 #!/bin/bash
-# pre-commit-secrets.sh — Scan staged files for secrets before commit
+# pre-commit-check.sh — Scan staged files for secrets before commit
 #
 # Install as git hook:
-#   cp scripts/pre-commit-secrets.sh .git/hooks/pre-commit
+#   cp scripts/pre-commit-check.sh .git/hooks/pre-commit
 #   chmod +x .git/hooks/pre-commit
 #
-# Or run manually: ./scripts/pre-commit-secrets.sh
+# Or run manually: ./scripts/pre-commit-check.sh
 
 set -euo pipefail
 
