@@ -521,6 +521,26 @@ build_escalation_report() {
 }
 
 # ============================================================
+# Solvr knowledge compounding — document fixes via Claude Code CLI
+# ============================================================
+document_fix_on_solvr() {
+  local fix_type="$1"
+  local diag_json="${2:-{\}}"
+  local fix_details="${3:-Fix applied by watchdog}"
+  local solvr_script="$SCRIPT_DIR/_watchdog-solvr.sh"
+
+  if [[ ! -x "$solvr_script" ]]; then
+    echo "[SOLVR] _watchdog-solvr.sh not found, skipping knowledge compounding"
+    return 0
+  fi
+
+  # Run in background — don't block the watchdog cycle
+  nohup "$solvr_script" "$fix_type" "$diag_json" "$fix_details" \
+    >> "$HOME/.amcp/logs/watchdog-solvr.log" 2>&1 &
+  echo "[SOLVR] Documenting ${fix_type} fix in background (PID: $!)"
+}
+
+# ============================================================
 # Fix routing — pick the right fix based on diagnosis
 # ============================================================
 try_fix_session() {
@@ -616,6 +636,7 @@ do_check() {
     if [ "$current_state" != "HEALTHY" ]; then
       echo "✅ Recovered! State: $current_state -> HEALTHY"
       [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "✅ [$AGENT_NAME] Recovered from $current_state"
+      document_fix_on_solvr "recovery" "$diag_json" "Recovered from $current_state to HEALTHY"
       rm -f "$LOCK_FILE"
     fi
     update_state "HEALTHY" 0 ""
@@ -698,6 +719,7 @@ do_check() {
         if systemctl --user restart openclaw-gateway 2>/dev/null; then
           update_state "HEALTHY" 0 ""
           [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "✅ [$AGENT_NAME] Semantic config errors auto-fixed via openclaw doctor"
+          document_fix_on_solvr "config_semantic" "$diag_json" "openclaw doctor --fix applied, gateway restarted"
           return 0
         fi
       fi
@@ -713,6 +735,7 @@ do_check() {
     if [ -n "$fix_cmd" ] && try_fix_session "$fix_cmd"; then
       update_state "HEALTHY" 0 ""
       [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "✅ [$AGENT_NAME] Session corruption auto-fixed"
+      document_fix_on_solvr "session_corrupted" "$diag_json" "Session repair (fix-openclaw-session.py) + gateway restart"
       return 0
     fi
     echo "❌ Session fix failed, escalating to resurrection"
@@ -726,6 +749,7 @@ do_check() {
     if try_fix_stuck_session "$diag_json"; then
       update_state "HEALTHY" 0 ""
       [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "✅ [$AGENT_NAME] Stuck session auto-fixed"
+      document_fix_on_solvr "session_stuck" "$diag_json" "Stuck session tiered fix (truncate/reset/archive) + gateway restart"
       return 0
     fi
     echo "❌ Stuck session fix failed, escalating to resurrection"
@@ -747,6 +771,7 @@ do_check() {
           echo "✅ Config restored via escalation"
           update_state "HEALTHY" 0 ""
           [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "✅ [$AGENT_NAME] Stuck config error auto-fixed via escalation (after $failures failures)"
+          document_fix_on_solvr "config_stuck" "$diag_json" "Config restoration via escalation after $failures failures"
           return 0
         fi
       fi
@@ -760,6 +785,7 @@ do_check() {
           echo "✅ Config restored via escalation (gateway was unresponsive)"
           update_state "HEALTHY" 0 ""
           [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "✅ [$AGENT_NAME] Stuck gateway error auto-fixed via config restoration (after $failures failures)"
+          document_fix_on_solvr "gateway_stuck" "$diag_json" "Gateway unresponsive — config restoration after $failures failures"
           return 0
         fi
       fi

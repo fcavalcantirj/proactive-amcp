@@ -63,20 +63,32 @@ LOG_DIR="${HOME}/.amcp/logs"
 mkdir -p "$LOG_DIR"
 echo "[$(date -Iseconds)] $MESSAGE" >> "$LOG_DIR/notifications.log"
 
-# Telegram notification (if target configured and gateway running)
+# Telegram notification (if target configured)
 if [[ -n "$NOTIFY_TARGET" ]]; then
-  # Try to send via OpenClaw message tool (if gateway is running)
-  if command -v openclaw &>/dev/null; then
-    # Use curl to gateway API if available
-    GATEWAY_URL="${OPENCLAW_GATEWAY_URL:-http://localhost:5578}"
-    
-    # Check if gateway is up
-    if curl -s --max-time 2 "$GATEWAY_URL/health" &>/dev/null; then
-      echo "[NOTIFY] Gateway up, but direct messaging requires agent context"
-      # For now, just log - agent should use message tool directly
-    fi
+  # Read bot token — prefer AMCP config, fall back to OpenClaw config, then env var
+  BOT_TOKEN=""
+  if [[ -f "$AMCP_CONFIG" ]]; then
+    BOT_TOKEN=$(python3 -c "import json; d=json.load(open('$AMCP_CONFIG')); print(d.get('apiKeys',{}).get('telegram_bot',''))" 2>/dev/null || echo "")
   fi
-  echo "[NOTIFY] Telegram target: $NOTIFY_TARGET (use message tool from agent context)"
+  if [[ -z "$BOT_TOKEN" ]] && [[ -f "$OC_CONFIG" ]]; then
+    BOT_TOKEN=$(jq -r '.channels.telegram.botToken // empty' "$OC_CONFIG" 2>/dev/null || true)
+  fi
+  BOT_TOKEN="${BOT_TOKEN:-${TELEGRAM_BOT_TOKEN:-}}"
+
+  TELEGRAM_API="${TELEGRAM_API_URL:-https://api.telegram.org}"
+  if [[ -n "$BOT_TOKEN" ]]; then
+    if curl -s --max-time 10 \
+      "${TELEGRAM_API}/bot${BOT_TOKEN}/sendMessage" \
+      -d "chat_id=${NOTIFY_TARGET}" \
+      -d "text=${MESSAGE}" \
+      -d "parse_mode=HTML" >/dev/null 2>&1; then
+      echo "[NOTIFY] Telegram message sent to ${NOTIFY_TARGET}"
+    else
+      echo "[NOTIFY] Telegram send failed (chat_id=${NOTIFY_TARGET})"
+    fi
+  else
+    echo "[NOTIFY] No Telegram bot token found, skipping Telegram delivery"
+  fi
 fi
 
 # Email notification
