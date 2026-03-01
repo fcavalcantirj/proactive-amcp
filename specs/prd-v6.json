@@ -3,38 +3,38 @@
     "id": "6.1",
     "category": "onboarding",
     "phase": 6,
-    "description": "Add Solvr auto-registration to init.sh — detect no key, offer registration, auto-register agent",
+    "description": "Add Solvr auto-registration to init.sh \u2014 detect no key, offer registration, auto-register agent",
     "steps": [
       "In init.sh, before IPFS pinning section, check if solvr.apiKey exists in config",
       "If no key: prompt 'Register on Solvr for free IPFS + collective knowledge?'",
       "If yes: call POST https://api.solvr.dev/v1/agents/register with agent name",
       "Parse response: extract api_key, agent.id, pinning_quota_bytes",
       "Store api_key in config.json under solvr.apiKey AND apiKeys.solvr",
-      "Display: '✅ Registered as {agent_id}! 1GB free pinning included.'",
+      "Display: '\u2705 Registered as {agent_id}! 1GB free pinning included.'",
       "Auto-configure ipfs.provider to 'solvr' since key now exists",
       "Verify: fresh init with no Solvr key prompts and successfully registers"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "6.2",
-    "category": "onboarding", 
+    "category": "onboarding",
     "phase": 6,
-    "description": "Add Solvr key validation to init.sh — verify existing key works before proceeding",
+    "description": "Add Solvr key validation to init.sh \u2014 verify existing key works before proceeding",
     "steps": [
       "If solvr.apiKey exists in config, call GET https://api.solvr.dev/v1/me",
-      "If 200: display 'Already registered as {display_name} on Solvr ✓'",
+      "If 200: display 'Already registered as {display_name} on Solvr \u2713'",
       "If 401/403: warn 'Solvr key invalid', offer to re-register or enter new key",
       "Store validated agent info (id, display_name) in config for reference",
       "Verify: init with valid key shows agent name, invalid key triggers re-registration offer"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "6.3",
     "category": "onboarding",
     "phase": 6,
-    "description": "Add claim invitation message after Solvr registration — guide user to link agent to human account",
+    "description": "Add claim invitation message after Solvr registration \u2014 guide user to link agent to human account",
     "steps": [
       "After successful registration in init.sh, display claim instructions",
       "Message: 'To link me to your human account: solvr.dev/agents/me/claim'",
@@ -43,57 +43,57 @@
       "Add 'proactive-amcp claim-info' command to display claim URL anytime",
       "Verify: new registration shows claim URL, claim-info command works"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "6.4",
     "category": "identity",
     "phase": 6,
-    "description": "Link AMCP identity to Solvr agent — prove cryptographic identity on Solvr profile",
+    "description": "Link AMCP identity to Solvr agent \u2014 prove cryptographic identity on Solvr profile",
     "steps": [
       "After AMCP identity created and Solvr registered, call Solvr API to link them",
       "Sign a challenge with AMCP private key to prove ownership",
       "Call PUT/PATCH endpoint to set has_amcp_identity=true and store AID",
-      "Display: 'AMCP identity linked to Solvr — your checkpoints are now verifiable'",
+      "Display: 'AMCP identity linked to Solvr \u2014 your checkpoints are now verifiable'",
       "Add verification badge info to claim-info output",
       "Verify: Solvr /me endpoint shows has_amcp_identity:true after init"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "6.5",
     "category": "watchdog",
     "phase": 6,
-    "description": "Add auth expiry monitoring to watchdog — catch OAuth expiration before agent dies",
+    "description": "Add auth expiry monitoring to watchdog \u2014 catch OAuth expiration before agent dies",
     "steps": [
       "In watchdog.sh health checks, run 'openclaw models status --check'",
       "Parse exit code: 0=OK, 1=expired (too late), 2=expiring soon",
-      "If exit 2: send Telegram alert 'OAuth expiring soon — renew at console.anthropic.com'",
+      "If exit 2: send Telegram alert 'OAuth expiring soon \u2014 renew at console.anthropic.com'",
       "If exit 1: trigger resurrection flow immediately",
       "Add auth_status to diagnose.sh output",
       "Verify: watchdog detects expiring OAuth and alerts before death"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "6.6",
     "category": "watchdog",
     "phase": 6,
-    "description": "Add soul-evil hook detection to watchdog — alert if personality override hook is enabled",
+    "description": "Add soul-evil hook detection to watchdog \u2014 alert if personality override hook is enabled",
     "steps": [
       "In watchdog.sh, check for soul-evil hook: 'openclaw hooks list | grep soul-evil'",
-      "If found and enabled: alert 'WARNING: soul-evil hook detected — personality may be overridden'",
+      "If found and enabled: alert 'WARNING: soul-evil hook detected \u2014 personality may be overridden'",
       "Check if hook was enabled during a 'purge window' (suspicious timing)",
       "Add to diagnose.sh output under security_checks",
       "Verify: watchdog detects soul-evil hook and alerts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "6.7",
     "category": "status",
     "phase": 6,
-    "description": "Add 'proactive-amcp status --full' — comprehensive status including Solvr, IPFS, watchdog health",
+    "description": "Add 'proactive-amcp status --full' \u2014 comprehensive status including Solvr, IPFS, watchdog health",
     "steps": [
       "Create comprehensive status command that shows all subsystem health",
       "Include: identity (valid/invalid), Solvr (registered/key valid), IPFS (provider/last pin)",
@@ -102,13 +102,13 @@
       "Output both human-readable and --json formats",
       "Verify: status --full shows complete system health"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "6.8",
     "category": "onboarding",
     "phase": 6,
-    "description": "Add solvr-register.sh standalone script — allow registration outside of init flow",
+    "description": "Add solvr-register.sh standalone script \u2014 allow registration outside of init flow",
     "steps": [
       "Create scripts/solvr-register.sh for standalone Solvr registration",
       "Accept --name flag for custom agent name, default to hostname",
@@ -118,28 +118,28 @@
       "Add 'register' subcommand to proactive-amcp.sh dispatcher",
       "Verify: 'proactive-amcp register' works standalone"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "6.9",
     "category": "docs",
     "phase": 6,
-    "description": "Update SKILL.md for end-to-end flow — document Solvr registration and claiming",
+    "description": "Update SKILL.md for end-to-end flow \u2014 document Solvr registration and claiming",
     "steps": [
       "Add 'Getting Started' section that explains the full flow",
-      "Document: install → init → auto-register on Solvr → claim (optional)",
+      "Document: install \u2192 init \u2192 auto-register on Solvr \u2192 claim (optional)",
       "Explain what Solvr provides: free IPFS, collective knowledge, agent profile",
       "Add troubleshooting for registration failures",
       "Update Quick Reference with register and claim-info commands",
       "Verify: new user can follow SKILL.md to complete end-to-end setup"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "6.10",
     "category": "integration",
     "phase": 6,
-    "description": "Add checkpoint metadata to Solvr — store checkpoint history on Solvr for discoverability",
+    "description": "Add checkpoint metadata to Solvr \u2014 store checkpoint history on Solvr for discoverability",
     "steps": [
       "After successful checkpoint + IPFS pin, POST metadata to Solvr",
       "Include: CID, timestamp, size, previous_cid, agent_id",
@@ -148,6 +148,6 @@
       "Add --no-solvr-metadata flag to skip for privacy",
       "Verify: checkpoint metadata appears on Solvr, searchable by other agents"
     ],
-    "passes": false
+    "passes": true
   }
 ]
