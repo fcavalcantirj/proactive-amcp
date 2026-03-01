@@ -149,5 +149,191 @@
       "Verify: checkpoint metadata appears on Solvr, searchable by other agents"
     ],
     "passes": true
+  },
+  {
+    "id": "SEC-001",
+    "category": "security",
+    "description": "Add required binaries to SKILL.md metadata",
+    "steps": [
+      "Open skill/SKILL.md",
+      "Add to metadata block: requires.bins: [python3, curl, jq, systemctl]",
+      "Add optional bins: [claude, agentmemory, openclaw]",
+      "Test: clawdhub lint shows no missing dependency warnings"
+    ],
+    "passes": false,
+    "priority": 1,
+    "phase": 7
+  },
+  {
+    "id": "SEC-002",
+    "category": "security",
+    "description": "Add required credentials to SKILL.md metadata",
+    "steps": [
+      "Open skill/SKILL.md",
+      "Add to metadata: requires.credentials section",
+      "List: solvr.apiKey (optional), pinata.jwt (optional), groq.apiKey (optional)",
+      "Document: these are optional, skill degrades gracefully without them",
+      "Test: scanner recognizes declared credentials"
+    ],
+    "passes": false,
+    "priority": 1,
+    "phase": 7
+  },
+  {
+    "id": "SEC-003",
+    "category": "security",
+    "description": "Remove eval from disk-cleanup.sh",
+    "steps": [
+      "Open scripts/disk-cleanup.sh",
+      "Find: eval \"$cmd\" pattern",
+      "Replace with direct command execution or case statement",
+      "Test: disk-cleanup.sh still works",
+      "Verify: grep -n 'eval' scripts/*.sh returns nothing"
+    ],
+    "passes": false,
+    "priority": 1,
+    "phase": 7
+  },
+  {
+    "id": "SEC-004",
+    "category": "security",
+    "description": "Add explicit consent prompt for --full checkpoint mode",
+    "steps": [
+      "Open scripts/full-checkpoint.sh",
+      "Add warning at start: 'Full mode includes ALL secrets (encrypted)'",
+      "Add prompt: 'Type YES to confirm you understand'",
+      "Skip prompt if --yes flag passed (for automation)",
+      "Document in SKILL.md that --full requires explicit consent"
+    ],
+    "passes": false,
+    "priority": 1,
+    "phase": 7
+  },
+  {
+    "id": "SEC-005",
+    "category": "security",
+    "description": "Document systemd/cron installation in metadata",
+    "steps": [
+      "Add to SKILL.md metadata: installs.systemd: true",
+      "Add: installs.cron: true (fallback)",
+      "Add: modifies: [~/.config/systemd/user/, crontab]",
+      "Scanner should recognize declared system modifications"
+    ],
+    "passes": false,
+    "priority": 2,
+    "phase": 7
+  },
+  {
+    "id": "MERGE-001",
+    "category": "merge",
+    "description": "Add .learnings/ directory structure from self-improvement",
+    "steps": [
+      "Create template: assets/LEARNINGS.md",
+      "Create template: assets/ERRORS.md",
+      "Create template: assets/FEATURE_REQUESTS.md",
+      "Add to checkpoint.sh: include .learnings/ in checkpoint",
+      "Document in SKILL.md: learning capture now uses structured format"
+    ],
+    "passes": false,
+    "priority": 2,
+    "phase": 7
+  },
+  {
+    "id": "MERGE-002",
+    "category": "merge",
+    "description": "Adopt LRN/ERR/FEAT-YYYYMMDD-XXX ID format",
+    "steps": [
+      "Update /remember command to generate LRN-YYYYMMDD-XXX IDs",
+      "Update /stuck command to generate ERR-YYYYMMDD-XXX IDs",
+      "Add ID to learning entries in memory/learning/*.jsonl",
+      "Add helper: scripts/generate-learning-id.sh"
+    ],
+    "passes": false,
+    "priority": 2,
+    "phase": 7
+  },
+  {
+    "id": "MERGE-003",
+    "category": "merge",
+    "description": "Add priority/status lifecycle to learnings",
+    "steps": [
+      "Add fields to learning schema: priority (low/medium/high/critical)",
+      "Add fields: status (pending/in_progress/resolved/promoted)",
+      "Update /learned to accept --priority and --status flags",
+      "Add command: /resolve <id> to mark learning resolved"
+    ],
+    "passes": false,
+    "priority": 2,
+    "phase": 7
+  },
+  {
+    "id": "MERGE-004",
+    "category": "merge",
+    "description": "Add recurrence tracking (See Also, Recurrence-Count)",
+    "steps": [
+      "Add fields: seeAlso (array), recurrenceCount, firstSeen, lastSeen",
+      "When logging similar issue, auto-link with seeAlso",
+      "Increment recurrenceCount on similar entries",
+      "Auto-bump priority when recurrenceCount >= 3"
+    ],
+    "passes": false,
+    "priority": 3,
+    "phase": 7
+  },
+  {
+    "id": "MERGE-005",
+    "category": "merge",
+    "description": "Add area tags (frontend/backend/infra/tests/docs/config)",
+    "steps": [
+      "Add area field to learning schema",
+      "Update /remember to accept --area flag",
+      "Auto-detect area from file paths mentioned",
+      "Add filter: /learnings --area backend"
+    ],
+    "passes": false,
+    "priority": 3,
+    "phase": 7
+  },
+  {
+    "id": "MERGE-006",
+    "category": "merge",
+    "description": "Add auto-promotion rule (recurrence >= 3 \u2192 promote)",
+    "steps": [
+      "Add to diagnose.sh: check for high-recurrence learnings",
+      "Suggest promotion to SOUL.md/TOOLS.md/AGENTS.md",
+      "Add command: /promote <id> <target>",
+      "Update status to 'promoted' after promotion"
+    ],
+    "passes": false,
+    "priority": 3,
+    "phase": 7
+  },
+  {
+    "id": "MERGE-007",
+    "category": "merge",
+    "description": "Port activator.sh hook pattern",
+    "steps": [
+      "Create hooks/openclaw/handler.js from self-improvement",
+      "Inject reminder to check .learnings/ on agent bootstrap",
+      "Make hook optional (disabled by default)",
+      "Document: openclaw hooks enable proactive-amcp"
+    ],
+    "passes": false,
+    "priority": 3,
+    "phase": 7
+  },
+  {
+    "id": "MERGE-008",
+    "category": "merge",
+    "description": "Port error-detector.sh pattern",
+    "steps": [
+      "Create scripts/error-detector.sh from self-improvement",
+      "Detect error patterns in command output",
+      "Auto-suggest logging to .learnings/ERRORS.md",
+      "Integrate with watchdog for automatic error capture"
+    ],
+    "passes": false,
+    "priority": 3,
+    "phase": 7
   }
 ]
