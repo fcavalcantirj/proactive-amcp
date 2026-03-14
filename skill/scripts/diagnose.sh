@@ -506,17 +506,29 @@ PYEOF
 }
 
 # ============================================================
-# Check 5: Disk space
+# Check 5: Disk space (auto-cleanup if > 85%)
 # ============================================================
 check_disk() {
-  local disk_free
-  disk_free=$(df -h "$HOME" | awk 'NR==2 {gsub(/%/,""); print 100-$5}') || return 0
+  local disk_pct disk_free
+  disk_pct=$(df / | awk 'NR==2 {gsub(/%/,""); print $5}') || return 0
+  disk_free=$((100 - disk_pct))
+
+  # Auto-cleanup if disk > 85%
+  if [ "$disk_pct" -gt 85 ] 2>/dev/null; then
+    echo "[diagnose] Disk at ${disk_pct}%, running auto-cleanup..." >&2
+    if [ -x "$SCRIPT_DIR/disk-cleanup.sh" ]; then
+      "$SCRIPT_DIR/disk-cleanup.sh" --threshold 85 >&2 || true
+      # Re-check after cleanup
+      disk_pct=$(df / | awk 'NR==2 {gsub(/%/,""); print $5}') || return 0
+      disk_free=$((100 - disk_pct))
+    fi
+  fi
 
   if [ "$disk_free" -lt "$DISK_THRESHOLD" ] 2>/dev/null; then
     add_finding "disk_low" "warning" \
       "Disk space low: ${disk_free}% free (threshold: ${DISK_THRESHOLD}%)" \
       "$HOME" \
-      ""
+      "$SCRIPT_DIR/disk-cleanup.sh"
     return 1
   fi
   return 0

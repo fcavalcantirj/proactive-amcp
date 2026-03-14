@@ -226,3 +226,23 @@ rm -f .git/hooks/pre-commit
 | Man-in-the-middle on IPFS pin | HTTPS to Solvr/Pinata; CID verification on fetch |
 | Stale credentials in config | Secrets in `~/.amcp/config.json` (0600), never in identity file |
 | Concurrent resurrection corruption | Lock file + PID tracking prevents parallel recovery |
+
+---
+
+## Security Scanner False Positives
+
+### Unicode Control Characters (ZWJ)
+
+Some security scanners may flag SKILL.md for "unicode control characters" or "prompt injection patterns." This is a **false positive** caused by the pirate emoji 🏴‍☠️.
+
+**Technical explanation:**
+- The pirate flag emoji is a compound emoji: 🏴 (black flag) + ZWJ + ☠️ (skull)
+- ZWJ = Zero Width Joiner (U+200D), used to combine emojis
+- Scanners detecting "invisible unicode" may flag ZWJ
+
+**This is safe:** ZWJ is a standard Unicode character used in all compound emojis (family emojis, skin tone modifiers, flag sequences). It has no effect on LLM behavior or prompt interpretation.
+
+**Verification:** View the raw bytes of SKILL.md to confirm only the pirate emoji contains ZWJ:
+```bash
+hexdump -C SKILL.md | grep "e2 80 8d"  # ZWJ bytes
+```
