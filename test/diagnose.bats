@@ -10,6 +10,7 @@ setup() {
   source "$HELPER"
   setup_test_env
   create_mock_systemctl
+  create_mock_openclaw true
   create_mock_df 50
   create_mock_free 50
 

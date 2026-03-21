@@ -19,7 +19,7 @@ setup() {
   # Sandbox scripts
   export SANDBOXED_SCRIPTS="$TEST_DIR/scripts"
   mkdir -p "$SANDBOXED_SCRIPTS"
-  for f in _solvr-pin.sh _solvr-checkpoint.sh solvr.sh checkpoint.sh _checkpoint-full.sh _secrets-scan.sh resuscitate.sh solvr-integration.sh _secrets-inject.sh; do
+  for f in _solvr-pin.sh _solvr-checkpoint.sh solvr.sh checkpoint.sh _checkpoint-full.sh _secrets-scan.sh resuscitate.sh solvr-integration.sh _secrets-inject.sh _checkpoint-decrypt.sh; do
     if [ -f "$REAL_SCRIPT_DIR/$f" ]; then
       cp "$REAL_SCRIPT_DIR/$f" "$SANDBOXED_SCRIPTS/"
       chmod +x "$SANDBOXED_SCRIPTS/$f"

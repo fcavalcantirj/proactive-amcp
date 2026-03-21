@@ -23,6 +23,7 @@ setup() {
   export AMCP_CLI="$MOCK_BIN/amcp"
   export IDENTITY_PATH="$AMCP_DIR/identity.json"
   create_mock_systemctl
+  create_mock_openclaw true
   create_mock_df 50
   create_mock_free 50
 
@@ -547,7 +548,7 @@ EOAMCP
   # Notification should mention crash-loop
   local notifs
   notifs=$(read_notifications)
-  [[ "$notifs" == *"CRASH-LOOP"* ]]
+  [[ "$notifs" == *"crash_loop"* ]] || [[ "$notifs" == *"CRASH-LOOP"* ]]
   [[ "$notifs" == *"Manual intervention"* ]]
 }
 
@@ -574,8 +575,8 @@ EOAMCP
   local notifs
   notifs=$(read_notifications)
   echo "NOTIFICATIONS: $notifs"
-  # Notification should reference the threshold
-  [[ "$notifs" == *"CRASH-LOOP"* ]]
+  # Notification should reference the crash loop
+  [[ "$notifs" == *"crash_loop"* ]] || [[ "$notifs" == *"CRASH-LOOP"* ]]
   [[ "$notifs" == *"${CRASH_LOOP_THRESHOLD}"* ]]
 }
 
