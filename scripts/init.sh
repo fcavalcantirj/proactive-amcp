@@ -70,7 +70,9 @@ do_solvr_register() {
   local input_config
   input_config=$(cat)
 
-  info "Registering on Solvr as '$solvr_agent_name'..."
+  # NOTE: This function is used as a JSON pipe: stdin=config JSON, stdout=updated config JSON.
+  # All human-readable output MUST go to stderr (&2) to avoid polluting the JSON stream.
+  info "Registering on Solvr as '$solvr_agent_name'..." >&2
 
   local solvr_response
   solvr_response=$(curl -s -w "\n%{http_code}" --max-time 30 \
@@ -122,22 +124,24 @@ json.dump(d, sys.stdout, indent=2)
 
   local quota_gb=$(( solvr_quota / 1073741824 ))
   [ "$quota_gb" -lt 1 ] && quota_gb=1
-  ok "Registered as ${solvr_agent_id}! ${quota_gb}GB free pinning included."
+  ok "Registered as ${solvr_agent_id}! ${quota_gb}GB free pinning included." >&2
 
-  # Display claim invitation
-  echo ""
-  echo "  ┌─────────────────────────────────────────────────────────┐"
-  echo "  │  CLAIM YOUR AGENT                                      │"
-  echo "  │                                                         │"
-  echo "  │  To link me to your human account:                     │"
-  echo "  │    → $claim_url              │"
-  echo "  │                                                         │"
-  echo "  │  Optional but gives you control over my settings       │"
-  echo "  │  and reputation on the Solvr network.                  │"
-  echo "  │                                                         │"
-  echo "  │  View this anytime: proactive-amcp claim-info          │"
-  echo "  └─────────────────────────────────────────────────────────┘"
-  echo ""
+  # Display claim invitation (to stderr — stdout is reserved for JSON config)
+  {
+    echo ""
+    echo "  ┌─────────────────────────────────────────────────────────┐"
+    echo "  │  CLAIM YOUR AGENT                                      │"
+    echo "  │                                                         │"
+    echo "  │  To link me to your human account:                     │"
+    echo "  │    → $claim_url              │"
+    echo "  │                                                         │"
+    echo "  │  Optional but gives you control over my settings       │"
+    echo "  │  and reputation on the Solvr network.                  │"
+    echo "  │                                                         │"
+    echo "  │  View this anytime: proactive-amcp claim-info          │"
+    echo "  └─────────────────────────────────────────────────────────┘"
+    echo ""
+  } >&2
 
   echo "$updated_config"
   return 0

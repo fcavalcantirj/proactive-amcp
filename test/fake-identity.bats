@@ -241,9 +241,16 @@ EOCRONTAB
   chmod +x "$MOCK_BIN/crontab"
 
   # Run init with piped stdin: "y" to replace identity, then accept defaults
-  # Prompt sequence: (1) replace identity=y, (2) pinata jwt=skip, (3) notify=skip,
-  # (4) watchdog interval=accept default, (5) checkpoint schedule=accept default
-  run bash "$SANDBOXED_SCRIPTS/init.sh" <<< "$(printf 'y\n\n\n\n\n')"
+  # Prompt sequence (7 inputs):
+  #   (1) replace identity? [Y/n] → y
+  #   (2) register on Solvr? [Y/n] → \n (default Y)
+  #   (3) agent name for Solvr [TestAgent] → \n (default)
+  #   (4) enable Groq? [y/N] → \n (default N)
+  #   (5) Telegram user ID → \n (skip)
+  #   (6) watchdog interval [120] → \n (default)
+  #   (7) checkpoint schedule → \n (default)
+  # Note: IPFS pinning auto-configures when Solvr key exists (no prompt)
+  run bash "$SANDBOXED_SCRIPTS/init.sh" <<< "$(printf 'y\n\n\n\n\n\n')"
 
   echo "STATUS: $status"
   echo "OUTPUT: $output"
