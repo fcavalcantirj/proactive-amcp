@@ -1,7 +1,7 @@
 ---
 name: proactive-amcp
 displayName: Proactive AMCP
-version: 1.0.9
+version: 1.1.0
 description: Proactive immortal — behavior ontology (learn remember stuck) hooks kick in · IPFS soul · Solvr · self-heals on boot · disk check · watchdog 🏴‍☠️
 triggers:
   - amcp
