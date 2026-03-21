@@ -43,6 +43,42 @@ echo "[NOTIFY] $*" >> "${HOME}/.amcp/notifications.log"
 EONOTIFY
   chmod +x "$SANDBOXED_SCRIPTS/notify.sh"
 
+  # Mock curl to prevent real API calls during init (Solvr registration etc.)
+  # IMPORTANT: init.sh uses curl -w "\n%{http_code}" so the mock must append
+  # the HTTP status code as the last line when -w is present.
+  cat > "$MOCK_BIN/curl" << 'EOCURL'
+#!/bin/bash
+BODY=""
+CODE="200"
+# Solvr registration
+if echo "$*" | grep -q "agents/register"; then
+  BODY='{"id":"agent_TestAgent","name":"TestAgent","api_key":"solvr_mock_key_12345","agent":{"id":"agent_TestAgent","name":"TestAgent"},"pinning_quota_bytes":1073741824}'
+  CODE="201"
+# Solvr other agent endpoints
+elif echo "$*" | grep -q "/v1/agents"; then
+  BODY='{"id":"agent_TestAgent","name":"TestAgent"}'
+# Health check
+elif echo "$*" | grep -q "health"; then
+  BODY='{"ok":true}'
+# Telegram getMe
+elif echo "$*" | grep -q "getMe"; then
+  BODY='{"ok":true,"result":{"id":123,"is_bot":true,"first_name":"Test"}}'
+else
+  BODY='{"ok":true}'
+fi
+# If -w flag is present (curl writes http_code), append status code as last line
+if echo "$*" | grep -q -- "-w"; then
+  printf '%s\n%s' "$BODY" "$CODE"
+else
+  echo "$BODY"
+fi
+exit 0
+EOCURL
+  chmod +x "$MOCK_BIN/curl"
+
+  # Mock openclaw for auth checks
+  create_mock_openclaw true
+
   # Create minimal OpenClaw config for scripts that read it
   mkdir -p "$HOME/.openclaw"
   echo '{"gateway":{"port":3141}}' > "$HOME/.openclaw/openclaw.json"

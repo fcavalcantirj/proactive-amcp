@@ -97,6 +97,21 @@ if echo "$*" | grep -q "/v1/me"; then
   echo '{"name":"TestAgent"}'
   exit 0
 fi
+# Solvr /v1/add (pin endpoint)
+if echo "$*" | grep -q "/v1/add"; then
+  echo '{"cid":"bafkreihdwdcefghdqkjv67uzcmw7ojeexedzdetojuzjevtenccjv274yab","name":"test"}'
+  exit 0
+fi
+# Solvr /v1/agents (registration) or /v1/agents/me/checkpoints
+if echo "$*" | grep -q "/v1/agents"; then
+  echo '{"id":"agent_TestAgent","name":"TestAgent"}'
+  exit 0
+fi
+# Health endpoint
+if echo "$*" | grep -q "health"; then
+  echo '{"ok":true}'
+  exit 0
+fi
 # IPFS gateway download
 if echo "$*" | grep -q "ipfs.solvr.dev\|gateway.pinata.cloud\|ipfs.io\|cloudflare-ipfs.com"; then
   # Find -o flag and write mock checkpoint
@@ -211,9 +226,9 @@ teardown() {
   # Should output a CID (bafy... format from mock)
   [[ "$output" == *"bafkrei"* ]]
 
-  # Verify solvr CLI was called with pin add-file
-  [ -f "$TEST_DIR/solvr.log" ]
-  grep -q "pin add-file" "$TEST_DIR/solvr.log"
+  # Verify curl was called with /v1/add (Solvr API endpoint)
+  [ -f "$TEST_DIR/curl.log" ]
+  grep -q "/v1/add" "$TEST_DIR/curl.log"
 }
 
 # ============================================================
@@ -362,6 +377,36 @@ with open('$AMCP_DIR/config.json', 'w') as f:
 EOLC
 
   create_mock_pkill
+  # Gateway must be DOWN so Tier 1 (restart) and Tier 2 (config fix) fail,
+  # forcing resurrection to reach Tier 3 (rehydrate) where --gateway is used.
+  create_mock_pgrep_fail
+  # Curl mock: health endpoints fail, but IPFS gateway downloads succeed
+  cat > "$MOCK_BIN/curl" << 'EOCURL'
+#!/bin/bash
+echo "curl $*" >> "${TEST_DIR}/curl.log"
+# Health endpoint — must fail so restart/config tiers don't short-circuit
+if echo "$*" | grep -q "health"; then
+  exit 1
+fi
+# IPFS gateway download — succeed and write mock checkpoint
+if echo "$*" | grep -q "ipfs.solvr.dev\|gateway.pinata.cloud\|ipfs.io\|cloudflare-ipfs.com"; then
+  local output_file=""
+  local args=($*)
+  for ((i=0; i<${#args[@]}; i++)); do
+    if [ "${args[$i]}" = "-o" ]; then
+      output_file="${args[$((i+1))]}"
+      break
+    fi
+  done
+  if [ -n "$output_file" ]; then
+    echo '{"checkpoint":"mock-from-gateway"}' > "$output_file"
+  fi
+  exit 0
+fi
+echo "ok"
+exit 0
+EOCURL
+  chmod +x "$MOCK_BIN/curl"
 
   run bash "$SANDBOXED_SCRIPTS/resuscitate.sh" \
     --from-cid "QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG" \
