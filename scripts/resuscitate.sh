@@ -22,7 +22,7 @@ CONTENT_DIR="${CONTENT_DIR:-$HOME/.openclaw/workspace}"
 AGENT_NAME="${AGENT_NAME:-Agent}"
 RECOVERY_LOG="$HOME/.amcp/recovery-$(date +%Y%m%d-%H%M%S).log"
 LOCK_FILE="$HOME/.amcp/resurrection.lock"
-GATEWAY_SETTLE_TIME="${GATEWAY_SETTLE_TIME:-5}"
+GATEWAY_SETTLE_TIME="${GATEWAY_SETTLE_TIME:-8}"
 CHECKPOINT_KEYS_FILE="$HOME/.amcp/checkpoint-keys.json"
 KEY_FILE=""
 
@@ -69,6 +69,40 @@ is_gateway_running() {
   fi
   if pgrep -f "openclaw.*gateway" > /dev/null 2>&1; then
     return 0
+  fi
+  return 1
+}
+
+# --- Gateway health (HTTP endpoint, not just process existence) ---
+# Mirrors diagnose.sh check_gateway_health() port resolution logic.
+# Use this for success verification and tier gates — catches the race condition
+# where systemd auto-restarts a crashing gateway (process alive but unhealthy).
+_resolve_gateway_port() {
+  if [ -n "${GATEWAY_PORT:-}" ]; then
+    echo "$GATEWAY_PORT"
+    return
+  fi
+  local openclaw_config="${HOME}/.openclaw/openclaw.json"
+  if [ -f "$openclaw_config" ]; then
+    local cfg_port
+    cfg_port=$(python3 -c "import json; print(json.load(open('$openclaw_config')).get('gateway',{}).get('port',''))" 2>/dev/null || echo '')
+    if [ -n "$cfg_port" ]; then
+      echo "$cfg_port"
+      return
+    fi
+  fi
+  echo ""
+}
+
+is_gateway_healthy() {
+  local port
+  port=$(_resolve_gateway_port)
+  if [ -n "$port" ]; then
+    curl -sf --max-time 5 "http://localhost:${port}/health" > /dev/null 2>&1 && return 0
+  else
+    for port in 3141 8080 18789; do
+      curl -sf --max-time 5 "http://localhost:${port}/health" > /dev/null 2>&1 && return 0
+    done
   fi
   return 1
 }
@@ -381,8 +415,8 @@ try_restart_gateway() {
   # Try systemctl first
   if systemctl --user restart openclaw-gateway 2>/dev/null; then
     sleep "$GATEWAY_SETTLE_TIME"
-    if is_gateway_running; then
-      log "Gateway restarted via systemctl"
+    if is_gateway_healthy; then
+      log "Gateway restarted via systemctl (health check passed)"
       return 0
     fi
   fi
@@ -393,8 +427,8 @@ try_restart_gateway() {
     sleep 2
     nohup openclaw gateway start > /tmp/openclaw-gateway.log 2>&1 &
     sleep "$GATEWAY_SETTLE_TIME"
-    if is_gateway_running; then
-      log "Gateway restarted directly"
+    if is_gateway_healthy; then
+      log "Gateway restarted directly (health check passed)"
       return 0
     fi
   fi
@@ -403,9 +437,12 @@ try_restart_gateway() {
 }
 
 try_fix_config() {
-  # Gate: if gateway came up from a previous tier, skip
-  if is_gateway_running; then
-    log "Gateway already running, skipping config fix"
+  # Gate: if gateway is actually healthy (HTTP check), skip config fix
+  # NOTE: Uses is_gateway_healthy (curl /health), NOT is_gateway_running (pgrep).
+  # This prevents the race condition where systemd auto-restarts a crashing gateway
+  # and pgrep catches it alive in the brief window before it crashes again.
+  if is_gateway_healthy; then
+    log "Gateway healthy (HTTP check passed), skipping config fix"
     return 0
   fi
 
@@ -451,9 +488,9 @@ source "$SCRIPT_DIR/_checkpoint-decrypt.sh"
 try_rehydrate() {
   local cid="$1"
 
-  # Gate: if gateway came up from a previous tier, skip
-  if is_gateway_running; then
-    log "Gateway already running, skipping rehydrate"
+  # Gate: if gateway is actually healthy (HTTP check), skip rehydrate
+  if is_gateway_healthy; then
+    log "Gateway healthy (HTTP check passed), skipping rehydrate"
     return 0
   fi
 

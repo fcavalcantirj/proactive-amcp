@@ -81,40 +81,42 @@ except Exception:
 # Auto-resolve key when sourced
 _resolve_solvr_api_key
 
-# Extract error signature from gateway logs for Solvr search
+# Extract error signature from gateway logs for Solvr search.
+# Extracts the actual error message (e.g., "Error: Hook transformsDir module path...")
+# instead of random keywords, producing a meaningful Solvr search query.
 _extract_error_signature() {
   local sig=""
-  local gateway_log="${GATEWAY_LOG:-/tmp/openclaw-gateway.log}"
 
-  # Try gateway log first
-  if [ -f "$gateway_log" ]; then
-    sig=$(tail -50 "$gateway_log" 2>/dev/null | grep -iE 'ERROR|FATAL|panic|crash|ECONNREFUSED|ENOENT|SIGKILL' | tail -5 | head -c 500 || true)
-  fi
+  # Try journalctl for structured error messages (most reliable source)
+  sig=$(journalctl --user -u openclaw-gateway --since "5 min ago" -n 30 --no-pager 2>/dev/null \
+    | grep -oP '(?:Error|FATAL|failed to start|panic): .{0,200}' \
+    | tail -1 \
+    | head -c 150 || true)
 
-  # Fall back to systemd journal
+  # Fallback: gateway log file
   if [ -z "$sig" ]; then
-    sig=$(journalctl --user -u openclaw-gateway --since "1 hour ago" -n 50 --no-pager 2>/dev/null | grep -iE 'ERROR|FATAL|panic|crash' | tail -5 | head -c 500 || true)
+    local gateway_log="${GATEWAY_LOG:-/tmp/openclaw-gateway.log}"
+    if [ -f "$gateway_log" ]; then
+      sig=$(tail -30 "$gateway_log" 2>/dev/null \
+        | grep -oP '(?:Error|FATAL|failed to start|panic): .{0,200}' \
+        | tail -1 \
+        | head -c 150 || true)
+    fi
   fi
 
-  # Condense to searchable query (max 100 chars)
-  if [ -n "$sig" ]; then
-    # Extract key error phrases
-    echo "$sig" | python3 -c "
-import sys
-lines = sys.stdin.read().strip().split('\n')
-# Extract unique error keywords
-words = set()
-for line in lines:
-    for w in line.split():
-        w = w.strip('[]():,')
-        if len(w) > 3 and w.upper() not in ('THE','AND','WITH','FOR','FROM','THAT'):
-            words.add(w)
-# Build condensed query
-q = ' '.join(sorted(words)[:8])
-print(q[:100])
-" 2>/dev/null || echo "agent death gateway crash"
+  # Fallback: broader grep without -P (in case grep doesn't support Perl regex)
+  if [ -z "$sig" ]; then
+    sig=$(journalctl --user -u openclaw-gateway --since "5 min ago" -n 30 --no-pager 2>/dev/null \
+      | grep -iE 'Error:|FATAL:|failed to start:' \
+      | tail -1 \
+      | head -c 150 || true)
+  fi
+
+  # Final fallback
+  if [ -z "$sig" ]; then
+    echo "openclaw gateway crash agent death"
   else
-    echo "agent death gateway crash openclaw"
+    echo "openclaw $sig"
   fi
 }
 

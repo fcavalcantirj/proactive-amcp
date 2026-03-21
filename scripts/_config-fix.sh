@@ -23,7 +23,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 OPENCLAW_CONFIG="${OPENCLAW_CONFIG:-$HOME/.openclaw/openclaw.json}"
 BACKUP_DIR="${BACKUP_DIR:-$HOME/.amcp/config-backups}"
-GATEWAY_SETTLE_TIME="${GATEWAY_SETTLE_TIME:-5}"
+GATEWAY_SETTLE_TIME="${GATEWAY_SETTLE_TIME:-8}"
 DRY_RUN=false
 LOG_FILE="$HOME/.amcp/config-fix-$(date +%Y%m%d-%H%M%S).log"
 

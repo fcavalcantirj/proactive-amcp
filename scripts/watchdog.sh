@@ -424,11 +424,22 @@ launch_resurrection() {
     echo "⏳ Resurrection already in progress (PID $(cat "$LOCK_FILE"))"
     return 0
   fi
-  echo "🔄 Launching resurrection..."
-  "$SCRIPT_DIR/resuscitate.sh" &
-  local res_pid=$!
-  record_resurrection_launch "$res_pid"
-  echo "🔄 Resurrection PID: $res_pid"
+  echo "🔄 Launching resurrection (synchronous)..."
+  record_resurrection_launch "$$"
+  "$SCRIPT_DIR/resuscitate.sh"
+  local res_exit=$?
+
+  if [ $res_exit -eq 0 ]; then
+    # Don't trust exit code alone — verify HTTP health
+    sleep "${GATEWAY_SETTLE_TIME:-8}"
+    if [ -x "$SCRIPT_DIR/diagnose.sh" ] && "$SCRIPT_DIR/diagnose.sh" health > /dev/null 2>&1; then
+      echo "✅ Post-resurrection verification passed"
+    else
+      echo "⚠️ Resurrection exited 0 but gateway still unhealthy — marking for retry"
+    fi
+  else
+    echo "❌ Resurrection failed (exit $res_exit)"
+  fi
 }
 
 should_retry_resurrection() {

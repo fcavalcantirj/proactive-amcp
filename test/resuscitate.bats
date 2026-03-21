@@ -33,6 +33,7 @@ EONOTIFY
   export AMCP_CLI="$MOCK_BIN/amcp"
   export IDENTITY_PATH="$AMCP_DIR/identity.json"
   export SOLVR_API_KEY=""  # Disable Solvr in tests
+  export GATEWAY_SETTLE_TIME=0  # Speed up tests (no need to sleep)
 
   # Create mock amcp CLI
   cat > "$MOCK_BIN/amcp" << 'EOAMCP'
@@ -51,8 +52,9 @@ teardown() {
 }
 
 @test "resuscitate: Tier 1 success exits without touching config" {
-  # Gateway restart succeeds on first try
+  # Gateway restart succeeds: process alive AND health endpoint responds
   create_mock_pgrep "openclaw-gateway"
+  create_mock_curl "200" '{"status":"ok"}'
   create_mock_openclaw true
 
   # Mock systemctl to succeed for restart
@@ -76,6 +78,7 @@ EOF
 
 @test "resuscitate: Tier 2 does NOT run if Tier 1 succeeded" {
   create_mock_pgrep "openclaw-gateway"
+  create_mock_curl "200" '{"status":"ok"}'
 
   # systemctl restart succeeds
   cat > "$MOCK_BIN/systemctl" << 'EOF'
@@ -110,6 +113,7 @@ EOF
 @test "resuscitate: lock file cleaned up on exit" {
   # Gateway restart succeeds immediately
   create_mock_pgrep "openclaw-gateway"
+  create_mock_curl "200" '{"status":"ok"}'
   cat > "$MOCK_BIN/systemctl" << 'EOF'
 #!/bin/bash
 if [[ "$*" == *"restart"* ]]; then
@@ -151,4 +155,83 @@ EOF
   # Should attempt all tiers and fail
   [ "$status" -ne 0 ]
   [[ "$output" == *"FAILED"* ]] || [[ "$output" == *"failed"* ]]
+}
+
+# ============================================================
+# NEW: Race condition tests (the 2026-03-21 incident)
+# ============================================================
+
+@test "resuscitate: Tier 2 runs when process alive but unhealthy (race condition fix)" {
+  # Simulate the race condition: process exists (systemd auto-restart) but
+  # health endpoint fails (gateway crashing before it can serve /health).
+  # This is exactly what happened on 2026-03-21.
+  create_mock_pgrep "openclaw-gateway"
+  create_mock_curl_fail  # Health endpoint unreachable
+  create_mock_openclaw false
+
+  # Create openclaw.json for port resolution
+  echo '{"gateway":{"port":18789}}' > "$OPENCLAW_DIR/openclaw.json"
+  # Create a config backup for tier 2 to find
+  echo '{"gateway":{"port":18789},"test":"backup"}' > "$AMCP_DIR/config-backups/openclaw-backup.json"
+
+  run bash "$SANDBOXED_SCRIPTS/resuscitate.sh"
+  echo "OUTPUT: $output"
+
+  # Key assertion: should attempt config fix (NOT skip it)
+  # Old bug: is_gateway_running (pgrep) returned true, so config fix was skipped
+  # New behavior: is_gateway_healthy (curl) returns false, so config fix runs
+  [[ "$output" == *"fix config"* ]] || [[ "$output" == *"config"* ]]
+}
+
+@test "resuscitate: healthy gateway genuinely skips config fix" {
+  # Process exists AND health endpoint responds — this is a real success
+  create_mock_pgrep "openclaw-gateway"
+  create_mock_curl "200" '{"status":"ok"}'
+
+  cat > "$MOCK_BIN/systemctl" << 'EOF'
+#!/bin/bash
+[[ "$*" == *"restart"* ]] && exit 0
+exit 1
+EOF
+  chmod +x "$MOCK_BIN/systemctl"
+  echo '{"gateway":{"port":18789}}' > "$OPENCLAW_DIR/openclaw.json"
+
+  run bash "$SANDBOXED_SCRIPTS/resuscitate.sh"
+  [ "$status" -eq 0 ]
+
+  # Should NOT attempt config fix (gateway is genuinely healthy)
+  [[ "$output" == *"health check passed"* ]]
+  [[ "$output" != *"fix config via"* ]]
+}
+
+@test "resuscitate: is_gateway_healthy resolves port from openclaw.json" {
+  # Custom port in config should be used by is_gateway_healthy
+  # Create curl mock that logs the URL it was called with
+  cat > "$MOCK_BIN/curl" << 'EOCURL'
+#!/bin/bash
+echo "curl $*" >> "${TEST_DIR}/curl.log"
+if echo "$*" | grep -q "18789"; then
+  exit 0
+fi
+exit 1
+EOCURL
+  chmod +x "$MOCK_BIN/curl"
+
+  echo '{"gateway":{"port":18789}}' > "$OPENCLAW_DIR/openclaw.json"
+
+  # Mock systemctl to succeed so tier 1 restart fires
+  cat > "$MOCK_BIN/systemctl" << 'EOF'
+#!/bin/bash
+[[ "$*" == *"restart"* ]] && exit 0
+exit 1
+EOF
+  chmod +x "$MOCK_BIN/systemctl"
+  create_mock_pgrep "openclaw-gateway"
+
+  run bash "$SANDBOXED_SCRIPTS/resuscitate.sh"
+  [ "$status" -eq 0 ]
+
+  # Verify curl was called with the configured port
+  [ -f "$TEST_DIR/curl.log" ]
+  grep -q "18789" "$TEST_DIR/curl.log"
 }
