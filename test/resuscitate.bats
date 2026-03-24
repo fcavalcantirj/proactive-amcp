@@ -23,6 +23,11 @@ setup() {
   cp "$REAL_SCRIPT_DIR/_checkpoint-decrypt.sh" "$SANDBOXED_SCRIPTS/"
   chmod +x "$SANDBOXED_SCRIPTS/resuscitate.sh" "$SANDBOXED_SCRIPTS/solvr-integration.sh" "$SANDBOXED_SCRIPTS/_secrets-inject.sh" "$SANDBOXED_SCRIPTS/_checkpoint-decrypt.sh"
 
+  # Copy lib/ for shared helpers (gateway.sh etc)
+  if [ -d "$REAL_SCRIPT_DIR/lib" ]; then
+    cp -r "$REAL_SCRIPT_DIR/lib" "$SANDBOXED_SCRIPTS/"
+  fi
+
   # Mock notify.sh in sandbox
   cat > "$SANDBOXED_SCRIPTS/notify.sh" << 'EONOTIFY'
 #!/bin/bash

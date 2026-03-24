@@ -408,51 +408,18 @@ fetch_from_gateways() {
   return 1
 }
 
+# Shared gateway restart with Telegram lock safety
+source "$SCRIPT_DIR/lib/gateway.sh"
+
 # Recovery attempts
 try_restart_gateway() {
   log "Attempting: restart gateway"
-
-  # Try systemctl first
-  if systemctl --user restart openclaw-gateway 2>/dev/null; then
-    sleep "$GATEWAY_SETTLE_TIME"
+  if safe_restart_gateway; then
     if is_gateway_healthy; then
-      log "Gateway restarted via systemctl (health check passed)"
+      log "Gateway restarted (health check passed)"
       return 0
     fi
   fi
-
-  # Try direct restart
-  if command -v openclaw &>/dev/null; then
-    # Capture old PID before killing so we can confirm it is fully dead
-    local old_pid=""
-    old_pid=$(pgrep -f "openclaw-gateway" 2>/dev/null | head -1) || true
-
-    pkill -f "openclaw-gateway" 2>/dev/null || true
-
-    # Wait for old process to fully exit (avoids Telegram 409 getUpdates conflict)
-    if [ -n "$old_pid" ]; then
-      local waited=0
-      while [ -d "/proc/$old_pid" ] && [ "$waited" -lt 15 ]; do
-        sleep 1
-        waited=$((waited + 1))
-      done
-      if [ -d "/proc/$old_pid" ]; then
-        log "Old gateway PID $old_pid still alive after ${waited}s, sending SIGKILL"
-        kill -9 "$old_pid" 2>/dev/null || true
-        sleep 1
-      fi
-      log "Old gateway PID $old_pid exited after ${waited}s, waiting 5s for Telegram lock release"
-      sleep 5
-    fi
-
-    nohup openclaw gateway start > /tmp/openclaw-gateway.log 2>&1 &
-    sleep "$GATEWAY_SETTLE_TIME"
-    if is_gateway_healthy; then
-      log "Gateway restarted directly (health check passed)"
-      return 0
-    fi
-  fi
-
   return 1
 }
 

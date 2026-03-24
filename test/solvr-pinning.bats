@@ -26,6 +26,11 @@ setup() {
     fi
   done
 
+  # Copy lib/ for shared helpers (gateway.sh etc)
+  if [ -d "$REAL_SCRIPT_DIR/lib" ]; then
+    cp -r "$REAL_SCRIPT_DIR/lib" "$SANDBOXED_SCRIPTS/"
+  fi
+
   # Mock notify.sh in sandboxed scripts
   cat > "$SANDBOXED_SCRIPTS/notify.sh" << 'EONOTIFY'
 #!/bin/bash
