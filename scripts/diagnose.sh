@@ -165,6 +165,66 @@ check_gateway_health() {
 }
 
 # ============================================================
+# Check 2b: Telegram polling health (409 conflict detection)
+# ============================================================
+check_telegram_health() {
+  # Skip if no openclaw config exists
+  if [ ! -f "$OPENCLAW_CONFIG" ]; then
+    return 0
+  fi
+
+  # Extract bot token from channels.telegram.botToken in openclaw.json
+  local bot_token
+  bot_token=$(DIAGNOSE_CONFIG="$OPENCLAW_CONFIG" python3 -c "
+import json, os, sys
+try:
+    c = json.load(open(os.environ['DIAGNOSE_CONFIG']))
+    token = c.get('channels', {}).get('telegram', {}).get('botToken', '')
+    print(token)
+except Exception:
+    print('')
+" 2>/dev/null) || bot_token=""
+
+  # Skip if no Telegram channel configured or no token
+  if [ -z "$bot_token" ]; then
+    return 0
+  fi
+
+  # Mask token for any log/finding output (show last 4 chars only)
+  local masked_token
+  masked_token="***${bot_token: -4}"
+
+  # Call Telegram getUpdates with short timeout to detect 409 conflict
+  local response http_code
+  response=$(curl -s --max-time 5 -w "\n%{http_code}" \
+    "https://api.telegram.org/bot${bot_token}/getUpdates?timeout=1&limit=1" 2>/dev/null) || {
+    # curl itself failed (network error, DNS, etc.) — not a Telegram-specific issue
+    return 0
+  }
+
+  http_code=$(echo "$response" | tail -n1)
+  local body
+  body=$(echo "$response" | sed '$d')
+
+  # Check for 409 Conflict — multiple polling consumers
+  if [ "$http_code" = "409" ] || echo "$body" | grep -qi "conflict"; then
+    add_finding "telegram_conflict" "critical" \
+      "Telegram bot polling conflict (409): multiple consumers competing for updates (token: $masked_token)" \
+      "$OPENCLAW_CONFIG" \
+      "systemctl --user restart openclaw-gateway"
+    return 1
+  fi
+
+  # If getUpdates returned ok:true, Telegram polling is healthy
+  if echo "$body" | grep -q '"ok":true\|"ok": true'; then
+    return 0
+  fi
+
+  # Unexpected response (e.g., 401 unauthorized) — skip, not our problem to diagnose here
+  return 0
+}
+
+# ============================================================
 # Check 3: Session corruption (the 400 error loop)
 # ============================================================
 check_session_corruption() {
@@ -667,13 +727,50 @@ check_auth_status() {
       # Check if any profile shows a working status or static API key.
       # openclaw models status output patterns:
       #   "- provider:profile ok expires in ..." (working oauth/token)
+      #   "- provider:profile unknown"           (oauth unexercised, not expired)
       #   "api_key=N" where N>0 (static API key configured)
+
+      # Any profile explicitly "ok" — healthy
       if echo "$auth_output" | grep -qE '\bok\b'; then
         return 0
       fi
+
+      # Static API key present — healthy
       if echo "$auth_output" | grep -qE 'api_key=[1-9]'; then
         return 0
       fi
+
+      # OAuth profile with "unknown" status — not expired, just unexercised.
+      # Treat as healthy IF the gateway is actually responding (proves auth works).
+      if echo "$auth_output" | grep -qE '\bunknown\b'; then
+        # Determine gateway port: GATEWAY_PORT env > openclaw.json > defaults
+        local gw_ports=()
+        if [ -n "${GATEWAY_PORT:-}" ]; then
+          gw_ports=("$GATEWAY_PORT")
+        elif [ -f "$OPENCLAW_CONFIG" ]; then
+          local gw_port
+          gw_port=$(python3 -c "import json; print(json.load(open('$OPENCLAW_CONFIG')).get('gateway',{}).get('port',''))" 2>/dev/null || echo '')
+          if [ -n "$gw_port" ]; then
+            gw_ports=("$gw_port")
+          fi
+        fi
+        if [ ${#gw_ports[@]} -eq 0 ]; then
+          gw_ports=(3141 8080 18789)
+        fi
+        for port in "${gw_ports[@]}"; do
+          if curl -s --max-time 5 "http://localhost:${port}/health" > /dev/null 2>&1; then
+            return 0
+          fi
+        done
+        # Gateway not responding with unknown OAuth — warn but don't flag critical
+        add_finding "auth_unknown_no_gateway" "warning" \
+          "OAuth profile status unknown and gateway health check failed — cannot confirm auth works" \
+          "" \
+          ""
+        return 1
+      fi
+
+      # All profiles truly expired/invalid
       add_finding "auth_expired" "critical" \
         "All auth profiles expired/invalid — agent cannot authenticate to model provider" \
         "" \
@@ -773,9 +870,10 @@ except:
 has_issues=false
 
 check_gateway_process || has_issues=true
-# Only check health if gateway process exists
+# Only check health/telegram if gateway process exists
 if [ "$has_issues" = false ]; then
   check_gateway_health || has_issues=true
+  check_telegram_health || has_issues=true
 fi
 check_session_corruption || has_issues=true
 check_session_health || has_issues=true
@@ -818,7 +916,7 @@ findings = json.loads('''$findings_json''')
 result = {
     'status': '$status',
     'findings': findings,
-    'checks_run': 11,
+    'checks_run': 12,
     'findings_count': len(findings)
 }
 print(json.dumps(result, indent=2))
