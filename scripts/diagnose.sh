@@ -664,8 +664,14 @@ check_auth_status() {
       ;;
     1)
       # Exit 1 means at least one profile has issues, but others may work.
-      # Check if any profile shows static/valid/ok — if so, auth is fine.
-      if echo "$auth_output" | grep -qiE '(static|valid|manual|ok)'; then
+      # Check if any profile shows a working status or static API key.
+      # openclaw models status output patterns:
+      #   "- provider:profile ok expires in ..." (working oauth/token)
+      #   "api_key=N" where N>0 (static API key configured)
+      if echo "$auth_output" | grep -qE '\bok\b'; then
+        return 0
+      fi
+      if echo "$auth_output" | grep -qE 'api_key=[1-9]'; then
         return 0
       fi
       add_finding "auth_expired" "critical" \
