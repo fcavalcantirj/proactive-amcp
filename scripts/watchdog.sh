@@ -434,6 +434,8 @@ launch_resurrection() {
     sleep "${GATEWAY_SETTLE_TIME:-8}"
     if [ -x "$SCRIPT_DIR/diagnose.sh" ] && "$SCRIPT_DIR/diagnose.sh" health > /dev/null 2>&1; then
       echo "✅ Post-resurrection verification passed"
+      update_state "HEALTHY" 0 ""
+      rm -f "$LOCK_FILE"
     else
       echo "⚠️ Resurrection exited 0 but gateway still unhealthy — marking for retry"
     fi

@@ -649,11 +649,12 @@ check_auth_status() {
     return 0
   fi
 
+  local auth_output=""
   local auth_exit=0
-  timeout 30 "$openclaw_bin" models status --check >/dev/null 2>&1 || auth_exit=$?
+  auth_output=$(timeout 30 "$openclaw_bin" models status --check 2>&1) || auth_exit=$?
 
   case $auth_exit in
-    0) return 0 ;;  # OK
+    0) return 0 ;;  # All profiles OK
     2)
       add_finding "auth_expiring" "warning" \
         "OAuth token expiring soon — renew at console.anthropic.com" \
@@ -662,8 +663,13 @@ check_auth_status() {
       return 1
       ;;
     1)
+      # Exit 1 means at least one profile has issues, but others may work.
+      # Check if any profile shows static/valid/ok — if so, auth is fine.
+      if echo "$auth_output" | grep -qiE '(static|valid|manual|ok)'; then
+        return 0
+      fi
       add_finding "auth_expired" "critical" \
-        "OAuth token expired — agent cannot authenticate to model provider" \
+        "All auth profiles expired/invalid — agent cannot authenticate to model provider" \
         "" \
         "$SCRIPT_DIR/resuscitate.sh"
       return 1
