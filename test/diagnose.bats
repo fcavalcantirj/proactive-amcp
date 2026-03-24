@@ -272,6 +272,58 @@ EOCURL
   [ "$status" -eq 0 ] || [ "$status" -eq 1 ]
 }
 
+@test "diagnose: warns when allowlist policy has empty allowFrom" {
+  create_mock_pgrep "openclaw-gateway"
+  create_mock_curl "200"
+  create_clean_session
+  echo '{"gateway":{"port":3141},"channels":{"telegram":{"enabled":true,"dmPolicy":"allowlist","botToken":"123:ABC","allowFrom":[],"groupPolicy":"disabled","streaming":"partial"}}}' > "$OPENCLAW_CONFIG"
+
+  run run_diagnose
+  echo "OUTPUT: $output"
+
+  local has_warning
+  has_warning=$(echo "$output" | python3 -c "
+import json,sys
+d = json.load(sys.stdin)
+print(any(f['type'] == 'telegram_empty_allowlist' for f in d['findings']))
+")
+  [ "$has_warning" = "True" ]
+}
+
+@test "diagnose: no warning when allowFrom has users" {
+  create_mock_pgrep "openclaw-gateway"
+  create_mock_curl "200"
+  create_clean_session
+  echo '{"gateway":{"port":3141},"channels":{"telegram":{"enabled":true,"dmPolicy":"allowlist","botToken":"123:ABC","allowFrom":["12345"],"groupPolicy":"disabled","streaming":"partial"}}}' > "$OPENCLAW_CONFIG"
+
+  run run_diagnose
+
+  local has_warning
+  has_warning=$(echo "$output" | python3 -c "
+import json,sys
+d = json.load(sys.stdin)
+print(any(f['type'] == 'telegram_empty_allowlist' for f in d['findings']))
+")
+  [ "$has_warning" = "False" ]
+}
+
+@test "diagnose: no warning when dmPolicy is not allowlist" {
+  create_mock_pgrep "openclaw-gateway"
+  create_mock_curl "200"
+  create_clean_session
+  echo '{"gateway":{"port":3141},"channels":{"telegram":{"enabled":true,"dmPolicy":"open","botToken":"123:ABC","allowFrom":[],"groupPolicy":"disabled","streaming":"partial"}}}' > "$OPENCLAW_CONFIG"
+
+  run run_diagnose
+
+  local has_warning
+  has_warning=$(echo "$output" | python3 -c "
+import json,sys
+d = json.load(sys.stdin)
+print(any(f['type'] == 'telegram_empty_allowlist' for f in d['findings']))
+")
+  [ "$has_warning" = "False" ]
+}
+
 @test "diagnose: severity levels are correct" {
   create_mock_pgrep_fail
   create_mock_curl_fail

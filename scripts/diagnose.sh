@@ -225,6 +225,41 @@ except Exception:
 }
 
 # ============================================================
+# Check 2c: Telegram allowFrom validation
+# ============================================================
+check_telegram_allowlist() {
+  if [ ! -f "$OPENCLAW_CONFIG" ]; then
+    return 0
+  fi
+
+  local result
+  result=$(DIAGNOSE_CONFIG="$OPENCLAW_CONFIG" python3 -c "
+import json, os
+try:
+    c = json.load(open(os.environ['DIAGNOSE_CONFIG']))
+    tg = c.get('channels', {}).get('telegram', {})
+    policy = tg.get('dmPolicy', '')
+    allow = tg.get('allowFrom', [])
+    if policy == 'allowlist' and len(allow) == 0:
+        print('empty')
+    else:
+        print('ok')
+except Exception:
+    print('ok')
+" 2>/dev/null) || result="ok"
+
+  if [ "$result" = "empty" ]; then
+    add_finding "telegram_empty_allowlist" "warning" \
+      "Telegram dmPolicy is allowlist but allowFrom is empty — all DMs will be silently dropped" \
+      "$OPENCLAW_CONFIG" \
+      ""
+    return 1
+  fi
+
+  return 0
+}
+
+# ============================================================
 # Check 3: Session corruption (the 400 error loop)
 # ============================================================
 check_session_corruption() {
@@ -875,6 +910,7 @@ if [ "$has_issues" = false ]; then
   check_gateway_health || has_issues=true
   check_telegram_health || has_issues=true
 fi
+check_telegram_allowlist || has_issues=true
 check_session_corruption || has_issues=true
 check_session_health || has_issues=true
 config_json_ok=true
@@ -916,7 +952,7 @@ findings = json.loads('''$findings_json''')
 result = {
     'status': '$status',
     'findings': findings,
-    'checks_run': 12,
+    'checks_run': 13,
     'findings_count': len(findings)
 }
 print(json.dumps(result, indent=2))

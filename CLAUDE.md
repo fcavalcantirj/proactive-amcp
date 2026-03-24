@@ -509,6 +509,7 @@ Tests use isolated temp directories and mock all external dependencies (amcp CLI
 - **Tier gating** — Resurrection checks gateway status between tiers, skips destructive actions if earlier tier succeeded
 - **Secret scanning** — 11 regex patterns (GitHub PAT, OpenAI, Solvr, AgentMail, AWS, JWT, Telegram, etc.)
 - **Config dot-paths** — `config set pinata.jwt "..."` for nested JSON without manual editing
+- **authProfileOverrideSource must be `user`** — If proactive-amcp ever patches session auth overrides, MUST set `authProfileOverrideSource: "user"` (not `"auto"`). With `auto`, the OpenClaw gateway re-evaluates and reverts the override on every session tick. Discovered during 2026-03-24 death loop incident.
 
 ## Risks
 
