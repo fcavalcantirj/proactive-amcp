@@ -59,11 +59,16 @@ import json, os, sys
 session_file = os.environ["SESSIONFIX_FILE"]
 fix_mode = os.environ["SESSIONFIX_FIX"] == "true"
 
-# Error patterns indicating stuck session (matches diagnose.sh check_session_health)
+# Error patterns indicating stuck session (synced with diagnose.sh check_session_health)
+# Persistent (auth/billing) — session clear won't fix root cause but clean error turns
 ERROR_PATTERNS = [
-    "400", "rate_limit", "rate limit", "overloaded", "capacity",
-    "internal_error", "server_error", "context_length_exceeded",
-    "invalid_request_error", "unexpected `tool_use_id`",
+    "authentication_error", "permission_error", "billing_error",
+    "credit", "insufficient_quota", "account_suspended",
+    # Corruption — session clear WILL fix
+    "invalid_request_error", "context_length_exceeded",
+    "unexpected `tool_use_id`",
+    # Server — transient
+    "internal_error", "server_error",
 ]
 
 # Read all lines

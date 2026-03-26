@@ -383,18 +383,28 @@ if not session_ids:
     print("no_sessions")
     exit(0)
 
-# Error patterns indicating a stuck session (logic-level, not file corruption)
-ERROR_PATTERNS = [
-    "400",
-    "rate_limit",
-    "rate limit",
-    "overloaded",
-    "capacity",
+# Error patterns classified by root cause
+# PERSISTENT: auth/billing failures — clearing the session won't help
+PERSISTENT_PATTERNS = [
+    "authentication_error",
+    "permission_error",
+    "billing_error",
+    "credit",
+    "insufficient_quota",
+    "account_suspended",
+]
+# CORRUPTION: broken session state — clearing the session WILL help
+CORRUPTION_PATTERNS = [
+    "invalid_request_error",
+    "context_length_exceeded",
+    "unexpected `tool_use_id`",
+]
+# SERVER: transient backend failures — may resolve on their own
+SERVER_PATTERNS = [
     "internal_error",
     "server_error",
-    "context_length_exceeded",
-    "invalid_request_error",
 ]
+ALL_PATTERNS = PERSISTENT_PATTERNS + CORRUPTION_PATTERNS + SERVER_PATTERNS
 
 # Check the most recent N turns of each active session
 RECENT_TURNS = 20
@@ -429,6 +439,9 @@ for sid in session_ids:
     error_count = 0
     success_count = 0
     error_types = set()
+    persistent_count = 0
+    corruption_count = 0
+    server_count = 0
 
     for turn in recent:
         msg = turn.get("message", {})
@@ -436,41 +449,64 @@ for sid in session_ids:
 
         # Check for error messages
         err = msg.get("errorMessage", "") or ""
-        stop_reason = msg.get("stop_reason", "") or turn.get("stopReason", "") or ""
 
         has_error = False
-        for pattern in ERROR_PATTERNS:
+        matched_pattern = None
+        for pattern in ALL_PATTERNS:
             if pattern in err.lower():
                 has_error = True
+                matched_pattern = pattern
                 error_types.add(pattern)
                 break
 
         # Also check for HTTP error status in tool results
-        content = msg.get("content", [])
-        if isinstance(content, list):
-            for block in content:
-                if isinstance(block, dict):
-                    text = block.get("text", "") or ""
-                    for pattern in ERROR_PATTERNS:
-                        if pattern in text.lower():
-                            has_error = True
-                            error_types.add(pattern)
-                            break
+        if not has_error:
+            content = msg.get("content", [])
+            if isinstance(content, list):
+                for block in content:
+                    if isinstance(block, dict):
+                        text = (block.get("text", "") or "").lower()
+                        for pattern in ALL_PATTERNS:
+                            if pattern in text:
+                                has_error = True
+                                matched_pattern = pattern
+                                error_types.add(pattern)
+                                break
+                    if has_error:
+                        break
 
         if has_error:
             error_count += 1
-        elif role == "assistant" and content:
+            if matched_pattern in PERSISTENT_PATTERNS:
+                persistent_count += 1
+            elif matched_pattern in CORRUPTION_PATTERNS:
+                corruption_count += 1
+            elif matched_pattern in SERVER_PATTERNS:
+                server_count += 1
+        elif role == "assistant" and msg.get("content"):
             success_count += 1
 
     # Stuck = high error rate in recent turns AND low success rate
     if error_count >= ERROR_THRESHOLD and success_count <= 2:
+        # Infer root cause: if majority of errors are persistent-class,
+        # clearing the session won't help — escalate differently
+        error_class = "corruption"  # default: session fix will help
+        if persistent_count > error_count * 0.5:
+            error_class = "persistent"
+        elif server_count > error_count * 0.5:
+            error_class = "server"
+
         stuck_sessions.append({
             "session_id": sid,
             "path": filepath,
             "error_count": error_count,
             "success_count": success_count,
             "recent_turns": len(recent),
-            "error_types": sorted(error_types)
+            "error_types": sorted(error_types),
+            "error_class": error_class,
+            "persistent_count": persistent_count,
+            "corruption_count": corruption_count,
+            "server_count": server_count,
         })
 
 if stuck_sessions:
@@ -489,13 +525,27 @@ PYEOF
   count=$(echo "$result" | python3 -c "import json,sys; print(len(json.load(sys.stdin)))")
   local i=0
   while [ "$i" -lt "$count" ]; do
-    local session_id err_count err_types
+    local session_id err_count err_types err_class
     session_id=$(echo "$result" | python3 -c "import json,sys; print(json.load(sys.stdin)[$i]['session_id'])")
     err_count=$(echo "$result" | python3 -c "import json,sys; print(json.load(sys.stdin)[$i]['error_count'])")
     err_types=$(echo "$result" | python3 -c "import json,sys; print(', '.join(json.load(sys.stdin)[$i]['error_types']))")
+    err_class=$(echo "$result" | python3 -c "import json,sys; print(json.load(sys.stdin)[$i].get('error_class','corruption'))")
 
-    add_finding "session_stuck" "critical" \
-      "Session $session_id is stuck: $err_count errors in last 20 turns (patterns: $err_types)" \
+    # Use different finding types based on error classification
+    # persistent = auth/billing failures, session clear won't help
+    # corruption = broken session state, session clear WILL help
+    # server = transient backend failures, may resolve on their own
+    local finding_type="session_stuck"
+    local severity="critical"
+    if [ "$err_class" = "persistent" ]; then
+      finding_type="session_stuck_persistent"
+    elif [ "$err_class" = "server" ]; then
+      finding_type="session_stuck_server"
+      severity="warning"
+    fi
+
+    add_finding "$finding_type" "$severity" \
+      "Session $session_id is stuck ($err_class): $err_count errors in last 20 turns (patterns: $err_types)" \
       "$SESSION_DIR" \
       "$SCRIPT_DIR/session-fix.sh --fix --session-dir $SESSION_DIR --session-id $session_id"
 

@@ -67,6 +67,7 @@ RETRY_DELAY_INITIAL="${RETRY_DELAY_INITIAL:-300}"  # 5 min initial retry delay
 RETRY_DELAY_MAX="${RETRY_DELAY_MAX:-1800}"          # 30 min max retry delay
 ESCALATION_THRESHOLD="${ESCALATION_THRESHOLD:-5}"   # same error N times → escalate
 CRASH_LOOP_THRESHOLD="${CRASH_LOOP_THRESHOLD:-10}"  # restarts per hour before escalation
+SESSION_FIX_COOLDOWN_MAX="${SESSION_FIX_COOLDOWN_MAX:-3}"  # max session fixes per hour before escalation
 SESSION_DIR="${SESSION_DIR:-$HOME/.openclaw/agents/main/sessions}"
 
 # ============================================================
@@ -233,6 +234,7 @@ if new_state == "HEALTHY":
     state["resurrectionPid"] = None
     state["errorHistory"] = []
     state["restart_history"] = []
+    state["session_fix_history"] = []
 
 tmp = state_file + ".tmp"
 with open(tmp, "w") as f:
@@ -493,6 +495,12 @@ get_suggested_fix() {
       echo "jq . ~/.openclaw/openclaw.json; ls ~/.amcp/config-backups/ and restore latest" ;;
     session_corrupted|session_stuck)
       echo "proactive-amcp diagnose fix; systemctl --user restart openclaw-gateway" ;;
+    session_stuck_persistent)
+      echo "Check API credits/billing at console.anthropic.com; renew auth if needed" ;;
+    session_stuck_server)
+      echo "Backend server errors — usually transient. Wait 10-15 min, check again" ;;
+    session_stuck_cooldown)
+      echo "Session fix fired ${SESSION_FIX_COOLDOWN_MAX}+ times/hour — root cause is NOT the session. Check auth/credits" ;;
     crash_loop_detected)
       echo "STOP auto-recovery. Review ~/.amcp/recovery-*.log for root cause" ;;
     auth_expired)
@@ -632,6 +640,66 @@ try_fix_stuck_session() {
 }
 
 # ============================================================
+# Session fix cooldown — prevent infinite fix loops
+# ============================================================
+get_session_fix_count() {
+  WATCHDOG_STATE_FILE="$STATE_FILE" python3 << 'PYEOF'
+import json, os
+from datetime import datetime, timezone
+
+state_file = os.environ["WATCHDOG_STATE_FILE"]
+try:
+    with open(state_file) as f:
+        state = json.load(f)
+except (json.JSONDecodeError, FileNotFoundError):
+    print(0)
+    exit(0)
+
+history = state.get("session_fix_history", [])
+if not history:
+    print(0)
+    exit(0)
+
+now = datetime.now(timezone.utc)
+one_hour_ago = now.timestamp() - 3600
+count = 0
+for ts_str in history:
+    try:
+        ts = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+        if ts.timestamp() >= one_hour_ago:
+            count += 1
+    except (ValueError, TypeError):
+        continue
+
+print(count)
+PYEOF
+}
+
+record_session_fix() {
+  WATCHDOG_STATE_FILE="$STATE_FILE" python3 << 'PYEOF'
+import json, os
+from datetime import datetime, timezone
+
+state_file = os.environ["WATCHDOG_STATE_FILE"]
+try:
+    with open(state_file) as f:
+        state = json.load(f)
+except (json.JSONDecodeError, FileNotFoundError):
+    state = {}
+
+now = datetime.now(timezone.utc)
+history = state.get("session_fix_history", [])
+history.append(now.isoformat())
+state["session_fix_history"] = history[-20:]
+
+tmp = state_file + ".tmp"
+with open(tmp, "w") as f:
+    json.dump(state, f, indent=2)
+os.replace(tmp, state_file)
+PYEOF
+}
+
+# ============================================================
 # Main check — diagnose then route
 # ============================================================
 do_check() {
@@ -754,12 +822,69 @@ do_check() {
     echo "❌ Session fix failed, escalating to resurrection"
   fi
 
-  # Session stuck (logic errors, 400 loops) with gateway still running = tiered fix
-  local has_session_stuck
+  # Session stuck — route by error classification
+  local has_session_stuck has_session_stuck_persistent has_session_stuck_server
   has_session_stuck=$(has_finding "$diag_json" "session_stuck")
+  has_session_stuck_persistent=$(has_finding "$diag_json" "session_stuck_persistent")
+  has_session_stuck_server=$(has_finding "$diag_json" "session_stuck_server")
+
+  # PERSISTENT errors (auth/billing) — session clear won't help, escalate to human
+  if [ "$has_session_stuck_persistent" = "yes" ]; then
+    echo "🔑 Diagnosis: session stuck due to PERSISTENT errors (auth/billing)"
+    echo "🔑 Session clearing will NOT fix this — root cause is external"
+    update_state "DEAD" "$((failures + 1))" "session_stuck_persistent $errors"
+    # Only notify on state TRANSITION to DEAD — don't spam every cycle
+    if [ "$current_state" != "DEAD" ]; then
+      local condensed_errors
+      condensed_errors=$(condense_error_msg "$errors")
+      local report
+      report=$(build_escalation_report "🔑" "$AGENT_NAME" \
+        "Session stuck (persistent): $condensed_errors" \
+        "NOT clearing session — auth/billing errors won't be fixed by restart" \
+        "Manual intervention required (check API credits/auth)" "$((failures + 1))")
+      [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "$report"
+    else
+      echo "🔑 Already DEAD with persistent errors — waiting for manual intervention (not re-notifying)"
+    fi
+    return 2
+  fi
+
+  # SERVER errors — transient, wait and see before fixing
+  if [ "$has_session_stuck_server" = "yes" ] && [ "$has_session_stuck" != "yes" ]; then
+    echo "⏳ Diagnosis: session stuck due to server errors (likely transient)"
+    update_state "CHECKING" "$((failures + 1))" "$errors"
+    echo "⏳ Waiting for server recovery before intervening"
+    return 1
+  fi
+
+  # CORRUPTION errors — session clear WILL help, but with cooldown
   if [ "$has_session_stuck" = "yes" ] && [ "$has_gateway_down" != "yes" ]; then
-    echo "🔍 Diagnosis: session stuck (gateway still running)"
+    echo "🔍 Diagnosis: session stuck (corruption — gateway still running)"
+
+    # Cooldown: check if we've already fixed this too many times recently
+    local fix_count
+    fix_count=$(get_session_fix_count)
+    if [ "$fix_count" -ge "$SESSION_FIX_COOLDOWN_MAX" ]; then
+      echo "🚨 Session fix cooldown: already fixed $fix_count times in the last hour"
+      echo "🚨 Root cause is likely persistent despite corruption-class errors — escalating"
+      update_state "DEAD" "$((failures + 1))" "session_stuck_cooldown $errors"
+      if [ "$current_state" != "DEAD" ]; then
+        local condensed_errors
+        condensed_errors=$(condense_error_msg "$errors")
+        local report
+        report=$(build_escalation_report "🚨" "$AGENT_NAME" \
+          "Session stuck (fix cooldown hit: $fix_count fixes/hour)" \
+          "Stopped auto-fixing — repeated fixes not resolving root cause" \
+          "Manual intervention required" "$((failures + 1))")
+        [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "$report"
+      else
+        echo "🚨 Already DEAD from cooldown — waiting for manual intervention (not re-notifying)"
+      fi
+      return 2
+    fi
+
     if try_fix_stuck_session "$diag_json"; then
+      record_session_fix
       update_state "HEALTHY" 0 ""
       [ -x "$SCRIPT_DIR/notify.sh" ] && "$SCRIPT_DIR/notify.sh" "✅ [$AGENT_NAME] Stuck session auto-fixed"
       document_fix_on_solvr "session_stuck" "$diag_json" "Stuck session tiered fix (truncate/reset/archive) + gateway restart"
